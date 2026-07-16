@@ -1,0 +1,106 @@
+<?php
+
+namespace App\Http\Controllers\Client;
+
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Controller;
+use App\Models\Invoice;
+use App\Models\Order;
+use App\Models\Setting;
+use App\Models\AuditLog;
+use Illuminate\Support\Facades\Storage;
+
+/**
+ * /client portal shell + tenant-scoped printable documents.
+ * Every record is checked against the logged-in user's tenant — a client can
+ * never open another company's invoice or quotation.
+ */
+class PortalController extends Controller
+{
+    public function index()
+    {
+        return view('client.portal', ['user' => auth('client')->user()->load('tenant')]);
+    }
+
+    public function invoicePrint(Invoice $invoice)
+    {
+        abort_unless($invoice->tenant_id === auth('client')->user()->tenant_id, 404);
+
+        return view('invoice-print', [
+            'invoice' => $invoice->load('tenant', 'order'),
+            'company' => $this->company(),
+        ]);
+    }
+
+    public function quotePrint(Order $order)
+    {
+        abort_unless($order->tenant_id === auth('client')->user()->tenant_id && $order->quote_number, 404);
+
+        return view('quote-print', [
+            'order' => $order->load('tenant'),
+            'payUrl' => url('/pay/' . $order->number . '/' . CheckoutController::token($order)),
+            'company' => $this->company(),
+        ]);
+    }
+
+    /**
+     * Serve an installer download to the logged-in client. Files live in
+     * storage/app/downloads/ (agent + admin). Missing files return a friendly
+     * 404 JSON so the portal can show a "being prepared" state. Every download
+     * is audit-logged against the tenant.
+     */
+    public function download(string $artifact)
+    {
+        $map = [
+            'agent' => ['SmartEPT-Agent-Setup.exe', 'SmartEPT-Employee-Agent-Setup.exe'],
+            'admin' => ['SmartEPT-Admin-Server-Setup.exe', 'SmartEPT-Admin-Server-Setup.zip'],
+        ];
+        abort_unless(isset($map[$artifact]), 404);
+
+        foreach ($map[$artifact] as $name) {
+            $path = 'downloads/' . $name;
+            if (Storage::disk('local')->exists($path)) {
+                AuditLog::write('client.download', auth('client')->user()->tenant, ['artifact' => $artifact, 'file' => $name]);
+                return Storage::disk('local')->download($path, $name);
+            }
+        }
+        return response()->json([
+            'ready' => false,
+            'message' => 'This installer is being prepared for your account. We will email you the download link shortly, or WhatsApp us and we will send it right away.',
+        ], 404);
+    }
+
+    /** GET client/api/downloads — which installers are available + the licence key. */
+    public function downloads(): array
+    {
+        $tenant = auth('client')->user()->tenant;
+        $lic = $tenant->activeLicence();
+        $ready = fn ($names) => collect($names)->contains(fn ($n) => Storage::disk('local')->exists('downloads/' . $n));
+        return [
+            'agent_ready' => $ready(['SmartEPT-Agent-Setup.exe', 'SmartEPT-Employee-Agent-Setup.exe']),
+            'admin_ready' => $ready(['SmartEPT-Admin-Server-Setup.exe', 'SmartEPT-Admin-Server-Setup.zip']),
+            'licence_key' => $lic?->key,
+            'plan' => $lic?->plan?->name,
+            'company' => $tenant->company_name,
+        ];
+    }
+
+    private function company(): array
+    {
+        return [
+            'name' => Setting::get('company_name', 'Ametecs India Private Limited'),
+            'address' => Setting::get('company_address', ''),
+            'gstin' => Setting::get('company_gstin', ''),
+            'phone' => Setting::get('company_phone', ''),
+            'email' => Setting::get('company_email', ''),
+            // Seller state + bank/UPI block for the GST tax invoice.
+            'state' => \App\Support\IndianStates::placeOfSupply(Setting::get('seller_state_code', '36')),
+            'bank_account_name' => Setting::get('bank_account_name', ''),
+            'bank_name' => Setting::get('bank_name', ''),
+            'bank_branch' => Setting::get('bank_branch', ''),
+            'bank_account_no' => Setting::get('bank_account_no', ''),
+            'bank_ifsc' => Setting::get('bank_ifsc', ''),
+            'upi_id' => Setting::get('upi_id', ''),
+        ];
+    }
+}

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>SmartEPT Central — Ametecs Super Admin</title>
+<style>
+:root{--accent:#0E7C8F;--accent2:#22B8CF;--weak:#E3F4F7;--deep:#0B6373;--ink:#15171C;--ink2:#565A66;
+--ink3:#878C99;--canvas:#F4F6F9;--card:#fff;--card2:#FAFBFC;--border:#E7E9EF;--border2:#DCDFE7;
+--hair:#F0F1F4;--ok:#08875D;--ok-w:#E6F5EE;--warn:#B7791F;--warn-w:#FBF3E2;--danger:#D02748;
+--danger-w:#FBE9ED;--info:#0B72C9;--info-w:#E6F1FB;--navy1:#04252C;--navy2:#0B4A56}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',sans-serif;background:var(--canvas);color:var(--ink);font-size:14px;display:flex;min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:13.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;width:100%;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 4px}
+/* sidebar */
+aside{width:232px;background:linear-gradient(175deg,var(--navy1),#083039);color:#C9E2E7;padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.brand .mk{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+.brand b{font-size:15px;color:#fff}.brand small{display:block;font-size:8.5px;letter-spacing:2px;color:#7FA8AF}
+nav{flex:1;min-height:0;overflow-y:auto;margin-top:14px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9.5px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#A9CBD1;cursor:pointer;margin-bottom:2px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
+.nav-sec{font-size:10px;letter-spacing:1.8px;color:#5E858C;text-transform:uppercase;font-weight:800;margin:16px 12px 6px}
+.me{border-top:1px solid rgba(255,255,255,.1);padding-top:12px;margin-top:8px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+.me-row{display:flex;align-items:center;gap:9px}
+.me .av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+.me b{font-size:12.5px;color:#fff;display:block}.me span{font-size:10.5px;color:#7FA8AF;text-transform:capitalize}
+.me form{width:100%}
+.me button{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:12px;font-weight:600;padding:9px;border-radius:8px;cursor:pointer}
+.me button:hover{background:var(--accent);border-color:var(--accent)}
+/* main */
+main{flex:1;padding:26px 30px;max-width:calc(100vw - 232px)}
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.topbar h1{font-size:21px;font-weight:800}
+.help-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--accent);color:var(--accent);background:#fff;font-weight:800;font-size:13px}
+.topbar .sp{flex:1}
+.btn{padding:9px 16px;border-radius:8px;border:none;font-weight:700;font-size:13px}
+.btn-p{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
+.btn-l{background:#fff;border:1.5px solid var(--border2);color:var(--deep)}
+.btn-d{background:var(--danger-w);color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+/* cards & stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{background:#fff;border:1px solid var(--border);border-radius:13px;padding:16px 18px}
+.stat .l{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;font-weight:700}
+.stat .v{font-size:26px;font-weight:800;margin-top:3px}
+.stat .v.teal{color:var(--accent)}.stat .v.ok{color:var(--ok)}.stat .v.warn{color:var(--warn)}
+.card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:18px 20px;margin-bottom:16px}
+.card h3{font-size:14.5px;font-weight:800;margin-bottom:12px;color:var(--deep)}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;background:var(--weak);color:var(--deep);padding:9px 11px;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px}
+th:first-child{border-radius:8px 0 0 8px}th:last-child{border-radius:0 8px 8px 0}
+td{padding:10px 11px;border-bottom:1px solid var(--hair);vertical-align:middle}
+tr:hover td{background:var(--card2)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700}
+.p-ok{background:var(--ok-w);color:var(--ok)}.p-warn{background:var(--warn-w);color:var(--warn)}
+.p-dang{background:var(--danger-w);color:var(--danger)}.p-info{background:var(--info-w);color:var(--info)}
+.p-mut{background:var(--hair);color:var(--ink3)}
+.mini{font-size:11.5px;color:var(--ink3)}
+.link{color:var(--accent);font-weight:700;cursor:pointer;background:none;border:none;font-size:12.5px}
+.filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.filters input,.filters select{width:auto;min-width:160px}
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(4,37,44,.55);display:none;align-items:flex-start;justify-content:center;z-index:40;padding:40px 16px;overflow-y:auto}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:560px;padding:24px 26px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.modal.wide{max-width:760px}
+.modal h2{font-size:17px;font-weight:800;margin-bottom:4px}
+.modal .sub{font-size:12.5px;color:var(--ink3);margin-bottom:12px}
+.modal .row{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+/* help modal */
+.help-head{background:linear-gradient(135deg,var(--navy1),var(--navy2));color:#fff;margin:-24px -26px 14px;padding:18px 26px;border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:space-between}
+.help-head b{font-size:15px}.help-head span{font-size:11px;color:#9FC5CC;display:block}
+.help-head button{background:none;border:none;color:#fff;font-size:20px}
+.help-tabs{display:flex;gap:6px;margin-bottom:14px}
+.help-tabs button{padding:7px 14px;border-radius:8px;border:1.5px solid var(--border2);background:#fff;font-weight:700;font-size:12px;color:var(--ink2)}
+.help-tabs button.on{background:var(--weak);border-color:var(--accent);color:var(--deep)}
+.help-body{font-size:13px;line-height:1.65;color:var(--ink2);max-height:52vh;overflow-y:auto}
+.help-body h4{color:var(--deep);margin:12px 0 6px;font-size:13px}
+.help-body ol{padding-left:20px}.help-body li{margin-bottom:5px}
+.tip{background:var(--warn-w);border-left:3.5px solid var(--warn);padding:9px 12px;border-radius:0 8px 8px 0;margin-top:10px;color:#7A5614}
+.scen{background:var(--navy1);color:#DFF0F3;padding:12px 14px;border-radius:10px;margin:10px 0;font-size:12.5px}
+.gain{color:var(--ok)}
+/* quote box */
+.quote-box{background:var(--weak);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:12.5px;color:var(--deep)}
+.quote-box .ln{display:flex;justify-content:space-between;padding:3px 0}
+.quote-box .tt{border-top:1.5px solid rgba(11,99,115,.25);margin-top:6px;padding-top:6px;font-weight:800;font-size:14px}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--navy1);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;display:none;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.pager{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12.5px;color:var(--ink3)}
+@media(max-width:1100px){.stats{grid-template-columns:1fr 1fr}.modal .row{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-role="{{ $user->role }}">
+
+<aside>
+  <div class="brand"><div class="mk">EPT</div><div><b>SmartEPT Central</b><small>AMETECS SUPER ADMIN</small></div></div>
+  <nav id="nav">
+    <div class="nav-sec">Business</div>
+    <div class="nav-item on" data-page="dashboard">Dashboard</div>
+    <div class="nav-item" data-page="tenants">Clients / Tenants</div>
+    <div class="nav-item" data-page="trials">Trials</div>
+    <div class="nav-sec">Licensing</div>
+    <div class="nav-item" data-page="licences">Licences</div>
+    <div class="nav-item" data-page="plans">Plans &amp; Pricing</div>
+    <div class="nav-sec">Money</div>
+    <div class="nav-item" data-page="orders">Orders &amp; Payments</div>
+    <div class="nav-item" data-page="invoices">Invoices</div>
+    <div class="nav-item" data-page="storage">Cloud Storage</div>
+    <div class="nav-sec">System</div>
+    <div class="nav-item" data-page="settings" data-super="1">Settings</div>
+    <div class="nav-item" data-page="audit">Audit Log</div>
+  </nav>
+  <div class="me">
+    <div class="me-row">
+      <div class="av">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
+      <div><b>{{ $user->name }}</b><span>{{ $user->role }}</span></div>
+    </div>
+    <form method="POST" action="/admin/logout">@csrf<button type="submit">&#x23FB;&nbsp; Sign out</button></form>
+  </div>
+</aside>
+
+<main>
+  <div class="topbar">
+    <h1 id="pageTitle">Dashboard</h1>
+    <button class="help-btn" onclick="openHelp()" title="Screen help">i</button>
+    <div class="sp"></div>
+    <div id="pageActions"></div>
+  </div>
+  <div id="page"></div>
+</main>
+
+<!-- generic modal -->
+<div class="overlay" id="modalOv"><div class="modal" id="modalBox"></div></div>
+<!-- help modal -->
+<div class="overlay" id="helpOv"><div class="modal">
+  <div class="help-head"><div><b id="helpTitle"></b><span>SmartEPT Central · Screen Help</span></div>
+  <button onclick="closeHelp()">×</button></div>
+  <div class="help-tabs">
+    <button class="on" onclick="helpTab(0,this)">How to use it</button>
+    <button onclick="helpTab(1,this)">Why it matters</button>
+    <button onclick="helpTab(2,this)">Do it right</button>
+  </div>
+  <div class="help-body" id="helpBody"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CSRF = document.querySelector('meta[name=csrf-token]').content;
+const ROLE = document.body.dataset.role;
+const CAN_WRITE = ROLE === 'super' || ROLE === 'sales';
+const fmtMoney = (n, c='INR') => (c==='INR'?'₹':'$') + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const toast = m => { const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none', 3200); };
+
+async function api(path, opts={}) {
+  const res = await fetch('/admin/api/' + path, {
+    headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
+    ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (res.status === 401) { location.href = '/admin/login'; return; }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw (data.error || data.message || 'Request failed');
+  return data;
+}
+
+// ---------- modal helpers ----------
+const ov = document.getElementById('modalOv'), box = document.getElementById('modalBox');
+function openModal(html, wide=false) { box.className = 'modal' + (wide?' wide':''); box.innerHTML = html; ov.classList.add('show'); }
+function closeModal() { ov.classList.remove('show'); }
+ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
+
+// ---------- pages ----------
+let PAGE = 'dashboard';
+const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',licences:'Licences',
+plans:'Plans & Pricing',orders:'Orders & Payments',invoices:'Invoices',storage:'Cloud Storage',
+settings:'Settings',audit:'Audit Log'};
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  if (el.dataset.super && ROLE !== 'super') { el.style.display = 'none'; return; }
+  el.onclick = () => go(el.dataset.page);
+});
+function go(page) {
+  PAGE = page;
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('on', e.dataset.page === page));
+  document.getElementById('pageTitle').textContent = TITLES[page];
+  document.getElementById('pageActions').innerHTML = '';
+  RENDER[page]();
+}
+const P = document.getElementById('page');
+const ACTIONS = document.getElementById('pageActions');
+const statusPill = s => ({quote:'p-info',active:'p-ok',trial:'p-info',paid:'p-ok',created:'p-warn',suspended:'p-warn',
+  expired:'p-dang',revoked:'p-dang',failed:'p-dang',refunded:'p-mut',churned:'p-mut',issued:'p-info',
+  cancelled:'p-mut',draft:'p-mut'}[s] || 'p-mut');
+const pill = s => `<span class="pill ${statusPill(s)}">${esc(s)}</span>`;
+
+const RENDER = {
+
+// ============ DASHBOARD ============
+async dashboard() {
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('dashboard');
+  P.innerHTML = `
+  <div class="stats">
+    <div class="stat"><div class="l">Active Clients</div><div class="v teal">${d.tenants_active}</div><div class="mini">${d.tenants_trial} on trial · ${d.tenants_total} total</div></div>
+    <div class="stat"><div class="l">Revenue This Month</div><div class="v ok">${fmtMoney(d.revenue_this_month)}</div><div class="mini">MRR est. ${fmtMoney(d.mrr_estimate)}</div></div>
+    <div class="stat"><div class="l">Active Licences</div><div class="v">${d.licences_active}</div><div class="mini">${d.devices_active} devices activated</div></div>
+    <div class="stat"><div class="l">Needs Attention</div><div class="v warn">${d.trials_expiring_7d + d.orders_pending}</div><div class="mini">${d.trials_expiring_7d} trials expiring · ${d.orders_pending} unpaid orders</div></div>
+  </div>
+  <div class="card"><h3>Recent Orders</h3><table><tr><th>Order</th><th>Client</th><th>Description</th><th>Total</th><th>Status</th></tr>
+  ${d.recent_orders.map(o => `<tr><td><b>${esc(o.number)}</b></td><td>${esc(o.tenant?.company_name)}</td><td class="mini">${esc(o.description)}</td><td>${fmtMoney(o.total, o.currency)}</td><td>${pill(o.status)}</td></tr>`).join('') || '<tr><td colspan="5" class="mini">No orders yet</td></tr>'}</table></div>
+  <div class="card"><h3>Recent Licence Activations</h3><table><tr><th>Key</th><th>Client</th><th>Activated</th></tr>
+  ${d.recent_activations.map(l => `<tr><td class="mini">${esc(l.key)}</td><td>${esc(l.tenant?.company_name)}</td><td class="mini">${new Date(l.activated_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="3" class="mini">No activations yet</td></tr>'}</table></div>`;
+},
+
+// ============ TENANTS ============
+async tenants() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newTenant()">+ New Client</button>';
+  P.innerHTML = `<div class="filters">
+    <input id="tq" placeholder="Search company / email / phone…">
+    <select id="tst"><option value="">All statuses</option><option>trial</option><option>active</option><option>suspended</option><option>expired</option><option>churned</option></select>
+    <button class="btn btn-l" onclick="loadTenants()">Search</button></div><div id="tlist"></div>`;
+  loadTenants();
+},
+
+// ============ TRIALS ============
+async trials() {
+  const d = await api('trials');
+  const row = t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
+    <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
+    <td>${t.trial_ends_at ? new Date(t.trial_ends_at).toLocaleDateString() : '—'}</td>
+    <td>${CAN_WRITE ? `<button class="link" onclick="extendTrial(${t.id})">Extend</button>
+    <button class="link" onclick="convertTrial(${t.id}, '${esc(t.company_name)}')">Convert to Paid</button>` : ''}</td></tr>`;
+  P.innerHTML = `
+  <div class="card"><h3>Active Trials (${d.active.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ends</th><th></th></tr>
+  ${d.active.map(row).join('') || '<tr><td colspan="4" class="mini">No active trials</td></tr>'}</table></div>
+  <div class="card"><h3>Expired Trials (${d.expired.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ended</th><th></th></tr>
+  ${d.expired.map(row).join('') || '<tr><td colspan="4" class="mini">None</td></tr>'}</table></div>`;
+},
+
+// ============ LICENCES ============
+async licences() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="issueLicence()">+ Issue Licence</button>';
+  P.innerHTML = `<div class="filters">
+    <input id="lq" placeholder="Search key / company…">
+    <select id="lst"><option value="">All statuses</option><option>active</option><option>suspended</option><option>revoked</option><option>expired</option></select>
+    <select id="lkind"><option value="">All kinds</option><option>trial</option><option>subscription</option><option>perpetual</option></select>
+    <button class="btn btn-l" onclick="loadLicences()">Search</button></div><div id="llist"></div>`;
+  loadLicences();
+},
+
+// ============ PLANS ============
+async plans() {
+  const resp = await api('plans');
+  const plans = Array.isArray(resp) ? resp : (resp.data || []);
+  P.innerHTML = plans.map(p => `<div class="card"><h3>${esc(p.name)} <span class="mini">(${esc(p.code)})</span> ${p.active?'':pill('suspended')}</h3>
+  <table><tr><th>INR Annual</th><th>INR Monthly</th><th>USD Annual</th><th>Perpetual/Device</th><th>Server Licence</th><th>Min Devices</th><th></th></tr>
+  <tr><td>₹${p.inr_annual}</td><td>₹${p.inr_monthly}</td><td>$${p.usd_annual}</td><td>₹${Number(p.perpetual_device_inr).toLocaleString('en-IN')}</td><td>₹${Number(p.perpetual_server_inr).toLocaleString('en-IN')}</td><td>${p.min_devices}</td>
+  <td>${ROLE==='super' ? `<button class="link" onclick='editPlan(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>`:''}</td></tr></table>
+  ${p.volume_tiers?.length ? `<div class="mini" style="margin-top:8px"><b>Volume tiers:</b> ${p.volume_tiers.map(t=>`${t.min_devices}–${t.max_devices??'∞'}: ₹${t.rate_inr_annual}`).join(' · ')}</div>`:''}
+  <div class="mini" style="margin-top:6px"><b>Features:</b> ${Object.entries(p.features||{}).map(([k,v])=>`${k}=${v}`).join(', ')}</div></div>`).join('');
+},
+
+// ============ ORDERS ============
+async orders() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button>';
+  P.innerHTML = `<div class="filters">
+    <select id="ost"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
+    <select id="ogw"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
+    <button class="btn btn-l" onclick="loadOrders()">Filter</button></div><div id="olist"></div>`;
+  loadOrders();
+},
+
+// ============ INVOICES ============
+async invoices() {
+  const d = await api('invoices');
+  P.innerHTML = `<div class="card"><table><tr><th>Invoice</th><th>Date</th><th>Client</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Status</th><th></th></tr>
+  ${d.data.map(i => `<tr><td><b>${esc(i.number)}</b></td><td class="mini">${i.date?.slice(0,10)}</td>
+  <td>${esc(i.tenant?.company_name)}</td><td>${fmtMoney(i.subtotal, i.currency)}</td>
+  <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
+  <td><b>${fmtMoney(i.total, i.currency)}</b></td><td>${pill(i.status)}</td>
+  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No invoices yet</td></tr>'}</table></div>`;
+},
+
+// ============ STORAGE ============
+async storage() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="recordStorage()">+ Record Usage</button>';
+  const month = new Date().toISOString().slice(0,7);
+  const d = await api('storage?month=' + month);
+  P.innerHTML = `<div class="card"><h3>Cloud Storage — ${d.month} <span class="mini">(₹3/GB to 500 GB · ₹2.50 to 2 TB · ₹2 above · min 50 GB)</span></h3>
+  <table><tr><th>Cloud Tenant</th><th>Avg GB (month)</th><th>Billable GB</th><th>Monthly Charge</th></tr>
+  ${d.tenants.map(t => `<tr><td><b>${esc(t.company_name)}</b></td><td>${t.avg_gb}</td><td>${t.billable_gb}</td><td><b>${t.monthly_charge ? fmtMoney(t.monthly_charge) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="4" class="mini">No cloud tenants</td></tr>'}</table>
+  <div class="mini" style="margin-top:10px">Automatic daily metering arrives with the Phase-3 cloud platform — until then usage can be recorded manually or imported.</div></div>`;
+},
+
+// ============ SETTINGS ============
+async settings() {
+  const s = await api('settings');
+  const f = (k, label, type='text') => `<label>${label}</label><input id="set_${k}" type="${type}" value="${esc(s[k]||'')}">`;
+  P.innerHTML = `
+  <div class="card"><h3>Company & Tax</h3><div class="modal-body row" style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('company_name','Company name')}${f('company_gstin','GSTIN')}${f('company_phone','Phone')}${f('company_email','Email')}
+  ${f('gst_rate','GST rate %')}${f('whatsapp_number','WhatsApp number')}${f('invoice_prefix','Invoice prefix (EPT → EPT-2026-27-07-0001)')}${f('quote_prefix','Quote prefix (EPT-Q)')}${f('order_prefix','Order number prefix')}</div>
+  <label>Registered address</label><textarea id="set_company_address" rows="2">${esc(s.company_address||'')}</textarea></div>
+  <div class="card"><h3>Razorpay (INR) — test keys work; paste live keys when ready</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('razorpay_key_id','Key ID (rzp_test_… / rzp_live_…)')}${f('razorpay_key_secret','Key Secret','password')}${f('razorpay_webhook_secret','Webhook Secret','password')}</div>
+  <div class="mini">Webhook URL for the Razorpay dashboard: <b>${location.origin}/webhooks/razorpay</b> · event: payment.captured</div></div>
+  <div class="card"><h3>Stripe (USD international)</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('stripe_publishable_key','Publishable key')}${f('stripe_secret_key','Secret key','password')}${f('stripe_webhook_secret','Webhook signing secret','password')}</div>
+  <div class="mini">Webhook URL: <b>${location.origin}/webhooks/stripe</b> · event: checkout.session.completed</div></div>
+  <button class="btn btn-p" onclick="saveSettings()">Save Settings</button>`;
+},
+
+// ============ AUDIT ============
+async audit() {
+  const d = await api('audit');
+  P.innerHTML = `<div class="card"><table><tr><th>When</th><th>Who</th><th>Action</th><th>Subject</th><th>Details</th></tr>
+  ${d.data.map(a => `<tr><td class="mini">${new Date(a.created_at).toLocaleString()}</td>
+  <td>${esc(a.admin_user?.name || 'system')}</td><td><b>${esc(a.action)}</b></td>
+  <td class="mini">${esc((a.subject_type||'').split('\\\\').pop())} #${a.subject_id||''}</td>
+  <td class="mini">${esc(JSON.stringify(a.meta||{}).slice(0,80))}</td></tr>`).join('')}</table></div>`;
+},
+};
+
+// ---------- tenants helpers ----------
+async function loadTenants() {
+  const q = document.getElementById('tq').value, st = document.getElementById('tst').value;
+  const d = await api(`tenants?q=${encodeURIComponent(q)}&status=${st}`);
+  document.getElementById('tlist').innerHTML = `<div class="card"><table>
+  <tr><th>Company</th><th>Contact</th><th>Deployment</th><th>Plan</th><th>Status</th><th></th></tr>
+  ${d.data.map(t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
+  <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
+  <td>${t.deployment === 'cloud' ? '<span class="pill p-info">SmartEPT Cloud</span>' : '<span class="pill p-mut">Client-hosted</span>'}${t.ecosystem_customer?' <span class="pill p-warn">Ecosystem</span>':''}</td>
+  <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td><td>${pill(t.status)}</td>
+  <td><button class="link" onclick="showTenant(${t.id})">Open</button></td></tr>`).join('') || '<tr><td colspan="6" class="mini">No clients found</td></tr>'}</table></div>`;
+}
+
+async function showTenant(id) {
+  const t = await api('tenants/' + id);
+  openModal(`<h2>${esc(t.company_name)} ${pill(t.status)}</h2>
+  <div class="sub">${esc(t.contact_name||'')} · ${esc(t.email)} · ${esc(t.phone||'')} · GSTIN: ${esc(t.gstin||'—')}<br>
+  ${t.deployment==='cloud'?'SmartEPT-Managed Cloud':'Client-Hosted'} · ${esc(t.currency)} · Setup fee: ${t.setup_fee_paid?'<span class="gain">paid ✓</span>':'not yet charged'}</div>
+  <h4 style="color:var(--deep);margin:10px 0 6px">Licences</h4>
+  <table><tr><th>Key</th><th>Plan</th><th>Kind</th><th>Devices</th><th>Expires</th><th>Status</th></tr>
+  ${t.licences.map(l => `<tr><td class="mini">${esc(l.key)}</td><td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}</td>
+  <td>${(l.devices||[]).filter(d=>d.status==='active').length}/${l.device_limit}</td>
+  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : 'perpetual'}</td><td>${pill(l.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="mini">No licences</td></tr>'}</table>
+  <h4 style="color:var(--deep);margin:12px 0 6px">Recent Orders</h4>
+  <table><tr><th>Order</th><th>Total</th><th>Status</th></tr>
+  ${(t.orders||[]).slice(0,6).map(o => `<tr><td class="mini">${esc(o.number)} — ${esc(o.description)}</td><td>${fmtMoney(o.total,o.currency)}</td><td>${pill(o.status)}</td></tr>`).join('') || '<tr><td colspan="3" class="mini">None</td></tr>'}</table>
+  <div class="foot">${CAN_WRITE?`<button class="btn btn-l" onclick='editTenant(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Edit</button>`:''}
+  <button class="btn btn-p" onclick="closeModal()">Close</button></div>`, true);
+}
+
+function tenantForm(t = {}) {
+  return `<div class="row">
+  <div><label>Company name *</label><input id="f_company" value="${esc(t.company_name||'')}"></div>
+  <div><label>Contact person</label><input id="f_contact" value="${esc(t.contact_name||'')}"></div>
+  <div><label>Email *</label><input id="f_email" value="${esc(t.email||'')}"></div>
+  <div><label>Phone</label><input id="f_phone" value="${esc(t.phone||'')}"></div>
+  <div><label>GSTIN</label><input id="f_gstin" maxlength="15" placeholder="36AAHCT0971F1ZB" value="${esc(t.gstin||'')}"></div>
+  <div><label>GST state code (place of supply)</label><input id="f_state" maxlength="2" placeholder="36 = Telangana" value="${esc(t.state_code||'')}"></div>
+  <div><label>Currency</label><select id="f_currency"><option ${t.currency==='INR'?'selected':''}>INR</option><option ${t.currency==='USD'?'selected':''}>USD</option></select></div>
+  <div><label>Deployment</label><select id="f_deploy"><option value="client_hosted" ${t.deployment!=='cloud'?'selected':''}>Client-Hosted</option><option value="cloud" ${t.deployment==='cloud'?'selected':''}>SmartEPT Cloud</option></select></div>
+  <div><label>Ecosystem customer (SmartDCM/PRS)</label><select id="f_eco"><option value="0" ${!t.ecosystem_customer?'selected':''}>No</option><option value="1" ${t.ecosystem_customer?'selected':''}>Yes — ₹39 intro eligible</option></select></div>
+  </div><label>Address</label><textarea id="f_addr" rows="2">${esc(t.address||'')}</textarea>
+  <label>Billing address (printed on GST invoices — leave blank to use address above)</label><textarea id="f_billaddr" rows="2">${esc(t.billing_address||'')}</textarea>
+  <label>Notes</label><textarea id="f_notes" rows="2">${esc(t.notes||'')}</textarea>`;
+}
+function readTenantForm() {
+  return { company_name: f_company.value, contact_name: f_contact.value, email: f_email.value,
+    phone: f_phone.value, gstin: f_gstin.value, state_code: f_state.value, currency: f_currency.value,
+    deployment: f_deploy.value, ecosystem_customer: f_eco.value === '1',
+    address: f_addr.value, billing_address: f_billaddr.value, notes: f_notes.value };
+}
+function newTenant() {
+  openModal(`<h2>New Client</h2><div class="sub">Create the client record — then issue a licence or start a trial.</div>
+  ${tenantForm()}<label>Start 7-day trial immediately?</label>
+  <select id="f_trial"><option value="0">No</option><option value="1">Yes — provision trial licence (10 devices)</option></select>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="saveTenant()">Create Client</button></div>`, true);
+}
+async function saveTenant() {
+  try {
+    const body = readTenantForm();
+    body.start_trial = f_trial.value === '1';
+    await api('tenants', {method:'POST', body});
+    closeModal(); toast('Client created'); loadTenants();
+  } catch (e) { toast('Error: ' + e); }
+}
+async function editTenant(t) {
+  openModal(`<h2>Edit — ${esc(t.company_name)}</h2>${tenantForm(t)}
+  <label>Status</label><select id="f_status">${['trial','active','suspended','expired','churned'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="updateTenant(${t.id})">Save</button></div>`, true);
+}
+async function updateTenant(id) {
+  try {
+    await api('tenants/' + id, {method:'PUT', body: {...readTenantForm(), status: f_status.value}});
+    closeModal(); toast('Client updated'); loadTenants();
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- licences helpers ----------
+async function loadLicences() {
+  const d = await api(`licences?q=${encodeURIComponent(lq.value)}&status=${lst.value}&kind=${lkind.value}`);
+  document.getElementById('llist').innerHTML = `<div class="card"><table>
+  <tr><th>Key</th><th>Client</th><th>Plan</th><th>Kind</th><th>Devices</th><th>Expires</th><th>Status</th><th></th></tr>
+  ${d.data.map(l => `<tr><td class="mini"><b>${esc(l.key)}</b></td><td>${esc(l.tenant?.company_name)}</td>
+  <td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}${l.kind==='perpetual'?`<div class="mini">AMC: ${l.amc_expires_at?l.amc_expires_at.slice(0,10):'lapsed'}</div>`:''}</td>
+  <td>${l.active_devices_count}/${l.device_limit}</td>
+  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}</td><td>${pill(l.status)}</td>
+  <td>${CAN_WRITE ? `<button class="link" onclick="licAction(${l.id},'renew')">Renew</button>
+  ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
+  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+}
+async function licAction(id, action) {
+  if (action === 'revoke' && !confirm('Revoke this licence permanently?')) return;
+  try { await api(`licences/${id}/action`, {method:'POST', body:{action}}); toast('Licence ' + action + ' done'); loadLicences(); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function issueLicence() {
+  const tenants = await api('tenants?status=');
+  openModal(`<h2>Issue Licence</h2><div class="sub">Direct issue without an order — use Orders for the full payment flow.</div>
+  <label>Client</label><select id="il_tenant">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  <div class="row"><div><label>Plan</label><select id="il_plan"><option value="core">Core</option><option value="professional" selected>Professional</option><option value="enterprise">Enterprise</option></select></div>
+  <div><label>Kind</label><select id="il_kind"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
+  <div><label>Billing</label><select id="il_billing"><option>annual</option><option>monthly</option></select></div>
+  <div><label>Deployment</label><select id="il_deploy"><option value="client_hosted">Client-Hosted</option><option value="cloud">Cloud</option></select></div>
+  <div><label>Device limit</label><input id="il_devices" type="number" value="10" min="1"></div></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doIssue()">Issue Licence</button></div>`);
+}
+async function doIssue() {
+  try {
+    const l = await api('licences', {method:'POST', body:{tenant_id:+il_tenant.value, plan_code:il_plan.value,
+      kind:il_kind.value, billing:il_billing.value, deployment:il_deploy.value, device_limit:+il_devices.value}});
+    closeModal(); toast('Licence issued: ' + l.key); go('licences');
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- orders helpers ----------
+async function loadOrders() {
+  const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}`);
+  document.getElementById('olist').innerHTML = `<div class="card"><table>
+  <tr><th>Order</th><th>Client</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
+  ${d.data.map(o => `<tr><td><b>${esc(o.quote_number || o.number)}</b><div class="mini">${o.quote_number ? esc(o.number) + ' · ' : ''}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}</div></td>
+  <td>${esc(o.tenant?.company_name)}</td><td class="mini">${esc(o.description)}</td>
+  <td><b>${fmtMoney(o.total, o.currency)}</b><div class="mini">incl. tax ${fmtMoney(o.tax_amount, o.currency)}</div></td>
+  <td class="mini">${esc(o.gateway)}${o.manual_method?` (${esc(o.manual_method)})`:''}</td><td>${pill(o.status)}</td>
+  <td>${o.status==='quote' && CAN_WRITE ? `<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Print Quote</a>
+  <button class="link" onclick="approveQuote(${o.id})">Approve</button>
+  <button class="link" onclick="markPaid(${o.id},'${esc(o.quote_number||o.number)}')">Record Payment</button>` :
+  o.status==='created' && CAN_WRITE ? `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}')">Record Payment</button>
+  <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:''}` :
+  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="7" class="mini">No orders</td></tr>'}</table></div>`;
+}
+async function approveQuote(id) {
+  try { await api(`orders/${id}/approve-quote`, {method:'POST'}); toast('Quotation approved — now payable'); loadOrders(); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function copyPayLink(number) {
+  toast('Payment link: ' + location.origin + '/pay/' + number + '/<token> — token shown in order meta (or share from the client record)');
+}
+async function newOrder() {
+  const tenants = await api('tenants?status=');
+  openModal(`<h2>New Order / Quote</h2><div class="sub">Live quote updates as you type — includes the one-time Setup &amp; Onboarding fee automatically on a client's first paid order.</div>
+  <label>Client</label><select id="no_tenant" onchange="refreshQuote()">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  <div class="row">
+  <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="core">Core</option><option value="professional" selected>Professional</option><option value="enterprise">Enterprise</option></select></div>
+  <div><label>Kind</label><select id="no_kind" onchange="refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual</option></select></div>
+  <div><label>Billing</label><select id="no_billing" onchange="refreshQuote()"><option>annual</option><option>monthly</option></select></div>
+  <div><label>Deployment</label><select id="no_deploy" onchange="refreshQuote()"><option value="client_hosted">Client-Hosted</option><option value="cloud">SmartEPT Cloud</option></select></div>
+  <div><label>Devices</label><input id="no_devices" type="number" value="25" min="1" oninput="refreshQuote()"></div>
+  <div><label>Create as</label><select id="no_asquote"><option value="0">Order — payable now</option><option value="1">Quotation — management pays later</option></select></div>
+  <div><label>Requested by (manager/employee)</label><input id="no_reqby" placeholder="e.g. Rajesh Kumar, Ops Manager"></div></div>
+  <div class="quote-box" id="quoteBox">…</div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="createOrder()">Create Order</button></div>`, true);
+  refreshQuote();
+}
+async function refreshQuote() {
+  try {
+    const q = await api('quote', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
+      devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value}});
+    document.getElementById('quoteBox').innerHTML = q.lines.map(l =>
+      `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('') +
+      `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>
+      <div class="ln tt"><span>Total</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
+  } catch (e) { document.getElementById('quoteBox').textContent = 'Quote error: ' + e; }
+}
+async function createOrder() {
+  try {
+    const o = await api('orders', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
+      devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
+      as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null}});
+    closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
+  } catch (e) { toast('Error: ' + e); }
+}
+async function markPaid(id, number) {
+  openModal(`<h2>Record Payment — ${esc(number)}</h2>
+  <div class="sub">For NEFT / UPI / cheque payments received directly. This activates the licence and issues the GST invoice automatically.</div>
+  <label>Method</label><select id="mp_method"><option>NEFT</option><option>UPI</option><option>cheque</option><option>cash</option><option>other</option></select>
+  <label>Reference (UTR / cheque no.)</label><input id="mp_ref" placeholder="e.g. UTR 12345678">
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doMarkPaid(${id})">Confirm Payment Received</button></div>`);
+}
+async function doMarkPaid(id) {
+  try {
+    await api(`orders/${id}/mark-paid`, {method:'POST', body:{manual_method:mp_method.value, manual_reference:mp_ref.value}});
+    closeModal(); toast('Payment recorded — licence active, invoice issued'); go('orders');
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- trials helpers ----------
+async function extendTrial(id) {
+  const days = prompt('Extend trial by how many days? (1–30)', '7');
+  if (!days) return;
+  try { await api(`trials/${id}/extend`, {method:'POST', body:{days:+days}}); toast('Trial extended'); go('trials'); }
+  catch (e) { toast('Error: ' + e); }
+}
+function convertTrial(id, name) {
+  go('orders'); setTimeout(() => { newOrder().then(() => { no_tenant.value = id; refreshQuote(); }); }, 300);
+}
+
+// ---------- storage helpers ----------
+async function recordStorage() {
+  const tenants = await api('tenants?status=');
+  openModal(`<h2>Record Storage Usage</h2><div class="sub">Manual entry until Phase-3 automatic metering.</div>
+  <label>Cloud tenant</label><select id="su_tenant">${tenants.data.filter(t=>t.deployment==='cloud').map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  <div class="row"><div><label>Date</label><input id="su_date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+  <div><label>GB used</label><input id="su_gb" type="number" step="0.1" min="0" value="50"></div></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doRecordStorage()">Save</button></div>`);
+}
+async function doRecordStorage() {
+  try {
+    await api('storage', {method:'POST', body:{tenant_id:+su_tenant.value, date:su_date.value, gb_used:+su_gb.value}});
+    closeModal(); toast('Usage recorded'); go('storage');
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- settings / plans ----------
+async function saveSettings() {
+  const body = {};
+  document.querySelectorAll('[id^=set_]').forEach(el => body[el.id.slice(4)] = el.value);
+  try { await api('settings', {method:'PUT', body}); toast('Settings saved'); }
+  catch (e) { toast('Error: ' + e); }
+}
+function editPlan(p) {
+  openModal(`<h2>Edit ${esc(p.name)}</h2><div class="row">
+  <div><label>INR annual /device/mo</label><input id="ep_ia" type="number" value="${p.inr_annual}"></div>
+  <div><label>INR monthly</label><input id="ep_im" type="number" value="${p.inr_monthly}"></div>
+  <div><label>USD annual</label><input id="ep_ua" type="number" step="0.01" value="${p.usd_annual}"></div>
+  <div><label>USD monthly</label><input id="ep_um" type="number" step="0.01" value="${p.usd_monthly}"></div>
+  <div><label>Perpetual / device ₹</label><input id="ep_pd" type="number" value="${p.perpetual_device_inr}"></div>
+  <div><label>Server licence ₹</label><input id="ep_ps" type="number" value="${p.perpetual_server_inr}"></div>
+  <div><label>Min devices</label><input id="ep_md" type="number" value="${p.min_devices}"></div></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="savePlan(${p.id})">Save</button></div>`);
+}
+async function savePlan(id) {
+  try {
+    await api('plans/' + id, {method:'PUT', body:{inr_annual:+ep_ia.value, inr_monthly:+ep_im.value,
+      usd_annual:+ep_ua.value, usd_monthly:+ep_um.value, perpetual_device_inr:+ep_pd.value,
+      perpetual_server_inr:+ep_ps.value, min_devices:+ep_md.value}});
+    closeModal(); toast('Plan updated'); go('plans');
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- ⓘ HELP (3-tab, per screen) ----------
+const HELP = {
+dashboard: {
+ use: `<h4>What is this screen for?</h4><p>Your business at a glance — clients, money, licences and what needs attention today.</p>
+ <h4>What you can do here</h4><p>Monitor revenue this month, estimated MRR, trials expiring within 7 days and unpaid orders.</p>
+ <ol><li>Check <b>Needs Attention</b> first every morning</li><li>Open <b>Trials</b> to follow up expiring evaluations</li><li>Open <b>Orders</b> to chase unpaid orders</li></ol>
+ <div class="tip"><b>Good to know:</b> MRR counts annual contracts divided by 12 — it is an estimate for trend-watching, not your GST turnover.</div>
+ <h4>Who can use it</h4><p>Super Admin · Sales · Support (read-only)</p>`,
+ why: `<h4>Why this exists</h4><p>A licensing business dies quietly when trials expire un-followed and invoices sit unpaid. This screen makes silence impossible.</p>
+ <div class="scen"><b>Picture this:</b> Monday 9:15 AM. Dashboard shows 3 trials expiring this week — one is Krishna NBFC with 40 potential devices (₹49 × 40 = ₹1,960/month). Your sales call converts them before Friday. That one glance was worth ₹23,520 a year.</div>
+ <p class="gain">✓ Never lose a trial silently ✓ Cash follow-up same day ✓ One screen for the whole business</p>`,
+ right: `<h4>Mistake → Impact → Right way</h4>
+ <p>❌ <b>Checking only revenue.</b> → Trials quietly expire. → ✅ Treat "Needs Attention" as your daily to-do list.</p>
+ <p>❌ <b>Reading MRR as turnover.</b> → Wrong GST expectations. → ✅ Use Invoices for accounting figures.</p>`,
+},
+tenants: {
+ use: `<h4>What is this screen for?</h4><p>The master register of every SmartEPT customer — client-hosted and cloud.</p>
+ <ol><li>Press <b>+ New Client</b> and fill company, contact, GSTIN</li><li>Choose deployment: Client-Hosted or SmartEPT Cloud</li><li>Mark <b>Ecosystem customer</b> if they already use SmartDCM/SmartPRS (₹39 intro rate applies automatically)</li><li>Optionally start a 7-day trial immediately</li><li>Open any client to see licences, devices, orders, invoices in one place</li></ol>
+ <div class="tip"><b>Good to know:</b> the one-time Setup &amp; Onboarding fee (₹5,000 up to 25 devices + ₹100/extra) is charged automatically on the client's FIRST paid order — the system tracks who has paid it.</div>`,
+ why: `<h4>Why this exists</h4><p>Every licence, payment and support call hangs off the client record. Clean records here = clean invoices and easy renewals later.</p>
+ <div class="scen"><b>Picture this:</b> ABC Recoveries calls about adding 20 devices. You open their record: Professional, 50 devices at ₹49 volume rate, setup fee already paid, renewal in March. You quote 70 devices × ₹49 = ₹3,430/month in ten seconds, no setup fee again.</div>
+ <p class="gain">✓ One source of truth ✓ Instant quotes ✓ GSTIN captured for clean invoices</p>`,
+ right: `<p>❌ <b>Skipping GSTIN at creation.</b> → Invoice corrections later. → ✅ Capture GSTIN on day one.</p>
+ <p>❌ <b>Forgetting the Ecosystem flag.</b> → Customer misses ₹39 intro rate, feels cheated. → ✅ Ask "do you use SmartDCM or SmartPRS?" on every call.</p>
+ <p>❌ <b>Deleting clients.</b> → Orphaned invoices. → ✅ Use status churned instead.</p>`,
+},
+trials: {
+ use: `<h4>What is this screen for?</h4><p>Follow every 7-day evaluation from signup to conversion (or expiry).</p>
+ <ol><li>Active trials are sorted by expiry — call the nearest first</li><li><b>Extend</b> adds days (max 30) when a genuine evaluation needs more time</li><li><b>Convert to Paid</b> opens a pre-filled order</li></ol>
+ <div class="tip"><b>Good to know:</b> trial data auto-purges after the grace period (7 days post expiry) — extensions also move the purge date.</div>`,
+ why: `<h4>Why this exists</h4><p>The framework rule is deliberate: no permanent free plan. That only works if every trial gets a decision — buy, extend, or expire.</p>
+ <div class="scen"><b>Picture this:</b> Krishna NBFC's trial ends Thursday. You call Wednesday: "How did the Gate-to-PC test go?" They loved it but need MD sign-off — you extend 7 days instead of losing them to an expiry.</div>
+ <p class="gain">✓ No trial dies unworked ✓ Extensions logged and auditable</p>`,
+ right: `<p>❌ <b>Extending repeatedly without a reason.</b> → Free plan through the back door. → ✅ One extension, with a note.</p>
+ <p>❌ <b>Converting without checking devices used.</b> → Underquoted deal. → ✅ Check actual device count in the client record first.</p>`,
+},
+licences: {
+ use: `<h4>What is this screen for?</h4><p>Every licence key: status, devices used vs limit, expiry, AMC.</p>
+ <ol><li><b>Issue Licence</b> for direct issues; use Orders for paid flow</li><li><b>Renew</b> extends by the billing period</li><li><b>Suspend / Resume</b> for payment disputes</li><li>Perpetual keys show AMC — <b>Renew AMC</b> after payment (18% of licence value)</li></ol>
+ <div class="tip"><b>Good to know:</b> the product server phones home to validate the key — licence metadata ONLY travels; client operational data never leaves their server.</div>`,
+ why: `<h4>Why this exists</h4><p>The licence key is the product's cash register. Device caps, feature flags and expiry all enforce what was actually paid for.</p>
+ <div class="scen"><b>Picture this:</b> A customer paid for 50 devices but IT quietly installs 60. The 51st agent activation is refused with "device limit reached" — the customer calls, and it becomes a ₹5,880/year upsell instead of silent revenue leakage.</div>
+ <p class="gain">✓ Zero over-deployment ✓ AMC renewals visible ✓ Clean suspend/resume for disputes</p>`,
+ right: `<p>❌ <b>Revoking for a late payment.</b> → Angry customer, dead server. → ✅ Suspend first — it's reversible.</p>
+ <p>❌ <b>Raising device limit as a favour.</b> → Unbilled seats forever. → ✅ Create an order for the difference, then raise.</p>`,
+},
+plans: {
+ use: `<h4>What is this screen for?</h4><p>The commercial matrix: Core ₹29 / Professional ₹59 / Enterprise ₹99, volume tiers and feature entitlements.</p>
+ <ol><li>Review rates and perpetual prices per plan</li><li>Super Admin can <b>Edit</b> rates — new orders use new rates immediately</li></ol>
+ <div class="tip"><b>Good to know:</b> existing paid orders and active licences are NOT retro-changed by a price edit — only new quotes.</div>`,
+ why: `<h4>Why this exists</h4><p>Prices live in the database, not in code — approved changes go live without a developer.</p>
+ <div class="scen"><b>Picture this:</b> Management approves Professional at ₹69 from next quarter. You edit one field; the landing page calculator, quotes and checkout all follow.</div>`,
+ right: `<p>❌ <b>Editing prices mid-negotiation.</b> → Quote confusion. → ✅ Create the order first (locks its price), then edit.</p>`,
+},
+orders: {
+ use: `<h4>What is this screen for?</h4><p>Create quotations/orders and record payments — gateway or manual.</p>
+ <ol><li><b>+ New Order/Quote</b> → pick client, plan, devices → live totals show licence + setup fee + GST</li><li>Choose <b>Quotation</b> when a manager requests but MANAGEMENT pays later — quote number EPT-Q-2026-27-07-0001, printable, with the pay link printed on it</li><li>Management approves (or pays the link directly); <b>Record Payment</b> for NEFT/UPI/cheque with UTR</li><li>Payment (any path) auto-issues the licence and GST invoice</li></ol>
+ <div class="tip"><b>Good to know:</b> the Setup &amp; Onboarding fee appears automatically on a client's first paid order only — the quote box shows it as its own line.</div>`,
+ why: `<h4>Why this exists</h4><p>One golden automation: money in → licence out → invoice out. No manual steps to forget, no licence issued before payment.</p>
+ <div class="scen"><b>Picture this:</b> Godavari Finserv pays ₹58,800 by NEFT at 4 PM. Accounts enters the UTR at 4:05. By 4:06 their licence key is active, the GST invoice is numbered, and their server validates on the next phone-home. Zero emails between departments.</div>
+ <p class="gain">✓ No unpaid activations ✓ No paid-but-forgotten clients ✓ Every rupee has an invoice</p>`,
+ right: `<p>❌ <b>Issuing the licence first, collecting later.</b> → Aging receivables. → ✅ Payment first; use a trial for evaluations.</p>
+ <p>❌ <b>Recording manual payment without UTR.</b> → Unreconcilable books. → ✅ Always paste the reference.</p>`,
+},
+invoices: {
+ use: `<h4>What is this screen for?</h4><p>Every GST invoice — numbered EPT-{FY}-{month}-{count}, e.g. EPT-2026-27-07-0001 (count resets monthly).</p>
+ <ol><li><b>Print</b> opens the branded invoice — use the browser's Save as PDF</li><li>Series and GST rate are configured in Settings</li></ol>`,
+ why: `<h4>Why this exists</h4><p>Indian B2B buyers pay against proper GST invoices. Automatic, sequential, FY-correct numbering keeps your CA happy and audits painless.</p>`,
+ right: `<p>❌ <b>Manually editing invoice JSON.</b> → Broken audit trail. → ✅ Cancel and re-issue via a corrected order.</p>`,
+},
+storage: {
+ use: `<h4>What is this screen for?</h4><p>Cloud tenants' storage: average GB this month and the rental charge (₹3/GB slab pricing, 50 GB minimum).</p>
+ <ol><li>Until Phase-3 automatic metering, <b>Record Usage</b> manually or via import</li><li>Monthly charge = average daily GB → rounded up → slab rates</li></ol>`,
+ why: `<h4>Why this exists</h4><p>The framework promise is transparent storage billing — customers pay for what they keep, and you never subsidise hoarders.</p>
+ <div class="scen"><b>Picture this:</b> Godavari keeps 210 GB average. Bill: 210 × ₹3 = ₹630/month, shown as its own invoice line. They shorten screenshot retention to 30 days; next month it's 140 GB = ₹420. They feel in control — because they are.</div>`,
+ right: `<p>❌ <b>Billing peak-day usage.</b> → Disputes. → ✅ The system averages the month — record daily values honestly.</p>`,
+},
+settings: {
+ use: `<h4>What is this screen for?</h4><p>Company details, GST rate, invoice series, and payment gateway keys.</p>
+ <ol><li>Paste Razorpay keys (test rzp_test_… or live) — webhook URL shown below the fields</li><li>Paste Stripe keys for international USD</li><li>Saved secrets display masked — leaving a masked value unchanged keeps the old secret</li></ol>
+ <div class="tip"><b>Good to know:</b> configure the webhook URLs in each gateway's dashboard, or payments will succeed but licences won't auto-activate.</div>`,
+ why: `<h4>Why this exists</h4><p>Key rotation and price-of-business settings shouldn't need a developer or a deploy.</p>`,
+ right: `<p>❌ <b>Sharing secret keys on WhatsApp/chat.</b> → Compromise risk. → ✅ Paste directly here, only over HTTPS, only Super Admin.</p>`,
+},
+audit: {
+ use: `<h4>What is this screen for?</h4><p>The immutable trail: who issued, renewed, suspended, edited, or recorded what — and when.</p>`,
+ why: `<h4>Why this exists</h4><p>When a licence "mysteriously" changed or a price was edited, this answers who and when in one search. Trust, but verify.</p>`,
+ right: `<p>❌ <b>Sharing one admin login.</b> → The log says "Ejaz did everything". → ✅ One account per person, role-appropriate.</p>`,
+},
+};
+let helpTabIdx = 0;
+function openHelp() {
+  document.getElementById('helpTitle').textContent = TITLES[PAGE];
+  helpTab(0, document.querySelector('.help-tabs button'));
+  document.getElementById('helpOv').classList.add('show');
+}
+function closeHelp() { document.getElementById('helpOv').classList.remove('show'); }
+document.getElementById('helpOv').addEventListener('click', e => { if (e.target.id === 'helpOv') closeHelp(); });
+function helpTab(i, btn) {
+  helpTabIdx = i;
+  document.querySelectorAll('.help-tabs button').forEach((b, j) => b.classList.toggle('on', j === i));
+  const h = HELP[PAGE] || {use:'<p>General screen.</p>', why:'<p></p>', right:'<p></p>'};
+  document.getElementById('helpBody').innerHTML = [h.use, h.why, h.right][i] || '<p>—</p>';
+}
+
+go('dashboard');
+</script>
+</body>
+</html>

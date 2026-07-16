@@ -1,0 +1,224 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Licence;
+use App\Models\LicenceDevice;
+use App\Models\Plan;
+use App\Models\Tenant;
+use Illuminate\Support\Str;
+
+/**
+ * Central Licensing Service.
+ *
+ * HARD WALL RULE: this service exchanges LICENCE METADATA ONLY with product
+ * servers. Operational data (screenshots, activity, camera) NEVER flows here
+ * for client-hosted deployments.
+ */
+class LicenceService
+{
+    /**
+     * Generate a licence key: SEPT-XXXX-XXXX-XXXX-CCCC
+     * Last group is an HMAC check so keys can be sanity-verified offline.
+     */
+    public function generateKey(): string
+    {
+        do {
+            $body = strtoupper(Str::random(4) . '-' . Str::random(4) . '-' . Str::random(4));
+            $body = preg_replace('/[^A-Z0-9-]/', strtoupper(Str::random(1)), $body);
+            $check = strtoupper(substr(hash_hmac('sha256', $body, config('app.key')), 0, 4));
+            $key = 'SEPT-' . $body . '-' . $check;
+        } while (Licence::where('key', $key)->exists());
+
+        return $key;
+    }
+
+    public function issue(Tenant $tenant, Plan $plan, array $opts = []): Licence
+    {
+        $kind = $opts['kind'] ?? 'subscription';
+        $billing = $opts['billing'] ?? 'annual';
+        $starts = now()->startOfDay();
+
+        $expires = match ($kind) {
+            'trial' => $starts->copy()->addDays(7),
+            'perpetual' => null,
+            default => $billing === 'annual' ? $starts->copy()->addYear() : $starts->copy()->addMonth(),
+        };
+
+        return Licence::create([
+            'key' => $this->generateKey(),
+            'tenant_id' => $tenant->id,
+            'plan_id' => $plan->id,
+            'kind' => $kind,
+            'billing' => $billing,
+            'deployment' => $opts['deployment'] ?? $tenant->deployment,
+            'device_limit' => $opts['device_limit'] ?? ($kind === 'trial' ? 10 : $plan->min_devices),
+            'features' => array_merge($plan->features ?? [], $opts['addons'] ?? []),
+            'addons' => $opts['addons'] ?? null,
+            'status' => 'active',
+            'starts_at' => $starts,
+            'expires_at' => $expires,
+            'grace_days' => $kind === 'trial' ? 7 : ($opts['grace_days'] ?? 7),
+            'amc_expires_at' => $kind === 'perpetual' ? $starts->copy()->addYear() : null,
+        ]);
+    }
+
+    public function renew(Licence $licence): Licence
+    {
+        $base = $licence->expires_at && $licence->expires_at->isFuture()
+            ? $licence->expires_at->copy()
+            : now()->startOfDay();
+
+        $licence->update([
+            'expires_at' => $licence->billing === 'annual' ? $base->addYear() : $base->addMonth(),
+            'status' => 'active',
+        ]);
+
+        return $licence->fresh();
+    }
+
+    public function renewAmc(Licence $licence): Licence
+    {
+        $base = $licence->amc_expires_at && $licence->amc_expires_at->isFuture()
+            ? $licence->amc_expires_at->copy()
+            : now()->startOfDay();
+
+        $licence->update(['amc_expires_at' => $base->addYear()]);
+
+        return $licence->fresh();
+    }
+
+    /**
+     * The signed entitlement bundle a product server caches locally.
+     * Signature = HMAC-SHA256 over the canonical JSON, keyed by app key.
+     */
+    public function entitlementBundle(Licence $licence): array
+    {
+        $payload = [
+            'key' => $licence->key,
+            'company' => $licence->tenant->company_name,
+            'plan' => $licence->plan->code,
+            'kind' => $licence->kind,
+            'deployment' => $licence->deployment,
+            'device_limit' => $licence->device_limit,
+            'features' => $licence->features,
+            'status' => $licence->status,
+            'expires_at' => optional($licence->expires_at)->toDateString(),
+            'grace_days' => $licence->grace_days,
+            'amc_active' => $licence->amcActive(),
+            'issued_at' => now()->toIso8601String(),
+        ];
+
+        $payload['signature'] = $this->sign($payload);
+
+        return $payload;
+    }
+
+    public function sign(array $payload): string
+    {
+        unset($payload['signature']);
+        ksort($payload);
+
+        return hash_hmac('sha256', json_encode($payload), config('app.key'));
+    }
+
+    /**
+     * Validate a licence for a product server. Returns [ok, bundle|reason].
+     */
+    public function validate(string $key, ?string $fingerprint = null): array
+    {
+        $licence = Licence::with(['tenant', 'plan'])->where('key', $key)->first();
+
+        if (! $licence) {
+            return ['ok' => false, 'reason' => 'unknown_key'];
+        }
+        if ($licence->status !== 'active') {
+            return ['ok' => false, 'reason' => 'licence_' . $licence->status];
+        }
+        if ($licence->isExpired()) {
+            $licence->update(['status' => 'expired']);
+
+            return ['ok' => false, 'reason' => 'licence_expired'];
+        }
+        if ($fingerprint && $licence->server_fingerprint && $licence->server_fingerprint !== $fingerprint) {
+            return ['ok' => false, 'reason' => 'server_mismatch'];
+        }
+
+        if ($fingerprint && ! $licence->server_fingerprint) {
+            $licence->server_fingerprint = $fingerprint;
+            $licence->activated_at = $licence->activated_at ?: now();
+        }
+        $licence->last_validated_at = now();
+        $licence->save();
+
+        return ['ok' => true, 'bundle' => $this->entitlementBundle($licence)];
+    }
+
+    /**
+     * Register an endpoint device against a licence seat (enforces the cap).
+     */
+    public function activateDevice(Licence $licence, string $deviceUid, ?string $hostname = null): array
+    {
+        $existing = $licence->devices()->where('device_uid', $deviceUid)->first();
+
+        if ($existing) {
+            // R2-3: a deactivated device may return (admin-approved re-bind) —
+            // it simply has to win a free seat like any newcomer.
+            if ($existing->status === 'deactivated') {
+                if ($licence->activeDevices()->count() >= $licence->device_limit) {
+                    return ['ok' => false, 'reason' => 'device_limit_reached', 'limit' => $licence->device_limit];
+                }
+
+                $existing->update(['status' => 'active', 'activated_at' => now(), 'deactivated_at' => null, 'hostname' => $hostname ?: $existing->hostname]);
+
+                return ['ok' => true, 'device' => $existing->fresh()];
+            }
+
+            return ['ok' => true, 'device' => $existing];
+        }
+
+        if ($licence->activeDevices()->count() >= $licence->device_limit) {
+            return ['ok' => false, 'reason' => 'device_limit_reached', 'limit' => $licence->device_limit];
+        }
+
+        $device = $licence->devices()->create([
+            'device_uid' => $deviceUid,
+            'hostname' => $hostname,
+            'status' => 'active',
+            'activated_at' => now(),
+        ]);
+
+        return ['ok' => true, 'device' => $device];
+    }
+
+    /**
+     * Controlled deactivation → frees the seat for a replacement device.
+     */
+    public function deactivateDevice(Licence $licence, string $deviceUid): bool
+    {
+        $device = $licence->devices()->where('device_uid', $deviceUid)->where('status', 'active')->first();
+
+        if (! $device) {
+            return false;
+        }
+
+        $device->update(['status' => 'deactivated', 'deactivated_at' => now()]);
+
+        return true;
+    }
+
+    public function revoke(Licence $licence): void
+    {
+        $licence->update(['status' => 'revoked']);
+    }
+
+    public function suspend(Licence $licence): void
+    {
+        $licence->update(['status' => 'suspended']);
+    }
+
+    public function resume(Licence $licence): void
+    {
+        $licence->update(['status' => 'active']);
+    }
+}

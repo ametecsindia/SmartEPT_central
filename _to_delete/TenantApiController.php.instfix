@@ -1,0 +1,119 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use App\Models\Tenant;
+use Illuminate\Support\Str;
+use App\Models\TenantUser;
+use App\Services\BillingService;
+use Illuminate\Http\Request;
+
+class TenantApiController extends Controller
+{
+    public function index(Request $request)
+    {
+        $q = Tenant::withCount(['licences'])->with('activeLicence.plan:id,code,name');
+
+        if ($s = $request->query('status')) {
+            $q->where('status', $s);
+        }
+        if ($search = $request->query('q')) {
+            $q->where(fn ($w) => $w->where('company_name', 'like', "%$search%")
+                ->orWhere('email', 'like', "%$search%")
+                ->orWhere('phone', 'like', "%$search%"));
+        }
+
+        return response()->json($q->latest()->paginate(25));
+    }
+
+    public function show(Tenant $tenant)
+    {
+        return response()->json($tenant->load([
+            'licences.plan:id,code,name',
+            'licences.devices',
+            'orders' => fn ($q) => $q->latest()->take(20),
+            'invoices' => fn ($q) => $q->latest()->take(20),
+            'storageUsage' => fn ($q) => $q->latest('date')->take(31),
+        ]));
+    }
+
+    public function store(Request $request, BillingService $billing)
+    {
+        $data = $request->validate([
+            'company_name' => ['required', 'string', 'max:190'],
+            'contact_name' => ['nullable', 'string', 'max:190'],
+            'email' => ['required', 'email'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'gstin' => ['nullable', 'string', 'max:15'],
+            // GST billing profile (Release-1): state code decides CGST/SGST vs IGST.
+            'state_code' => ['nullable', 'string', 'size:2', 'in:' . implode(',', array_keys(\App\Support\IndianStates::MAP))],
+            'billing_address' => ['nullable', 'string', 'max:1000'],
+            'address' => ['nullable', 'string'],
+            'country' => ['nullable', 'string', 'size:2'],
+            'currency' => ['nullable', 'in:INR,USD'],
+            'deployment' => ['required', 'in:client_hosted,cloud'],
+            'ecosystem_customer' => ['boolean'],
+            'notes' => ['nullable', 'string'],
+            'start_trial' => ['boolean'],
+        ]);
+
+        $startTrial = (bool) ($data['start_trial'] ?? false);
+        unset($data['start_trial']);
+
+        $tenant = Tenant::create($data + ['status' => $startTrial ? 'trial' : 'active']);
+
+        if ($startTrial) {
+            $billing->provisionTrial($tenant);
+        }
+
+        // Every client gets a /client portal login by default (owner account).
+        // Temp password is returned ONCE so the admin can hand it over; the owner
+        // is forced to change it on first sign-in.
+        $tempPassword = Str::password(10);
+        $owner = TenantUser::firstOrNew(['email' => $tenant->email]);
+        if (! $owner->exists) {
+            $owner->fill([
+                'tenant_id' => $tenant->id,
+                'name' => $tenant->contact_name ?: $tenant->company_name,
+                'phone' => $tenant->phone,
+                'password' => $tempPassword,
+                'role' => 'owner',
+                'active' => 1,
+                'email_verified_at' => now(),
+            ])->save();
+        }
+
+        AuditLog::write('tenant.created', $tenant);
+
+        return response()->json($tenant->fresh()->toArray() + [
+            'portal_login' => $owner->wasRecentlyCreated ? ['email' => $tenant->email, 'temp_password' => $tempPassword] : null,
+        ], 201);
+    }
+
+    public function update(Request $request, Tenant $tenant)
+    {
+        $data = $request->validate([
+            'company_name' => ['sometimes', 'string', 'max:190'],
+            'contact_name' => ['nullable', 'string', 'max:190'],
+            'email' => ['sometimes', 'email'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'gstin' => ['nullable', 'string', 'max:15'],
+            // GST billing profile (Release-1): state code decides CGST/SGST vs IGST.
+            'state_code' => ['nullable', 'string', 'size:2', 'in:' . implode(',', array_keys(\App\Support\IndianStates::MAP))],
+            'billing_address' => ['nullable', 'string', 'max:1000'],
+            'address' => ['nullable', 'string'],
+            'currency' => ['sometimes', 'in:INR,USD'],
+            'deployment' => ['sometimes', 'in:client_hosted,cloud'],
+            'status' => ['sometimes', 'in:trial,active,suspended,expired,churned'],
+            'ecosystem_customer' => ['boolean'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $tenant->update($data);
+        AuditLog::write('tenant.updated', $tenant, ['fields' => array_keys($data)]);
+
+        return response()->json($tenant->fresh());
+    }
+}

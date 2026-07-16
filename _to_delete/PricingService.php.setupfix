@@ -1,0 +1,192 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Plan;
+use App\Models\Tenant;
+
+/**
+ * All SmartEPT commercial arithmetic in ONE place.
+ * Source: SmartEPT Pricing, Licensing & Cloud Hosting Framework (Jul 2026)
+ * + Ejaz's Setup & Onboarding fee rule (14-Jul-2026).
+ */
+class PricingService
+{
+    public const CLOUD_MULTIPLIER = 1.5;
+
+    // One-time Setup & Onboarding: ₹5,000 covers up to 25 devices, +₹100/device beyond.
+    public const SETUP_FEE_BASE_INR = 5000;
+    public const SETUP_FEE_INCLUDED_DEVICES = 25;
+    public const SETUP_FEE_PER_EXTRA_DEVICE_INR = 100;
+
+    // Cloud storage slabs (₹ per GB per month) + minimum commitment.
+    public const STORAGE_MIN_GB = 50;
+    public const STORAGE_SLABS = [
+        [1, 500, 3.00],
+        [501, 2048, 2.50],
+        [2049, null, 2.00],
+    ];
+
+    // Ecosystem introduction price (existing SmartDCM/SmartPRS customers, year 1).
+    public const ECOSYSTEM_RATE_INR = 39;
+    public const ECOSYSTEM_MIN_DEVICES = 25;
+
+    /**
+     * Per-device per-month licence rate.
+     */
+    public function deviceRate(Plan $plan, int $devices, string $billing = 'annual',
+                               string $deployment = 'client_hosted', bool $ecosystem = false): float
+    {
+        if ($ecosystem && $plan->code === 'professional' && $devices >= self::ECOSYSTEM_MIN_DEVICES
+            && $billing === 'annual' && $deployment === 'client_hosted') {
+            return self::ECOSYSTEM_RATE_INR;
+        }
+
+        $rate = $billing === 'annual' ? (float) $plan->inr_annual : (float) $plan->inr_monthly;
+
+        // Volume tiers are defined against the annual client-hosted rate.
+        if ($billing === 'annual') {
+            foreach ($plan->volumeTiers as $tier) {
+                $inTier = $devices >= $tier->min_devices
+                    && ($tier->max_devices === null || $devices <= $tier->max_devices);
+                if ($inTier) {
+                    $rate = (float) $tier->rate_inr_annual;
+                    break;
+                }
+            }
+        }
+
+        if ($deployment === 'cloud') {
+            $rate = round($rate * self::CLOUD_MULTIPLIER);
+        }
+
+        return $rate;
+    }
+
+    /**
+     * One-time Setup & Onboarding fee (first invoice only).
+     * ₹5,000 minimum covering up to 25 devices; ₹100 per additional device.
+     */
+    /**
+     * Standalone Setup & Onboarding quote — used when installation was NOT bought
+     * up front and the client later asks Ametecs to install/onboard. Admin raises
+     * this as its own invoice (no subscription line).
+     */
+    public function setupOnlyQuote(Tenant $tenant, int $devices): array
+    {
+        $fee = $this->setupFee($devices);
+        $lines = [[
+            'type' => 'setup_fee',
+            'description' => sprintf('Installation & Onboarding service (covers 25 devices%s)',
+                $devices > 25 ? ', +' . ($devices - 25) . ' × ₹100' : ''),
+            'qty' => 1,
+            'unit' => $fee,
+            'amount' => (float) $fee,
+        ]];
+        return ['lines' => $lines, 'subtotal' => (float) $fee];
+    }
+
+    public function setupFee(int $devices): int
+    {
+        $extra = max(0, $devices - self::SETUP_FEE_INCLUDED_DEVICES);
+
+        return self::SETUP_FEE_BASE_INR + $extra * self::SETUP_FEE_PER_EXTRA_DEVICE_INR;
+    }
+
+    /**
+     * Monthly cloud storage rental for a given average GB.
+     */
+    public function storageMonthly(float $gb): float
+    {
+        $billableGb = (int) ceil(max($gb, self::STORAGE_MIN_GB));
+        $cost = 0.0;
+
+        foreach (self::STORAGE_SLABS as [$from, $to, $rate]) {
+            if ($billableGb < $from) {
+                break;
+            }
+            $upper = $to === null ? $billableGb : min($billableGb, $to);
+            $cost += ($upper - $from + 1) * $rate;
+        }
+
+        return max($cost, 150.0); // ₹150/month minimum storage commitment
+    }
+
+    /**
+     * Build the line items for a subscription order.
+     *
+     * @return array{lines: array<int, array>, subtotal: float}
+     */
+    public function subscriptionQuote(Tenant $tenant, Plan $plan, int $devices,
+                                      string $billing = 'annual', ?string $deployment = null, bool $includeSetup = true): array
+    {
+        $deployment = $deployment ?: $tenant->deployment;
+        $rate = $this->deviceRate($plan, $devices, $billing, $deployment, $tenant->ecosystem_customer);
+        $months = $billing === 'annual' ? 12 : 1;
+
+        $lines = [[
+            'type' => 'licence',
+            'description' => sprintf('%s plan — %d devices × ₹%s/device/month × %d months (%s, %s)',
+                $plan->name, $devices, number_format($rate, $rate == (int) $rate ? 0 : 2),
+                $months, str_replace('_', '-', $deployment), $billing),
+            'qty' => $devices,
+            'unit' => $rate * $months,
+            'amount' => round($devices * $rate * $months, 2),
+        ]];
+
+        if ($includeSetup && ! $tenant->setup_fee_paid) {
+            $fee = $this->setupFee($devices);
+            $lines[] = [
+                'type' => 'setup_fee',
+                'description' => sprintf('One-time Setup & Onboarding (covers 25 devices%s)',
+                    $devices > 25 ? ', +' . ($devices - 25) . ' × ₹100' : ''),
+                'qty' => 1,
+                'unit' => $fee,
+                'amount' => (float) $fee,
+            ];
+        }
+
+        $subtotal = round(array_sum(array_column($lines, 'amount')), 2);
+
+        return ['lines' => $lines, 'subtotal' => $subtotal];
+    }
+
+    /**
+     * Build the line items for a perpetual licence order.
+     */
+    public function perpetualQuote(Tenant $tenant, Plan $plan, int $devices): array
+    {
+        $lines = [
+            [
+                'type' => 'perpetual_devices',
+                'description' => sprintf('%s perpetual — %d device licences × ₹%s',
+                    $plan->name, $devices, number_format($plan->perpetual_device_inr)),
+                'qty' => $devices,
+                'unit' => (float) $plan->perpetual_device_inr,
+                'amount' => round($devices * $plan->perpetual_device_inr, 2),
+            ],
+            [
+                'type' => 'perpetual_server',
+                'description' => sprintf('%s central server licence', $plan->name),
+                'qty' => 1,
+                'unit' => (float) $plan->perpetual_server_inr,
+                'amount' => (float) $plan->perpetual_server_inr,
+            ],
+        ];
+
+        if (! $tenant->setup_fee_paid) {
+            $fee = $this->setupFee($devices);
+            $lines[] = [
+                'type' => 'setup_fee',
+                'description' => 'One-time Setup & Onboarding',
+                'qty' => 1,
+                'unit' => $fee,
+                'amount' => (float) $fee,
+            ];
+        }
+
+        $subtotal = round(array_sum(array_column($lines, 'amount')), 2);
+
+        return ['lines' => $lines, 'subtotal' => $subtotal];
+    }
+}

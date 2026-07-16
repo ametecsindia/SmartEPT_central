@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>Client Portal — SmartEPT by Ametecs</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:linear-gradient(160deg,#04252C 0%,#083A44 60%,#0B4A56 100%);padding:24px}
+.wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:0;width:100%;max-width:940px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.45)}
+.summary{background:linear-gradient(165deg,#04252C 0%,#0B4A56 100%);color:#fff;padding:34px 32px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:20px}
+.mk{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0E7C8F,#22B8CF);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff}
+.brand b{font-size:19px;color:#fff}.brand small{display:block;font-size:9px;letter-spacing:2px;color:#7FA8AF}
+.badge{align-self:flex-start;background:rgba(34,184,207,.18);border:1px solid rgba(34,184,207,.5);color:#7FE0EC;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 12px;border-radius:999px;margin-bottom:16px}
+.plan-name{font-size:23px;font-weight:800;margin-bottom:3px}
+.plan-tag{font-size:12.5px;color:#9FC5CC;margin-bottom:18px}
+.calc{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:15px 16px;margin-bottom:16px}
+.calc-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.calc-row:last-child{margin-bottom:0}
+.calc label{font-size:12px;color:#BFD6DA;font-weight:600}
+.dev{display:flex;align-items:center;gap:8px}
+.dev button{width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;font-size:15px;font-weight:700;cursor:pointer;line-height:1}
+.dev input{width:56px;text-align:center;padding:6px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.2);color:#fff;font-size:14px;font-weight:700}
+.seg{display:flex;background:rgba(0,0,0,.22);border-radius:8px;padding:3px}
+.seg button{border:none;background:none;color:#9FC5CC;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:6px;cursor:pointer}
+.seg button.on{background:#0E7C8F;color:#fff}
+.q{border-top:1px solid rgba(255,255,255,.12);margin-top:12px;padding-top:12px}
+.q .ln{display:flex;justify-content:space-between;font-size:12.5px;color:#CFE0E3;padding:3px 0}
+.q .ln.tot{font-size:17px;font-weight:800;color:#fff;padding-top:8px}
+.q .save{color:#7FE0EC;font-size:11px;font-weight:700}
+.feat{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:4px;margin-bottom:auto}
+.feat li{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:#DDEAEC;line-height:1.4}
+.feat li svg{flex-shrink:0;margin-top:1px}
+.trust{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;color:#7FA8AF;line-height:1.7}
+.card{padding:30px 30px;display:flex;flex-direction:column;max-height:92vh;overflow-y:auto}
+p.sub{font-size:13px;color:#565A66;margin:0 0 14px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{flex:1;padding:9px 4px;border-radius:9px;border:1.5px solid #DCDFE7;background:#fff;font-weight:700;font-size:12.5px;color:#565A66;cursor:pointer;font-family:inherit}
+.tabs button.on{background:#E3F4F7;border-color:#0E7C8F;color:#0B6373}
+label{display:block;font-size:12px;font-weight:700;color:#565A66;margin:10px 0 4px}
+input,select{width:100%;padding:10px 12px;border:1.5px solid #DCDFE7;border-radius:9px;font-size:14px;font-family:inherit;background:#fff}
+input:focus,select:focus{outline:none;border-color:#0E7C8F}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+button.go{width:100%;margin-top:16px;padding:13px;border:none;border-radius:9px;font-weight:700;font-size:14.5px;color:#fff;
+background:linear-gradient(135deg,#0E7C8F,#1899AE);cursor:pointer;font-family:inherit}
+button.go:disabled{opacity:.55;cursor:not-allowed}
+a.quote{display:block;text-align:center;margin-top:10px;padding:12px;border:1.5px solid #0E7C8F;border-radius:9px;color:#0B6373;font-weight:700;font-size:13.5px;text-decoration:none}
+.msg{font-size:12.5px;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;line-height:1.5}
+.msg.err{background:#FBE9ED;color:#D02748;display:block}
+.msg.ok{background:#E6F5EE;color:#08875D;display:block}
+.msg.demo{background:#FBF3E2;color:#7A5614;display:block;font-weight:700}
+.foot{text-align:center;font-size:11px;color:#878C99;margin-top:14px;line-height:1.7}
+.foot a{color:#0B6373;font-weight:700;text-decoration:none}
+.trial-note{background:#E3F4F7;border-radius:9px;padding:10px 12px;font-size:12px;color:#0B6373;margin-top:12px;line-height:1.6}
+.hint{font-size:11px;color:#878C99;margin-top:-2px;margin-bottom:2px}
+.otp-wrap{display:none}
+@media(max-width:780px){.wrap{grid-template-columns:1fr;max-width:440px}.summary{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="summary">
+    <div class="brand"><div class="mk">EPT</div><div><b>SmartEPT</b><small>BY AMETECS</small></div></div>
+    <div class="badge" id="sumBadge">7-DAY FREE TRIAL</div>
+    <div class="plan-name" id="sumPlan">SmartEPT Professional</div>
+    <div class="plan-tag" id="sumTag">Estimate your subscription — free for the first 7 days.</div>
+
+    <div class="calc">
+      <div class="calc-row">
+        <label>Devices to track</label>
+        <div class="dev"><button type="button" id="devMinus">−</button><input id="devCount" type="number" min="1" value="25"><button type="button" id="devPlus">+</button></div>
+      </div>
+      <div class="calc-row">
+        <label>Billing</label>
+        <div class="seg"><button type="button" class="on" data-cyc="annual" id="cycAnnual">Annual</button><button type="button" data-cyc="monthly" id="cycMonthly">Monthly</button></div>
+      </div>
+      <div class="q" id="quote">
+        <div class="ln"><span id="qLine">Professional × 25 devices</span><b id="qUnit">—</b></div>
+        <div class="ln"><span>GST 18%</span><b id="qGst">—</b></div>
+        <div class="ln tot"><span>Per month <span class="save" id="qSave"></span></span><b id="qTot">—</b></div>
+      </div>
+    </div>
+
+    <ul class="feat" id="sumFeat"></ul>
+    <div class="trust">Free for 7 days · up to 10 devices · no card needed. You choose your real device count when you subscribe.<br>
+    Your data stays in your infrastructure — Ametecs manages only your licence. GST 18% extra.</div>
+  </aside>
+
+  <div class="card">
+  <p class="sub">Start your free trial or sign in — self-service licence, billing &amp; cloud.</p>
+
+  <div class="tabs">
+    <button class="on" data-mode="login" onclick="mode('login',this)">Sign in</button>
+    <button data-mode="signup" onclick="mode('signup',this)">Start free trial</button>
+    <button data-mode="forgot" onclick="mode('forgot',this)">Forgot password</button>
+  </div>
+
+  <form id="f-login" onsubmit="return doLogin(event)">
+    <label>Email</label><input type="email" name="email" required autocomplete="username">
+    <label>Password</label><input type="password" name="password" required autocomplete="current-password">
+    <button class="go" type="submit">Sign in →</button>
+  </form>
+
+  <form id="f-signup" style="display:none" onsubmit="return doSignup(event)">
+    <label>Company name</label><input name="company_name" required maxlength="190">
+    <div class="row">
+      <div><label>Your name</label><input name="contact_name" required maxlength="190"></div>
+      <div><label>Mobile</label><input name="phone" maxlength="20" placeholder="98480 12345"></div>
+    </div>
+    <label>Work email</label><input type="email" name="email" required maxlength="190">
+    <label>Choose a password (min 8 characters)</label><input type="password" name="password" required minlength="8" autocomplete="new-password">
+    <div class="row">
+      <div><label>State (for GST)</label><select name="state_code" id="stateSel"><option value="">Select…</option></select></div>
+      <div><label>GSTIN <span style="font-weight:400;color:#878C99">(optional)</span></label><input name="gstin" id="gstinInp" maxlength="15" placeholder="36AAHCT0971F1ZB" style="text-transform:uppercase"></div>
+    </div>
+    <div class="hint">GSTIN lets us raise a compliant tax invoice you can claim input credit on.</div>
+    <input type="hidden" name="plan" id="planField">
+    <input type="hidden" name="device_estimate" id="devField">
+    <div class="otp-wrap" id="signupOtp">
+      <label>Enter the 6-digit code we emailed you</label>
+      <input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
+    </div>
+    <button class="go" type="submit" id="signupBtn">Email me a verification code →</button>
+    <a class="quote" id="quoteCta" href="#" target="_blank">Prefer a formal quotation? Request one →</a>
+    <div class="trial-note"><b>7-day free trial · Professional features · up to 10 devices.</b><br>
+    No card needed. Your data auto-deletes if you don't continue.</div>
+  </form>
+
+  <form id="f-forgot" style="display:none" onsubmit="return doForgot(event)">
+    <label>Account email</label><input type="email" name="email" required>
+    <div class="otp-wrap" id="forgotOtp">
+      <label>6-digit code from your email</label>
+      <input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
+      <label>New password (min 8 characters)</label>
+      <input type="password" name="password" minlength="8" autocomplete="new-password">
+    </div>
+    <button class="go" type="submit" id="forgotBtn">Email me a reset code →</button>
+  </form>
+
+  <div class="msg" id="msg"></div>
+  <div class="msg demo" id="demoMsg" style="display:none"></div>
+
+  <div class="foot">Prefer a human? WhatsApp <a href="https://wa.me/919000098877?text=Hi%20Ametecs%2C%20I%20need%20help%20with%20SmartEPT" target="_blank">90000 98877</a><br>
+  Ametecs India Private Limited · sales@ametecsindia.com<br>
+  <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a></div>
+  </div>
+</div>
+
+<script>
+const CSRF = document.querySelector('meta[name=csrf-token]').content;
+let signupStep = 1, forgotStep = 1;
+let PLANS = [], GST = 18, CLOUDX = 1.5, CYCLE = 'annual', SEL = null;
+
+const STATES = [['37','Andhra Pradesh'],['12','Arunachal Pradesh'],['18','Assam'],['10','Bihar'],['22','Chhattisgarh'],['30','Goa'],['24','Gujarat'],['06','Haryana'],['02','Himachal Pradesh'],['20','Jharkhand'],['29','Karnataka'],['32','Kerala'],['23','Madhya Pradesh'],['27','Maharashtra'],['14','Manipur'],['17','Meghalaya'],['15','Mizoram'],['13','Nagaland'],['21','Odisha'],['03','Punjab'],['08','Rajasthan'],['11','Sikkim'],['33','Tamil Nadu'],['36','Telangana'],['16','Tripura'],['09','Uttar Pradesh'],['05','Uttarakhand'],['19','West Bengal'],['07','Delhi'],['04','Chandigarh'],['01','Jammu & Kashmir'],['26','Dadra & Nagar Haveli and Daman & Diu'],['31','Lakshadweep'],['35','Andaman & Nicobar'],['38','Ladakh'],['34','Puducherry']];
+
+function mode(m, btn) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  ['login','signup','forgot'].forEach(x => document.getElementById('f-'+x).style.display = x === m ? '' : 'none');
+  show('', ''); document.getElementById('demoMsg').style.display = 'none';
+}
+function show(kind, text) { const el = document.getElementById('msg'); el.className = 'msg' + (kind ? ' ' + kind : ''); el.textContent = text; el.style.display = kind ? 'block' : 'none'; }
+function demo(code) { if (!code) return; const el = document.getElementById('demoMsg'); el.textContent = 'TEST MODE — your code is ' + code + ' (real customers get it by email)'; el.style.display = 'block'; }
+async function post(url, data) {
+  const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}, body: JSON.stringify(data) });
+  let body = {}; try { body = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(body.error || (body.errors ? Object.values(body.errors).flat().join(' ') : (res.status===429?'Too many tries — please wait a minute.':'Something went wrong.')));
+  return body;
+}
+const formData = f => Object.fromEntries(new FormData(f).entries());
+async function doLogin(e){e.preventDefault();try{const out=await post('/client/login',formData(e.target));location.href=out.redirect||'/client';}catch(err){show('err',err.message);}return false;}
+async function doSignup(e){e.preventDefault();const f=e.target,data=formData(f),btn=document.getElementById('signupBtn');btn.disabled=true;
+  try{ if(signupStep===1){const out=await post('/client/signup/request-otp',data);signupStep=2;document.getElementById('signupOtp').style.display='block';btn.textContent='Verify code & start my trial →';show('ok',out.message);demo(out.demo_otp);}
+  else{ if(!/^[0-9]{6}$/.test(data.otp||''))throw new Error('Please enter the 6-digit code.');const out=await post('/client/signup/verify',data);show('ok','Trial activated — opening your portal…');location.href=out.redirect||'/client';}}
+  catch(err){show('err',err.message);}btn.disabled=false;return false;}
+async function doForgot(e){e.preventDefault();const f=e.target,data=formData(f),btn=document.getElementById('forgotBtn');btn.disabled=true;
+  try{ if(forgotStep===1){const out=await post('/client/forgot/request-otp',{email:data.email});forgotStep=2;document.getElementById('forgotOtp').style.display='block';btn.textContent='Set new password →';show('ok',out.message);demo(out.demo_otp);}
+  else{ if(!/^[0-9]{6}$/.test(data.otp||''))throw new Error('Please enter the 6-digit code.');if(!data.password||data.password.length<8)throw new Error('New password needs at least 8 characters.');const out=await post('/client/forgot/reset',data);show('ok',out.message+' Use the Sign in tab above.');forgotStep=1;document.getElementById('forgotOtp').style.display='none';btn.textContent='Email me a reset code →';}}
+  catch(err){show('err',err.message);}btn.disabled=false;return false;}
+
+// ---- checkout summary + live quote ----
+const FEATURES = {
+  core: ['Live productivity dashboard','Attendance & shift adherence','App & website usage','Idle-time tracking','CSV reports'],
+  professional: ['Everything in Core','Screenshots & presence','Policy & compliance engine','Biometric reconciliation','Monthly payroll register','Priority support'],
+  enterprise: ['Everything in Professional','Unlimited devices tier','Dedicated onboarding','Custom integrations','SLA & account manager'],
+};
+const TICK = '<svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#22B8CF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const inr = n => '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits:0});
+
+function rateFor(plan, cyc) {
+  const p = PLANS.find(x => (x.code||'').toLowerCase() === plan) || PLANS.find(x=>(x.code||'').toLowerCase()==='professional');
+  if (!p) return {rate:0, p:null};
+  // volume tiers (annual only)
+  const dev = Math.max(1, parseInt(document.getElementById('devCount').value||'1',10));
+  if (cyc === 'annual') {
+    let rate = p.inr_annual;
+    (p.volume_tiers||[]).forEach(t => { if (dev >= t.min && (t.max===null || dev <= t.max)) rate = t.rate; });
+    return {rate, p, monthlyRate: p.inr_monthly};
+  }
+  return {rate: p.inr_monthly, p, monthlyRate: p.inr_monthly};
+}
+function renderQuote() {
+  const dev = Math.max(1, parseInt(document.getElementById('devCount').value||'1',10));
+  document.getElementById('devField').value = dev;
+  const {rate, p, monthlyRate} = rateFor(SEL||'professional', CYCLE);
+  if (!p) return;
+  const sub = rate * dev;
+  const gst = Math.round(sub * GST/100);
+  const tot = sub + gst;
+  const name = (p.name||'').replace(/smartept\s*/i,'') || 'Professional';
+  document.getElementById('qLine').textContent = name + ' × ' + dev + ' device' + (dev>1?'s':'') + ' @ ' + inr(rate);
+  document.getElementById('qUnit').textContent = inr(sub) + '/mo';
+  document.getElementById('qGst').textContent = inr(gst);
+  document.getElementById('qTot').textContent = inr(tot) + '/mo';
+  const saveEl = document.getElementById('qSave');
+  if (CYCLE==='annual' && monthlyRate && rate < monthlyRate) {
+    const pct = Math.round((1 - rate/monthlyRate)*100);
+    saveEl.textContent = '· save ' + pct + '% vs monthly';
+  } else saveEl.textContent = '';
+}
+
+(async function init() {
+  // states
+  const sel = document.getElementById('stateSel');
+  STATES.sort((a,b)=>a[1].localeCompare(b[1])).forEach(([c,n]) => { const o=document.createElement('option'); o.value=c; o.textContent=n+' ('+c+')'; sel.appendChild(o); });
+  // plan from URL
+  const params = new URLSearchParams(location.search);
+  const plan = (params.get('plan')||'').toLowerCase();
+  SEL = FEATURES[plan] ? plan : 'professional';
+  document.getElementById('planField').value = SEL;
+  if (plan) mode('signup', document.querySelector('.tabs button[data-mode=signup]'));
+  document.getElementById('sumFeat').innerHTML = FEATURES[SEL].map(f => '<li>'+TICK+'<span>'+f+'</span></li>').join('');
+  // device controls
+  const dc = document.getElementById('devCount');
+  document.getElementById('devMinus').onclick = ()=>{ dc.value = Math.max(1,(parseInt(dc.value||'1',10)-5)); renderQuote(); };
+  document.getElementById('devPlus').onclick = ()=>{ dc.value = (parseInt(dc.value||'1',10)+5); renderQuote(); };
+  dc.oninput = renderQuote;
+  document.getElementById('cycAnnual').onclick = ()=>{ CYCLE='annual'; document.getElementById('cycAnnual').classList.add('on'); document.getElementById('cycMonthly').classList.remove('on'); renderQuote(); };
+  document.getElementById('cycMonthly').onclick = ()=>{ CYCLE='monthly'; document.getElementById('cycMonthly').classList.add('on'); document.getElementById('cycAnnual').classList.remove('on'); renderQuote(); };
+  // fetch live plans
+  try {
+    const r = await fetch('/api/v1/public/plans', {headers:{Accept:'application/json'}, cache:'no-store'});
+    const j = await r.json();
+    PLANS = j.plans || j.data || []; GST = j.gst_rate || 18; CLOUDX = j.cloud_multiplier || 1.5;
+    const p = PLANS.find(x => (x.code||'').toLowerCase() === SEL);
+    if (p) { const nm = /smartept/i.test(p.name)?p.name:('SmartEPT '+p.name); document.getElementById('sumPlan').textContent = nm; document.getElementById('sumTag').textContent = 'Estimate your '+p.name.replace(/smartept\s*/i,'')+' subscription — free for 7 days.'; }
+    renderQuote();
+  } catch(e) { document.getElementById('quote').style.opacity=.5; }
+  // quotation CTA → WhatsApp prefilled
+  const upd = () => { const dev=document.getElementById('devCount').value; const t='Hi Ametecs, I would like a quotation for SmartEPT '+(SEL)+' for '+dev+' devices ('+CYCLE+' billing).'; document.getElementById('quoteCta').href='https://wa.me/919000098877?text='+encodeURIComponent(t); };
+  dc.addEventListener('input', upd); upd();
+})();
+</script>
+</body>
+</html>

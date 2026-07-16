@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>Client Portal — SmartEPT by Ametecs</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:linear-gradient(160deg,#04252C 0%,#083A44 60%,#0B4A56 100%);padding:24px}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;width:100%;max-width:900px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.45)}
+/* LEFT: order / plan summary */
+.summary{background:linear-gradient(165deg,#04252C 0%,#0B4A56 100%);color:#fff;padding:38px 34px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:26px}
+.mk{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0E7C8F,#22B8CF);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff}
+.brand b{font-size:19px;color:#fff}.brand small{display:block;font-size:9px;letter-spacing:2px;color:#7FA8AF}
+.badge{align-self:flex-start;background:rgba(34,184,207,.18);border:1px solid rgba(34,184,207,.5);color:#7FE0EC;font-size:11px;font-weight:700;letter-spacing:.5px;padding:6px 12px;border-radius:999px;margin-bottom:18px}
+.plan-name{font-size:26px;font-weight:800;margin-bottom:4px}
+.plan-tag{font-size:13px;color:#9FC5CC;margin-bottom:22px}
+.price{display:flex;align-items:baseline;gap:6px;margin-bottom:6px}
+.price .amt{font-size:38px;font-weight:800;color:#fff}
+.price .per{font-size:13px;color:#9FC5CC}
+.price-note{font-size:12px;color:#7FA8AF;margin-bottom:22px;line-height:1.6}
+.feat{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:auto}
+.feat li{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:#DDEAEC;line-height:1.4}
+.feat li svg{flex-shrink:0;margin-top:1px}
+.trust{margin-top:26px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);font-size:11.5px;color:#7FA8AF;line-height:1.7}
+/* RIGHT: form */
+.card{padding:34px 32px;display:flex;flex-direction:column}
+p.sub{font-size:13px;color:#565A66;margin:0 0 16px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{flex:1;padding:9px 4px;border-radius:9px;border:1.5px solid #DCDFE7;background:#fff;font-weight:700;font-size:12.5px;color:#565A66;cursor:pointer;font-family:inherit}
+.tabs button.on{background:#E3F4F7;border-color:#0E7C8F;color:#0B6373}
+label{display:block;font-size:12px;font-weight:700;color:#565A66;margin:11px 0 4px}
+input{width:100%;padding:11px 13px;border:1.5px solid #DCDFE7;border-radius:9px;font-size:14px;font-family:inherit}
+input:focus{outline:none;border-color:#0E7C8F}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+button.go{width:100%;margin-top:18px;padding:13px;border:none;border-radius:9px;font-weight:700;font-size:14.5px;color:#fff;
+background:linear-gradient(135deg,#0E7C8F,#1899AE);cursor:pointer;font-family:inherit}
+button.go:disabled{opacity:.55;cursor:not-allowed}
+.msg{font-size:12.5px;padding:10px 12px;border-radius:8px;margin-top:12px;display:none;line-height:1.5}
+.msg.err{background:#FBE9ED;color:#D02748;display:block}
+.msg.ok{background:#E6F5EE;color:#08875D;display:block}
+.msg.demo{background:#FBF3E2;color:#7A5614;display:block;font-weight:700}
+.foot{text-align:center;font-size:11px;color:#878C99;margin-top:16px;line-height:1.7}
+.foot a{color:#0B6373;font-weight:700;text-decoration:none}
+.trial-note{background:#E3F4F7;border-radius:9px;padding:10px 12px;font-size:12px;color:#0B6373;margin-top:12px;line-height:1.6}
+.otp-wrap{display:none}
+@media(max-width:760px){.wrap{grid-template-columns:1fr;max-width:440px}.summary{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LEFT: live plan summary -->
+  <aside class="summary">
+    <div class="brand"><div class="mk">EPT</div><div><b>SmartEPT</b><small>BY AMETECS</small></div></div>
+    <div class="badge" id="sumBadge">7-DAY FREE TRIAL</div>
+    <div class="plan-name" id="sumPlan">Employee Productivity Intelligence</div>
+    <div class="plan-tag" id="sumTag">Track productive time, attendance, app &amp; website usage and compliance.</div>
+    <div class="price" id="sumPriceWrap" style="display:none">
+      <span class="amt" id="sumPrice">—</span><span class="per" id="sumPer">/ device / month</span>
+    </div>
+    <div class="price-note" id="sumNote">Start free for 7 days · up to 10 devices · no card needed. Pick your device count and pay only when you're ready.</div>
+    <ul class="feat" id="sumFeat"></ul>
+    <div class="trust">Your data stays in your infrastructure. Ametecs manages only your licence.<br>
+    GST 18% extra · Cancel anytime during trial · Razorpay &amp; Stripe secured.</div>
+  </aside>
+
+  <!-- RIGHT: forms -->
+  <div class="card">
+  <p class="sub">Manage your SmartEPT licence, billing and cloud — self-service.</p>
+
+  <div class="tabs">
+    <button class="on" data-mode="login" onclick="mode('login',this)">Sign in</button>
+    <button data-mode="signup" onclick="mode('signup',this)">Start free trial</button>
+    <button data-mode="forgot" onclick="mode('forgot',this)">Forgot password</button>
+  </div>
+
+  <!-- SIGN IN -->
+  <form id="f-login" onsubmit="return doLogin(event)">
+    <label>Email</label><input type="email" name="email" required autocomplete="username">
+    <label>Password</label><input type="password" name="password" required autocomplete="current-password">
+    <button class="go" type="submit">Sign in →</button>
+  </form>
+
+  <!-- SIGNUP -->
+  <form id="f-signup" style="display:none" onsubmit="return doSignup(event)">
+    <label>Company name</label><input name="company_name" required maxlength="190">
+    <div class="row">
+      <div><label>Your name</label><input name="contact_name" required maxlength="190"></div>
+      <div><label>Mobile</label><input name="phone" maxlength="20" placeholder="98480 12345"></div>
+    </div>
+    <label>Work email</label><input type="email" name="email" required maxlength="190">
+    <label>Choose a password (min 8 characters)</label><input type="password" name="password" required minlength="8" autocomplete="new-password">
+    <input type="hidden" name="plan" id="planField">
+    <div class="otp-wrap" id="signupOtp">
+      <label>Enter the 6-digit code we emailed you</label>
+      <input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
+    </div>
+    <button class="go" type="submit" id="signupBtn">Email me a verification code →</button>
+    <div class="trial-note"><b>7-day free trial · Professional features · up to 10 devices.</b><br>
+    No card needed. Your data auto-deletes if you don't continue.</div>
+  </form>
+
+  <!-- FORGOT -->
+  <form id="f-forgot" style="display:none" onsubmit="return doForgot(event)">
+    <label>Account email</label><input type="email" name="email" required>
+    <div class="otp-wrap" id="forgotOtp">
+      <label>6-digit code from your email</label>
+      <input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
+      <label>New password (min 8 characters)</label>
+      <input type="password" name="password" minlength="8" autocomplete="new-password">
+    </div>
+    <button class="go" type="submit" id="forgotBtn">Email me a reset code →</button>
+  </form>
+
+  <div class="msg" id="msg"></div>
+  <div class="msg demo" id="demoMsg" style="display:none"></div>
+
+  <div class="foot">Prefer a human? WhatsApp <a href="https://wa.me/919000098877?text=Hi%20Ametecs%2C%20I%20need%20help%20with%20the%20SmartEPT%20client%20portal" target="_blank">90000 98877</a><br>
+  Ametecs India Private Limited · sales@ametecsindia.com<br>
+  <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a></div>
+  </div>
+</div>
+
+<script>
+const CSRF = document.querySelector('meta[name=csrf-token]').content;
+let signupStep = 1, forgotStep = 1;
+
+function mode(m, btn) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  ['login','signup','forgot'].forEach(x => document.getElementById('f-'+x).style.display = x === m ? '' : 'none');
+  show('', '');
+  document.getElementById('demoMsg').style.display = 'none';
+}
+function show(kind, text) {
+  const el = document.getElementById('msg');
+  el.className = 'msg' + (kind ? ' ' + kind : '');
+  el.textContent = text;
+  el.style.display = kind ? 'block' : 'none';
+}
+function demo(code) {
+  if (!code) return;
+  const el = document.getElementById('demoMsg');
+  el.textContent = 'TEST MODE — your code is ' + code + ' (real customers get it by email)';
+  el.style.display = 'block';
+}
+async function post(url, data) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
+    body: JSON.stringify(data),
+  });
+  let body = {};
+  try { body = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const msg = body.error || (body.errors ? Object.values(body.errors).flat().join(' ') : null)
+      || (res.status === 429 ? 'Too many tries — please wait a minute.' : 'Something went wrong. Please try again.');
+    throw new Error(msg);
+  }
+  return body;
+}
+const formData = f => Object.fromEntries(new FormData(f).entries());
+
+async function doLogin(e) {
+  e.preventDefault();
+  try {
+    const out = await post('/client/login', formData(e.target));
+    location.href = out.redirect || '/client';
+  } catch (err) { show('err', err.message); }
+  return false;
+}
+
+async function doSignup(e) {
+  e.preventDefault();
+  const f = e.target, data = formData(f), btn = document.getElementById('signupBtn');
+  btn.disabled = true;
+  try {
+    if (signupStep === 1) {
+      const out = await post('/client/signup/request-otp', data);
+      signupStep = 2;
+      document.getElementById('signupOtp').style.display = 'block';
+      btn.textContent = 'Verify code & start my trial →';
+      show('ok', out.message);
+      demo(out.demo_otp);
+    } else {
+      if (!/^[0-9]{6}$/.test(data.otp || '')) throw new Error('Please enter the 6-digit code.');
+      const out = await post('/client/signup/verify', data);
+      show('ok', 'Trial activated — opening your portal…');
+      location.href = out.redirect || '/client';
+    }
+  } catch (err) { show('err', err.message); }
+  btn.disabled = false;
+  return false;
+}
+
+async function doForgot(e) {
+  e.preventDefault();
+  const f = e.target, data = formData(f), btn = document.getElementById('forgotBtn');
+  btn.disabled = true;
+  try {
+    if (forgotStep === 1) {
+      const out = await post('/client/forgot/request-otp', {email: data.email});
+      forgotStep = 2;
+      document.getElementById('forgotOtp').style.display = 'block';
+      btn.textContent = 'Set new password →';
+      show('ok', out.message);
+      demo(out.demo_otp);
+    } else {
+      if (!/^[0-9]{6}$/.test(data.otp || '')) throw new Error('Please enter the 6-digit code.');
+      if (!data.password || data.password.length < 8) throw new Error('New password needs at least 8 characters.');
+      const out = await post('/client/forgot/reset', data);
+      show('ok', out.message + ' Use the Sign in tab above.');
+      forgotStep = 1;
+      document.getElementById('forgotOtp').style.display = 'none';
+      btn.textContent = 'Email me a reset code →';
+    }
+  } catch (err) { show('err', err.message); }
+  btn.disabled = false;
+  return false;
+}
+
+// ---- plan-aware checkout summary ----
+const FEATURES = {
+  core: ['Live productivity dashboard','Attendance & shift adherence','App &amp; website usage','Idle-time tracking','CSV reports'],
+  professional: ['Everything in Core','Screenshots &amp; presence','Policy &amp; compliance engine','Biometric reconciliation','Monthly payroll register','Priority support'],
+  enterprise: ['Everything in Professional','Unlimited devices tier','Dedicated onboarding','Custom integrations','SLA &amp; account manager'],
+};
+const TICK = '<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 10.5l3.5 3.5L16 5.5" stroke="#22B8CF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+(async function initPlan() {
+  const params = new URLSearchParams(location.search);
+  const plan = (params.get('plan') || '').toLowerCase();
+  // If arriving with a plan choice, jump straight to signup.
+  if (plan) {
+    document.getElementById('planField').value = plan;
+    const btn = document.querySelector('.tabs button[data-mode=signup]');
+    mode('signup', btn);
+  }
+  // Populate feature list (default professional if none chosen).
+  const key = FEATURES[plan] ? plan : 'professional';
+  document.getElementById('sumFeat').innerHTML = FEATURES[key].map(f => '<li>' + TICK + '<span>' + f + '</span></li>').join('');
+  // Fetch live prices.
+  try {
+    const r = await fetch('/api/v1/public/plans', {headers:{Accept:'application/json'}});
+    const j = await r.json();
+    const plans = j.plans || j.data || [];
+    const p = plans.find(x => (x.slug||x.code||'').toLowerCase() === plan) || plans.find(x => (x.slug||'').toLowerCase()==='professional');
+    if (p) {
+      const name = p.name || (plan ? plan[0].toUpperCase()+plan.slice(1) : 'Professional');
+      document.getElementById('sumPlan').textContent = 'SmartEPT ' + name;
+      document.getElementById('sumTag').textContent = plan ? ('You selected the ' + name + ' plan.') : 'Track productive time, attendance, app & website usage and compliance.';
+      const monthly = p.monthly ?? p.price_monthly ?? p.month ?? null;
+      const annual = p.annual ?? p.price_annual ?? p.year ?? null;
+      const shown = monthly ?? annual;
+      if (shown != null) {
+        document.getElementById('sumPrice').textContent = '₹' + shown;
+        document.getElementById('sumPer').textContent = '/ device / month';
+        document.getElementById('sumPriceWrap').style.display = 'flex';
+        document.getElementById('sumNote').textContent = 'Free for 7 days (up to 10 devices, no card). After trial: ₹' + shown + ' per device / month' + (annual && annual!==shown ? ' — or ₹'+annual+' on annual billing.' : '.') + ' GST 18% extra.';
+      }
+    }
+  } catch (e) { /* offline: keep the trial-only summary */ }
+})();
+</script>
+</body>
+</html>

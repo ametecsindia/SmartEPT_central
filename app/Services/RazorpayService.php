@@ -1,0 +1,73 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Order;
+use App\Models\Setting;
+use Illuminate\Support\Facades\Http;
+
+/**
+ * Razorpay via direct REST API — no SDK dependency.
+ * Keys live in Settings (razorpay_key_id / razorpay_key_secret / razorpay_webhook_secret).
+ * Test mode works with rzp_test_* keys.
+ */
+class RazorpayService
+{
+    private const BASE = 'https://api.razorpay.com/v1';
+
+    public function enabled(): bool
+    {
+        return Setting::get('razorpay_key_id') && Setting::get('razorpay_key_secret');
+    }
+
+    public function keyId(): ?string
+    {
+        return Setting::get('razorpay_key_id');
+    }
+
+    /**
+     * Create a Razorpay order for one of our orders. Amount in paise.
+     */
+    public function createOrder(Order $order): array
+    {
+        $response = Http::withBasicAuth(Setting::get('razorpay_key_id'), Setting::get('razorpay_key_secret'))
+            ->post(self::BASE . '/orders', [
+                'amount' => (int) round($order->total * 100),
+                'currency' => $order->currency,
+                'receipt' => $order->number,
+                'notes' => ['tenant' => $order->tenant->company_name, 'order' => $order->number],
+            ]);
+
+        if (! $response->successful()) {
+            return ['ok' => false, 'error' => $response->json('error.description') ?? $response->body()];
+        }
+
+        $order->update(['gateway' => 'razorpay', 'gateway_order_id' => $response->json('id')]);
+
+        return ['ok' => true, 'razorpay_order_id' => $response->json('id'), 'key_id' => $this->keyId()];
+    }
+
+    /**
+     * Verify checkout callback signature (order_id|payment_id HMAC).
+     */
+    public function verifyPaymentSignature(string $orderId, string $paymentId, string $signature): bool
+    {
+        $expected = hash_hmac('sha256', $orderId . '|' . $paymentId, Setting::get('razorpay_key_secret', ''));
+
+        return hash_equals($expected, $signature);
+    }
+
+    /**
+     * Verify webhook signature (raw body HMAC with webhook secret).
+     */
+    public function verifyWebhookSignature(string $rawBody, string $signature): bool
+    {
+        $secret = Setting::get('razorpay_webhook_secret', '');
+
+        if ($secret === '') {
+            return false;
+        }
+
+        return hash_equals(hash_hmac('sha256', $rawBody, $secret), $signature);
+    }
+}
