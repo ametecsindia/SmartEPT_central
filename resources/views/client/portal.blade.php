@@ -106,7 +106,7 @@ tr:hover td{background:var(--card2)}
 <body>
 
 <aside>
-  <div class="brand"><div class="mk">EPT</div><div><b>SmartEPT</b><small>CLIENT PORTAL</small></div></div>
+  <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-dark.png" alt="SmartEPT" style="width:152px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CLIENT PORTAL</small></div>
   <nav id="nav">
     <div class="nav-sec">My account</div>
     <div class="nav-item on" data-page="overview">
@@ -137,6 +137,7 @@ tr:hover td{background:var(--card2)}
     <div class="av">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
     <div><b>{{ $user->name }}</b><span>{{ $user->tenant->company_name }}</span></div>
     <form method="POST" action="/client/logout">@csrf<button type="submit">Logout</button></form>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09);font-size:9px;color:#6E9399;line-height:1.6">SmartEPT™ · Developed by Ametecs India Private Limited<br>© 2026 Ametecs India Private Limited. All rights reserved.</div>
   </div>
 </aside>
 
@@ -152,6 +153,42 @@ tr:hover td{background:var(--card2)}
 
 <!-- generic modal -->
 <div class="overlay" id="modalOv"><div class="modal" id="modalBox"></div></div>
+
+@if ($user->must_set_password ?? false)
+<!-- Forced create-your-own-password (master prompt §11): the temp password was
+     a backup only. This overlay cannot be dismissed until a new password is set. -->
+<div class="overlay show" id="forcePwOv" style="z-index:70">
+  <div class="modal" style="max-width:440px">
+    <h2 style="font-size:17px;font-weight:800;margin-bottom:4px">Create your own password</h2>
+    <p class="mini" style="margin-bottom:12px">Welcome, {{ $user->name }}! You signed in with a temporary password.
+    For your security, please create your own password now — it takes ten seconds.</p>
+    <label>Temporary password (the one you just used)</label>
+    <input type="password" id="fpCur" autocomplete="current-password">
+    <label>Your new password (min 8 characters)</label>
+    <input type="password" id="fpNew" autocomplete="new-password">
+    <label>Type the new password again</label>
+    <input type="password" id="fpNew2" autocomplete="new-password">
+    <div class="mini" id="fpMsg" style="color:#D02748;margin-top:8px"></div>
+    <button class="btn btn-p" style="width:100%;margin-top:14px" onclick="forceSetPassword()">Save my password &amp; continue →</button>
+  </div>
+</div>
+<script>
+async function forceSetPassword() {
+  const cur = document.getElementById('fpCur').value, nw = document.getElementById('fpNew').value, nw2 = document.getElementById('fpNew2').value;
+  const msg = document.getElementById('fpMsg');
+  if (nw.length < 8) { msg.textContent = 'The new password needs at least 8 characters.'; return; }
+  if (nw !== nw2) { msg.textContent = 'The two new passwords do not match.'; return; }
+  try {
+    const res = await fetch('/client/api/account/password', {method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name=csrf-token]').content,'Accept':'application/json'},
+      body: JSON.stringify({current_password: cur, password: nw})});
+    const body = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error(body.error || 'Could not update the password.');
+    document.getElementById('forcePwOv').remove();
+  } catch (e) { msg.textContent = e.message; }
+}
+</script>
+@endif
 <!-- help modal -->
 <div class="overlay" id="helpOv"><div class="modal">
   <div class="help-head"><div><b id="helpTitle"></b><span>SmartEPT Client Portal · Screen Help</span></div>
@@ -278,7 +315,7 @@ async function pgInstall() {
     const consoleCard = url
       ? `<div class="dhead"><div class="dicon">🛡️</div><div><h3 style="margin:0">Your SmartEPT Console</h3><span class="mini">Hosted by Ametecs · live monitoring &amp; admin</span></div></div>
          <p class="mini">Your dashboard, employee tracking, policies, screenshots, biometric and reports — all here. Sign in with your admin credentials.</p>
-         <a class="btn btn-p" target="_blank" href="${esc(url)}">Open my SmartEPT Console →</a>`
+         <a class="btn btn-p" target="_blank" href="/client/console">Open my SmartEPT Console →</a>`
       : `<div class="dhead"><div class="dicon">🛠️</div><div><h3 style="margin:0">Your SmartEPT Console</h3><span class="mini">Managed cloud · being provisioned</span></div></div>
          <p class="mini">Your hosted SmartEPT workspace is being set up on Ametecs cloud. We'll email your console link and admin login shortly — usually within one business day of activation.</p>
          <button class="btn btn-l" onclick="installSoon('console')">Ask for my console link</button>`;
@@ -358,7 +395,7 @@ async function pgLicence() {
 }
 
 // ---------- Buy & Renew ----------
-let BUY = {plan:'professional', devices:25, billing:'annual', deployment:'client_hosted', plans:[]};
+let BUY = {plan:'professional', devices:25, billing:'annual', deployment:'client_hosted', plans:[], coupon:''};
 
 async function pgBuy() {
   const el = document.getElementById('page');
@@ -383,11 +420,16 @@ async function pgBuy() {
     <div class="plan-grid" id="planGrid"></div>
     <div class="modal-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 14px">
       <div><label>Number of devices</label><input type="number" id="buyDevices" min="1" value="${BUY.devices}" onchange="BUY.devices=Math.max(1,parseInt(this.value)||1);calcQuote()"></div>
-      <div><label>Billing</label><div class="seg" id="segBilling">
-        <button data-v="annual" class="on">Annual (best price)</button><button data-v="monthly">Monthly</button></div></div>
+      <div><label>Advance period</label><div class="seg" id="segBilling">
+        <button data-v="quarterly">Quarterly</button><button data-v="half_yearly">6 mo (10% off)</button><button data-v="annual" class="on">12 mo (25% off)</button></div></div>
       <div><label>Hosting</label><div class="seg" id="segDeploy">
         <button data-v="client_hosted" class="on">Your server</button><button data-v="cloud">SmartEPT Cloud</button></div></div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;max-width:420px">
+      <div><label>Coupon code (optional)</label><input id="buyCoupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" value="${esc(BUY.coupon)}"></div>
+      <button class="btn btn-l" onclick="BUY.coupon=document.getElementById('buyCoupon').value.trim().toUpperCase();calcQuote()">Apply</button>
+    </div>
+    <div class="mini" id="couponNote" style="margin-top:4px"></div>
     <div class="quote-box" id="quoteBox"><span class="mini">Calculating…</span></div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
       <button class="btn btn-p" onclick="doBuy(false)">Pay now →</button>
@@ -419,15 +461,19 @@ async function calcQuote() {
   const box = document.getElementById('quoteBox');
   if (!box) return;
   try {
-    const q = await api('quote', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment}});
+    const q = await api('quote', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment, coupon_code:BUY.coupon || null}});
     box.innerHTML = q.lines.map(l => `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('')
       + `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>`
       + `<div class="ln tt"><span>Total payable</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
+    const note = document.getElementById('couponNote');
+    if (note) note.innerHTML = !BUY.coupon ? '' : (q.coupon?.ok
+      ? '<span style="color:var(--ok);font-weight:700">✓ Coupon ' + esc(q.coupon.code) + ' applied — you save ' + fmtMoney(q.coupon.discount, q.currency) + '</span>'
+      : '<span style="color:#D02748;font-weight:700">✗ Coupon not applied (' + esc(q.coupon?.reason || 'not valid') + ')</span>');
   } catch (err) { box.innerHTML = '<span class="mini">' + esc(err.message) + '</span>'; }
 }
 async function doBuy(asQuote) {
   try {
-    const out = await api('orders', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment, as_quote:asQuote}});
+    const out = await api('orders', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment, as_quote:asQuote, coupon_code:BUY.coupon || null}});
     if (asQuote) {
       modal(`<h2 style="font-size:17px;font-weight:800;margin-bottom:4px">Quotation ${esc(out.order.quote_number)} raised</h2>
       <p class="mini" style="margin-bottom:14px">Print it or send the pay link to your management — the moment they pay, your licence activates automatically.</p>
@@ -462,10 +508,11 @@ async function pgBilling() {
       <td><b>${esc(o.quote_number || o.number)}</b>${o.quote_number ? '<div class="mini">' + esc(o.number) + '</div>' : ''}
         ${o.requested_by ? '<div class="mini">req: ' + esc(o.requested_by) + '</div>' : ''}</td>
       <td>${esc(o.description)}<div class="mini">${esc(o.created_at)}</div></td>
-      <td><b>${fmtMoney(o.total, o.currency)}</b></td>
+      <td><b>${fmtMoney(o.total, o.currency)}</b>
+        ${o.provisioned && o.status !== 'paid' && o.balance > 0 ? `<div class="mini" style="color:#D02748;font-weight:700">balance ${fmtMoney(o.balance, o.currency)}${o.credit_due_date ? ' by ' + esc(o.credit_due_date) : ''}</div><div class="mini" style="color:#08875D">received ${fmtMoney(o.received, o.currency)}</div>` : ''}</td>
       <td>${statusPill(o.status)}${o.invoice_number ? '<div class="mini">' + esc(o.invoice_number) + '</div>' : ''}</td>
       <td style="white-space:nowrap">
-        ${o.pay_url ? `<a class="link" href="${esc(o.pay_url)}">Pay</a> ` : ''}
+        ${o.pay_url ? `<a class="link" href="${esc(o.pay_url)}">${o.provisioned && o.received > 0 ? 'Pay balance' : 'Pay'}</a> ` : ''}
         ${o.quote_number ? `<a class="link" href="/client/orders/${o.id}/quote-print" target="_blank">Print quote</a>` : ''}
       </td></tr>`).join('')}
     </tbody></table>` : '<p class="mini">No orders yet — your purchases will appear here.</p>'}

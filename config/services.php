@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // SmartEPT product app — cloud console provisioning + SSO.
+    // provision_secret must equal the product's PROVISION_SECRET; sso_secret its
+    // SSO_SHARED_SECRET. provision_url points at the product's provisioning API.
+    'product' => [
+        'provision_url'    => env('PRODUCT_PROVISION_URL'),
+        'provision_secret' => env('PRODUCT_PROVISION_SECRET'),
+        'sso_secret'       => env('PRODUCT_SSO_SECRET'),
+    ],
+
 ];

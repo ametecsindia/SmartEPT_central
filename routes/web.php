@@ -30,6 +30,7 @@ Route::post('/client/logout', [Client\AuthController::class, 'logout']);
 // ---------- Client portal: tenant self-service (auth-walled) ----------
 Route::middleware('client.auth')->prefix('client')->group(function () {
     Route::get('/', [Client\PortalController::class, 'index']);
+    Route::get('/console', [Client\PortalController::class, 'console']); // one-click SSO into hosted console
     Route::get('/invoices/{invoice}/print', [Client\PortalController::class, 'invoicePrint']);
     Route::get('/orders/{order}/quote-print', [Client\PortalController::class, 'quotePrint']);
     Route::get('/download/{artifact}', [Client\PortalController::class, 'download']); // R3 installers
@@ -79,6 +80,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
         Route::get('tenants/{tenant}', [Admin\TenantApiController::class, 'show']);
         Route::get('licences', [Admin\LicenceApiController::class, 'index']);
         Route::get('orders', [Admin\BillingApiController::class, 'orders']);
+        Route::get('credit-clients', [Admin\BillingApiController::class, 'creditClients']); // §10 credit table
         Route::get('invoices', [Admin\BillingApiController::class, 'invoices']);
         Route::get('trials', [Admin\BillingApiController::class, 'trials']);
         Route::get('storage', [Admin\BillingApiController::class, 'storage']);
@@ -100,6 +102,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::post('orders', [Admin\BillingApiController::class, 'createOrder']);
             Route::post('setup-invoice', [Admin\BillingApiController::class, 'raiseSetupInvoice']);
             Route::post('orders/{order}/mark-paid', [Admin\BillingApiController::class, 'markPaid']);
+            Route::post('orders/{order}/record-balance', [Admin\BillingApiController::class, 'recordBalance']); // §10 instalments
             Route::post('orders/{order}/approve-quote', [Admin\BillingApiController::class, 'approveQuote']);
             Route::post('trials/{tenant}/extend', [Admin\BillingApiController::class, 'extendTrial']);
             Route::post('storage', [Admin\BillingApiController::class, 'recordStorage']);

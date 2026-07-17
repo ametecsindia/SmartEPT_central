@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>SmartEPT Central — Ametecs Super Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--accent:#0E7C8F;--accent2:#22B8CF;--weak:#E3F4F7;--deep:#0B6373;--ink:#15171C;--ink2:#565A66;
 --ink3:#878C99;--canvas:#F4F6F9;--card:#fff;--card2:#FAFBFC;--border:#E7E9EF;--border2:#DCDFE7;
@@ -13,6 +15,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter','Segoe UI',sans-serif;background:var(--canvas);color:var(--ink);font-size:14px;display:flex;min-height:100vh}
 button{font-family:inherit;cursor:pointer}
+h1,h2,h3,h4,.brand b,.nav-sec{font-family:'Plus Jakarta Sans','Inter','Segoe UI',sans-serif;letter-spacing:-.01em}
 input,select,textarea{font-family:inherit;font-size:13.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;width:100%;background:#fff;color:var(--ink)}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 4px}
@@ -23,9 +26,10 @@ aside{width:232px;background:linear-gradient(175deg,var(--navy1),#083039);color:
 .brand b{font-size:15px;color:#fff}.brand small{display:block;font-size:8.5px;letter-spacing:2px;color:#7FA8AF}
 nav{flex:1;margin-top:14px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
 nav::-webkit-scrollbar{width:5px}nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9.5px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#A9CBD1;cursor:pointer;margin-bottom:2px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9.5px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#A9CBD1;cursor:pointer;margin-bottom:2px}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
 .nav-item.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
+.nav-ic{display:flex;align-items:center;opacity:.85}.nav-item.on .nav-ic{opacity:1}
 .nav-sec{font-size:10px;letter-spacing:1.8px;color:#5E858C;text-transform:uppercase;font-weight:800;margin:16px 12px 6px}
 .me{border-top:1px solid rgba(255,255,255,.1);padding-top:12px;display:flex;flex-direction:column;gap:10px}
 .me-row{display:flex;align-items:center;gap:9px}
@@ -101,24 +105,26 @@ tr:hover td{background:var(--card2)}
 <body data-role="{{ $user->role }}">
 
 <aside>
-  <div class="brand"><div class="mk">EPT</div><div><b>SmartEPT Central</b><small>AMETECS SUPER ADMIN</small></div></div>
+  <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-dark.png" alt="SmartEPT Central" style="width:152px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CENTRAL &middot; SUPER ADMIN</small></div>
   <nav id="nav">
     <div class="nav-sec">Business</div>
-    <div class="nav-item on" data-page="dashboard">Dashboard</div>
-    <div class="nav-item" data-page="tenants">Clients / Tenants</div>
-    <div class="nav-item" data-page="trials">Trials</div>
-    <div class="nav-item" data-page="leads">Leads</div>
+    <div class="nav-item on" data-page="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></svg></span> Dashboard</div>
+    <div class="nav-item" data-page="tenants"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="8.2" r="3.4"/><path d="M2.8 20.2a6.2 6.2 0 0 1 12.4 0"/><circle cx="17.2" cy="9.4" r="2.6"/><path d="M16 15.6a5 5 0 0 1 5.2 4.6"/></svg></span> Clients / Tenants</div>
+    <div class="nav-item" data-page="trials"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 1.9"/></svg></span> Trials</div>
+    <div class="nav-item" data-page="leads"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg></span> Leads</div>
     <div class="nav-sec">Licensing</div>
-    <div class="nav-item" data-page="licences">Licences</div>
-    <div class="nav-item" data-page="plans">Plans &amp; Pricing</div>
+    <div class="nav-item" data-page="licences"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="8" cy="12" r="4.6"/><path d="M12.6 12H21M17.5 12v3.4M21 12v2.4"/></svg></span> Licences</div>
+    <div class="nav-item" data-page="plans"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M3 7h18M3 12h18M3 17h12"/></svg></span> Plans &amp; Pricing</div>
     <div class="nav-sec">Money</div>
-    <div class="nav-item" data-page="orders">Orders &amp; Payments</div>
-    <div class="nav-item" data-page="invoices">Invoices</div>
-    <div class="nav-item" data-page="storage">Cloud Storage</div>
-    <div class="nav-item" data-page="coupons">Coupons</div>
+    <div class="nav-item" data-page="orders"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2.2l2.2 11.2a1.4 1.4 0 0 0 1.4 1.1h8.2a1.4 1.4 0 0 0 1.4-1.1L21 8H6"/></svg></span> Orders &amp; Payments</div>
+    <div class="nav-item" data-page="credit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18M6.5 14.5h4"/></svg></span> Credit Clients</div>
+    <div class="nav-item" data-page="invoices"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M6 2.5h9l4 4V21a.9.9 0 0 1-.9.9H6a.9.9 0 0 1-.9-.9V3.4a.9.9 0 0 1 .9-.9z"/><path d="M15 2.5V7h4.5M9 12h6M9 16h6"/></svg></span> Invoices</div>
+    <div class="nav-item" data-page="storage"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span> Cloud Storage</div>
+    <div class="nav-item" data-page="coupons"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg></span> Coupons</div>
     <div class="nav-sec">System</div>
-    <div class="nav-item" data-page="settings" data-super="1">Settings</div>
-    <div class="nav-item" data-page="audit">Audit Log</div>
+    <div class="nav-item" data-page="cms" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M7 13h6M7 16h10"/></svg></span> Landing CMS</div>
+    <div class="nav-item" data-page="settings" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span> Settings</div>
+    <div class="nav-item" data-page="audit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></span> Audit Log</div>
   </nav>
   <div class="me">
     <div class="me-row">
@@ -126,6 +132,7 @@ tr:hover td{background:var(--card2)}
       <div><b>{{ $user->name }}</b><span>{{ $user->role }}</span></div>
     </div>
     <form method="POST" action="/admin/logout">@csrf<button type="submit">&#x23FB;&nbsp; Sign out</button></form>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09);font-size:9px;color:#6E9399;line-height:1.6">SmartEPT™ · Developed by Ametecs India Private Limited<br>© 2026 Ametecs India Private Limited. All rights reserved.</div>
   </div>
 </aside>
 
@@ -182,8 +189,8 @@ ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
 // ---------- pages ----------
 let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
-plans:'Plans & Pricing',orders:'Orders & Payments',invoices:'Invoices',storage:'Cloud Storage',coupons:'Coupons',
-settings:'Settings',audit:'Audit Log'};
+plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
+storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',settings:'Settings',audit:'Audit Log'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -193,9 +200,17 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function go(page) {
   PAGE = page;
   document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('on', e.dataset.page === page));
-  document.getElementById('pageTitle').textContent = TITLES[page];
+  document.getElementById('pageTitle').textContent = TITLES[page] || page;
   document.getElementById('pageActions').innerHTML = '';
-  RENDER[page]();
+  // Clear first so a failing screen can never leave the PREVIOUS screen showing
+  // (that was the "Audit and Settings look the same" bug), and surface any error.
+  document.getElementById('page').innerHTML = '<div class="mini">Loading…</div>';
+  Promise.resolve().then(() => RENDER[page] ? RENDER[page]() : Promise.reject(new Error('Unknown screen: ' + page)))
+    .catch(err => {
+      document.getElementById('page').innerHTML =
+        '<div class="card"><h3>Could not load this screen</h3><div class="mini">'
+        + esc(String(err && err.message ? err.message : err)) + '</div></div>';
+    });
 }
 const P = document.getElementById('page');
 const ACTIONS = document.getElementById('pageActions');
@@ -298,6 +313,25 @@ async orders() {
   loadOrders();
 },
 
+// ============ CREDIT CLIENTS (master prompt §10) ============
+async credit() {
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('credit-clients');
+  const rows = (d.data||[]).map(c => `<tr>
+    <td><b>${esc(c.tenant?.company_name)}</b><div class="mini">${esc(c.quote_number || c.number)}${c.invoice_number ? ' · ' + esc(c.invoice_number) : ''}</div></td>
+    <td class="mini">${esc(c.description)}</td>
+    <td><b>${fmtMoney(c.total, c.currency)}</b></td>
+    <td style="color:var(--ok);font-weight:700">${fmtMoney(c.received, c.currency)}</td>
+    <td><b style="color:${c.overdue ? 'var(--danger)' : 'var(--ink)'}">${fmtMoney(c.balance, c.currency)}</b></td>
+    <td style="${c.overdue ? 'color:var(--danger);font-weight:800' : ''}">${c.credit_due_date ? new Date(c.credit_due_date).toLocaleDateString() : '—'}${c.overdue ? ' ⚠ OVERDUE' : ''}</td>
+    <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick="recordBalance(${c.id}, ${c.balance}, '${esc(c.tenant?.company_name)}')">Record balance</button>` : ''}
+      <button class="link" onclick="navigator.clipboard.writeText('${esc(c.pay_url)}');toast('Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
+  P.innerHTML = `<div class="card"><h3>Provisioned on credit — balance outstanding (${(d.data||[]).length})</h3>
+  <table><tr><th>Client</th><th>Order</th><th>Total</th><th>Received</th><th>Balance</th><th>Payable by</th><th></th></tr>
+  ${rows || '<tr><td colspan="7" class="mini">No credit balances — every provisioned order is fully paid. 🎉</td></tr>'}</table>
+  <div class="mini" style="margin-top:10px">Overdue turns red as a reminder for <b>manual follow-up only</b> — nothing locks automatically. Credit is a commercial judgement. The client's original pay link stays alive and collects exactly the balance.</div></div>`;
+},
+
 // ============ INVOICES ============
 async invoices() {
   const d = await api('invoices');
@@ -305,7 +339,8 @@ async invoices() {
   ${d.data.map(i => `<tr><td><b>${esc(i.number)}</b></td><td class="mini">${i.date?.slice(0,10)}</td>
   <td>${esc(i.tenant?.company_name)}</td><td>${fmtMoney(i.subtotal, i.currency)}</td>
   <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
-  <td><b>${fmtMoney(i.total, i.currency)}</b></td><td>${pill(i.status)}</td>
+  <td><b>${fmtMoney(i.total, i.currency)}</b></td>
+  <td>${i.status==='issued' && i.due_date ? `<span class="pill p-warn">DUE</span><div class="mini">by ${i.due_date.slice(0,10)}</div>` : pill(i.status)}</td>
   <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No invoices yet</td></tr>'}</table></div>`;
 },
 
@@ -318,6 +353,27 @@ async storage() {
   <table><tr><th>Cloud Tenant</th><th>Avg GB (month)</th><th>Billable GB</th><th>Monthly Charge</th></tr>
   ${d.tenants.map(t => `<tr><td><b>${esc(t.company_name)}</b></td><td>${t.avg_gb}</td><td>${t.billable_gb}</td><td><b>${t.monthly_charge ? fmtMoney(t.monthly_charge) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="4" class="mini">No cloud tenants</td></tr>'}</table>
   <div class="mini" style="margin-top:10px">Automatic daily metering arrives with the Phase-3 cloud platform — until then usage can be recorded manually or imported.</div></div>`;
+},
+
+// ============ LANDING CMS (master prompt §5) ============
+async cms() {
+  const s = await api('settings');
+  const f = (k, label, ph='') => `<label>${label}</label><input id="set_${k}" value="${esc(s[k]||'')}" placeholder="${esc(ph)}">`;
+  P.innerHTML = `
+  <div class="card"><h3>Hero &amp; announcement — leave a field blank to keep the landing page's built-in text</h3>
+  ${f('landing_hero_title','Hero headline','e.g. Know exactly how your teams work — without standing behind them')}
+  ${f('landing_hero_subtitle','Hero sub-headline','one persuasive sentence under the headline')}
+  ${f('landing_announcement','Announcement bar (offers/news — blank hides it)','e.g. Diwali offer: 25% off annual plans with code DIWALI25')}</div>
+  <div class="card"><h3>Contact &amp; lead alerts</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('landing_contact_phone','Contact phone shown on the site','+91 96666 12424')}
+  ${f('landing_contact_email','Contact email shown on the site','sales@ametecsindia.com')}
+  ${f('whatsapp_number','WhatsApp number (all buttons)','919000098877')}
+  ${f('sales_email','Lead alerts go to (email)','sales@ametecsindia.com')}</div></div>
+  <div class="card"><h3>Testimonials (JSON list)</h3>
+  <label>Format: [{"quote":"…","name":"…","role":"…"}] — blank keeps built-in testimonials</label>
+  <textarea id="set_landing_testimonials" rows="5" style="font-family:monospace;font-size:12px">${esc(s.landing_testimonials||'')}</textarea>
+  <div class="mini" style="margin-top:6px">Tip: keep 2–4 short quotes with Indian names and concrete outcomes ("caught 3 idle hours/day across 40 PCs").</div></div>
+  <button class="btn btn-p" onclick="saveSettings().then(()=>toast('Saved — the public landing picks it up on next refresh'))">Save Landing Content</button>`;
 },
 
 // ============ SETTINGS ============
@@ -477,12 +533,16 @@ async function loadOrders() {
   <tr><th>Order</th><th>Client</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
   ${d.data.map(o => `<tr><td><b>${esc(o.quote_number || o.number)}</b><div class="mini">${o.quote_number ? esc(o.number) + ' · ' : ''}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}</div></td>
   <td>${esc(o.tenant?.company_name)}</td><td class="mini">${esc(o.description)}</td>
-  <td><b>${fmtMoney(o.total, o.currency)}</b><div class="mini">incl. tax ${fmtMoney(o.tax_amount, o.currency)}</div></td>
-  <td class="mini">${esc(o.gateway)}${o.manual_method?` (${esc(o.manual_method)})`:''}</td><td>${pill(o.status)}</td>
+  <td><b>${fmtMoney(o.total, o.currency)}</b><div class="mini">incl. tax ${fmtMoney(o.tax_amount, o.currency)}</div>
+  ${o.provisioned_at && o.status!=='paid' && o.balance>0 ? `<div class="mini" style="color:var(--danger);font-weight:700">balance ${fmtMoney(o.balance, o.currency)}${o.credit_due_date?' by '+o.credit_due_date.slice(0,10):''}</div>`:''}</td>
+  <td class="mini">${esc(o.gateway)}${o.manual_method?` (${esc(o.manual_method)})`:''}</td>
+  <td>${pill(o.status)}${o.provisioned_at && o.status!=='paid' ? '<div class="mini" style="color:var(--warn);font-weight:700">on credit ✓ live</div>':''}</td>
   <td>${o.status==='quote' && CAN_WRITE ? `<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Print Quote</a>
   <button class="link" onclick="approveQuote(${o.id})">Approve</button>
-  <button class="link" onclick="markPaid(${o.id},'${esc(o.quote_number||o.number)}')">Record Payment</button>` :
-  o.status==='created' && CAN_WRITE ? `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}')">Record Payment</button>
+  <button class="link" onclick="markPaid(${o.id},'${esc(o.quote_number||o.number)}',${o.balance ?? o.total})">Record Payment</button>` :
+  o.status==='created' && CAN_WRITE ? `${o.provisioned_at && o.balance>0
+    ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
+    : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
   <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:''}` :
   (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="7" class="mini">No orders</td></tr>'}</table></div>`;
 }
@@ -504,27 +564,36 @@ async function newOrder() {
   <div><label>Deployment</label><select id="no_deploy" onchange="refreshQuote()"><option value="client_hosted">Client-Hosted</option><option value="cloud">SmartEPT Cloud</option></select></div>
   <div><label>Devices</label><input id="no_devices" type="number" value="25" min="1" oninput="refreshQuote()"></div>
   <div><label>Create as</label><select id="no_asquote"><option value="0">Order — payable now</option><option value="1">Quotation — management pays later</option></select></div>
-  <div><label>Requested by (manager/employee)</label><input id="no_reqby" placeholder="e.g. Rajesh Kumar, Ops Manager"></div></div>
+  <div><label>Requested by (manager/employee)</label><input id="no_reqby" placeholder="e.g. Rajesh Kumar, Ops Manager"></div>
+  <div><label>Coupon code (optional)</label><input id="no_coupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" onchange="refreshQuote()"></div></div>
   <div class="quote-box" id="quoteBox">…</div>
+  <div class="mini" id="couponNote" style="margin-top:6px"></div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="createOrder()">Create Order</button></div>`, true);
   refreshQuote();
 }
 async function refreshQuote() {
   try {
+    const coupon = (document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null;
     const q = await api('quote', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
-      devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value}});
+      devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
+      coupon_code:coupon}});
     document.getElementById('quoteBox').innerHTML = q.lines.map(l =>
       `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('') +
       `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>
       <div class="ln tt"><span>Total</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
+    const note = document.getElementById('couponNote');
+    if (note) note.innerHTML = !coupon ? '' : (q.coupon?.ok
+      ? '<span style="color:var(--ok);font-weight:700">✓ Coupon ' + esc(q.coupon.code) + ' applied — saves ' + fmtMoney(q.coupon.discount, q.currency) + ' (locked into a quotation even if the code expires later)</span>'
+      : '<span style="color:var(--danger);font-weight:700">✗ Coupon not applied: ' + esc(q.coupon?.reason || 'not valid') + '</span>');
   } catch (e) { document.getElementById('quoteBox').textContent = 'Quote error: ' + e; }
 }
 async function createOrder() {
   try {
     const o = await api('orders', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
       devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
-      as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null}});
+      as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null,
+      coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null}});
     closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
   } catch (e) { toast('Error: ' + e); }
 }
@@ -548,18 +617,66 @@ async function doRaiseSetup(tenantId) {
     <div class="foot"><button class="btn btn-p" onclick="closeModal();go('orders')">Done</button></div>`);
   } catch (e) { toast('Error: ' + e); }
 }
-async function markPaid(id, number) {
+async function markPaid(id, number, balance) {
   openModal(`<h2>Record Payment — ${esc(number)}</h2>
-  <div class="sub">For NEFT / UPI / cheque payments received directly. This activates the licence and issues the GST invoice automatically.</div>
-  <label>Method</label><select id="mp_method"><option>NEFT</option><option>UPI</option><option>cheque</option><option>cash</option><option>other</option></select>
-  <label>Reference (UTR / cheque no.)</label><input id="mp_ref" placeholder="e.g. UTR 12345678">
+  <div class="sub">For money received directly (NEFT / UPI / cheque / cash) — or to provision a trusted client on CREDIT. Any choice below activates the licence and issues the GST invoice <b>immediately</b>; the invoice shows DUE until the balance reaches zero.</div>
+  <label>Payment received</label>
+  <select id="mp_status" onchange="mpStatusUi()">
+    <option value="paid">Paid in full — ${fmtMoney(balance||0)}</option>
+    <option value="partial">Partial — part now, balance on credit</option>
+    <option value="due">Due — whole amount on credit (₹0 now)</option>
+  </select>
+  <div id="mp_amt_row" style="display:none"><label>Amount received now (₹)</label><input id="mp_amount" type="number" min="1" step="0.01" placeholder="e.g. 20000"></div>
+  <div id="mp_pay_rows"><div class="row">
+    <div><label>Method</label><select id="mp_method"><option>NEFT</option><option>UPI</option><option>cheque</option><option>cash</option><option>other</option></select></div>
+    <div><label>Reference (UTR / cheque no.)</label><input id="mp_ref" placeholder="e.g. UTR 12345678"></div>
+  </div></div>
+  <div id="mp_due_row" style="display:none"><label>Balance payable by (credit due date)</label><input id="mp_due" type="date"></div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
-  <button class="btn btn-p" onclick="doMarkPaid(${id})">Confirm Payment Received</button></div>`);
+  <button class="btn btn-p" onclick="doMarkPaid(${id})">Save &amp; provision</button></div>`);
+}
+function mpStatusUi() {
+  const s = document.getElementById('mp_status').value;
+  document.getElementById('mp_amt_row').style.display = s === 'partial' ? '' : 'none';
+  document.getElementById('mp_due_row').style.display = s === 'paid' ? 'none' : '';
+  document.getElementById('mp_pay_rows').style.display = s === 'due' ? 'none' : '';
 }
 async function doMarkPaid(id) {
+  const s = document.getElementById('mp_status').value;
+  const body = {payment_status: s};
+  if (s !== 'due') { body.manual_method = mp_method.value; body.manual_reference = mp_ref.value; }
+  if (s === 'partial') body.amount = +document.getElementById('mp_amount').value;
+  if (s !== 'paid') body.credit_due_date = document.getElementById('mp_due').value || null;
   try {
-    await api(`orders/${id}/mark-paid`, {method:'POST', body:{manual_method:mp_method.value, manual_reference:mp_ref.value}});
-    closeModal(); toast('Payment recorded — licence active, invoice issued'); go('orders');
+    if (s === 'partial' && !(body.amount > 0)) throw 'Enter the amount received now.';
+    if (s !== 'paid' && !body.credit_due_date) throw 'Pick the credit due date — the balance needs a payable-by date.';
+    await api(`orders/${id}/mark-paid`, {method:'POST', body});
+    closeModal();
+    toast(s === 'paid' ? 'Payment recorded — licence active, invoice issued, receipt emailed'
+      : 'Provisioned on credit — licence active, invoice issued as DUE. Track it in Credit Clients.');
+    go('orders');
+  } catch (e) { toast('Error: ' + e); }
+}
+async function recordBalance(id, balance, company) {
+  openModal(`<h2>Record balance — ${esc(company || '')}</h2>
+  <div class="sub">Outstanding balance: <b>${fmtMoney(balance)}</b>. Record an offline instalment here — the receipt and PAID invoice go out automatically the moment the balance reaches zero.</div>
+  <div class="row">
+    <div><label>Amount received (₹)</label><input id="rb_amount" type="number" min="1" step="0.01" value="${balance}"></div>
+    <div><label>Method</label><select id="rb_method"><option>NEFT</option><option>UPI</option><option>cheque</option><option>cash</option><option>other</option></select></div>
+  </div>
+  <label>Reference (UTR / cheque no.)</label><input id="rb_ref" placeholder="e.g. UTR 12345678">
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doRecordBalance(${id})">Record instalment</button></div>`);
+}
+async function doRecordBalance(id) {
+  try {
+    const r = await api(`orders/${id}/record-balance`, {method:'POST', body:{
+      amount:+document.getElementById('rb_amount').value,
+      manual_method:document.getElementById('rb_method').value,
+      manual_reference:document.getElementById('rb_ref').value}});
+    closeModal();
+    toast(r.settled ? 'Balance cleared — invoice PAID, receipt emailed 🎉' : 'Instalment recorded — balance now ' + fmtMoney(r.balance));
+    go(PAGE);
   } catch (e) { toast('Error: ' + e); }
 }
 
@@ -674,9 +791,9 @@ plans: {
  right: `<p>❌ <b>Editing prices mid-negotiation.</b> → Quote confusion. → ✅ Create the order first (locks its price), then edit.</p>`,
 },
 orders: {
- use: `<h4>What is this screen for?</h4><p>Create quotations/orders and record payments — gateway or manual.</p>
- <ol><li><b>+ New Order/Quote</b> → pick client, plan, devices → live totals show licence + setup fee + GST</li><li>Choose <b>Quotation</b> when a manager requests but MANAGEMENT pays later — quote number EPT-Q-2026-27-07-0001, printable, with the pay link printed on it</li><li>Management approves (or pays the link directly); <b>Record Payment</b> for NEFT/UPI/cheque with UTR</li><li>Payment (any path) auto-issues the licence and GST invoice</li></ol>
- <div class="tip"><b>Good to know:</b> the Setup &amp; Onboarding fee appears automatically on a client's first paid order only — the quote box shows it as its own line.</div>`,
+ use: `<h4>What is this screen for?</h4><p>Create quotations/orders and record payments — gateway, manual, or on credit.</p>
+ <ol><li><b>+ New Order/Quote</b> → pick client, plan, devices (+ optional coupon) → live totals show licence + setup fee + discount + GST</li><li>Choose <b>Quotation</b> when a manager requests but MANAGEMENT pays later — quote number EPT-Q-2026-27-07-0001, printable, with the pay link printed on it</li><li>Management approves (or pays the link directly); <b>Record Payment</b> for NEFT/UPI/cheque offers three choices: <b>Paid</b> (full), <b>Partial</b> (part now, balance on credit) or <b>Due</b> (whole amount on credit)</li><li>ANY of the three provisions the licence and GST invoice immediately — credit clients appear in the <b>Credit Clients</b> screen until their balance is zero</li></ol>
+ <div class="tip"><b>Good to know:</b> the Setup &amp; Onboarding fee appears automatically on a client's first paid order only. A coupon captured on a quotation is LOCKED into that quote — the pay link honours it even if the code expires meanwhile.</div>`,
  why: `<h4>Why this exists</h4><p>One golden automation: money in → licence out → invoice out. No manual steps to forget, no licence issued before payment.</p>
  <div class="scen"><b>Picture this:</b> Godavari Finserv pays ₹58,800 by NEFT at 4 PM. Accounts enters the UTR at 4:05. By 4:06 their licence key is active, the GST invoice is numbered, and their server validates on the next phone-home. Zero emails between departments.</div>
  <p class="gain">✓ No unpaid activations ✓ No paid-but-forgotten clients ✓ Every rupee has an invoice</p>`,
@@ -684,10 +801,34 @@ orders: {
  <p>❌ <b>Recording manual payment without UTR.</b> → Unreconcilable books. → ✅ Always paste the reference.</p>`,
 },
 invoices: {
- use: `<h4>What is this screen for?</h4><p>Every GST invoice — numbered EPT-{FY}-{month}-{count}, e.g. EPT-2026-27-07-0001 (count resets monthly).</p>
- <ol><li><b>Print</b> opens the branded invoice — use the browser's Save as PDF</li><li>Series and GST rate are configured in Settings</li></ol>`,
- why: `<h4>Why this exists</h4><p>Indian B2B buyers pay against proper GST invoices. Automatic, sequential, FY-correct numbering keeps your CA happy and audits painless.</p>`,
- right: `<p>❌ <b>Manually editing invoice JSON.</b> → Broken audit trail. → ✅ Cancel and re-issue via a corrected order.</p>`,
+ use: `<h4>What is this screen for?</h4><p>Every GST invoice — numbered EPT-{FY}-{month}-{count}, e.g. EPT-2026-27-07-0001. The count runs <b>consecutively through the financial year</b> (GST style): July's last invoice 0009 → August starts at 0010; the series resets only on 1 April. One shared series covers subscription, renewal, upgrade and installation invoices.</p>
+ <ol><li><b>Print</b> opens the branded invoice — use the browser's Save as PDF</li><li>Invoices issued on credit show <b>DUE</b> with the payable-by date, and flip to PAID automatically when the balance reaches zero</li><li>Series prefix and GST rate are configured in Settings</li></ol>`,
+ why: `<h4>Why this exists</h4><p>Indian B2B buyers pay against proper GST invoices. Automatic, consecutive, FY-correct numbering keeps your CA happy and audits painless — a gap in the series is the first thing an auditor asks about.</p>
+ <div class="scen"><b>Picture this:</b> your CA files GSTR-1 for July. Every EPT-2026-27 invoice is in one unbroken series across the year — Telangana buyers show CGST 9% + SGST 9%, others IGST 18%, exactly as the return needs. Zero manual reconciliation.</div>`,
+ right: `<p>❌ <b>Manually editing invoice JSON.</b> → Broken audit trail. → ✅ Cancel and re-issue via a corrected order.</p>
+ <p>❌ <b>Deleting an invoice to "fix" a number.</b> → A hole in a GST series. → ✅ Numbers are MAX+1 within the FY — deletions never cause duplicates, and cancelled invoices stay on record.</p>`,
+},
+credit: {
+ use: `<h4>What is this screen for?</h4><p>Every client who was provisioned <b>before paying in full</b> — the credit book. Total, received, balance and the payable-by date, in one table. Overdue rows turn red.</p>
+ <ol><li>Collections work both ways: <b>Record balance</b> for NEFT/UPI/cheque instalments you receive, or <b>Pay link</b> to resend the client's original link — it stays alive and collects exactly the balance online</li><li>The receipt and PAID invoice go out automatically the moment the balance reaches zero</li><li>Overdue (red) = your call list for the day</li></ol>
+ <div class="tip"><b>Good to know:</b> nothing locks automatically on overdue — credit is a commercial judgement (Ejaz's standing rule). The licence stays live; the red row is your reminder to call.</div>
+ <h4>Who can use it</h4><p>Super Admin · Sales record payments; Support sees the list read-only.</p>`,
+ why: `<h4>Why this exists</h4><p>Real business does not always pay online first. Banks' recovery partners and NBFCs often need the software running while finance processes the payment — refusing credit loses the deal; forgetting credit loses the money. This table makes forgetting impossible.</p>
+ <div class="scen"><b>Picture this:</b> Krishna NBFC signs for 50 devices — ₹40,000 quote. Their MD approves but accounts pays in two parts: ₹25,000 NEFT today, balance by 15 August. You record Partial ₹25,000 — their licence goes live the same minute, the invoice prints DUE ₹15,000 by 15-Aug. On 16 August the row turns red, you call, they pay the link. Receipt goes out on its own. Deal saved, money tracked, zero spreadsheets.</div>
+ <p class="gain">✓ Deals close on the client's payment rhythm ✓ Every rupee outstanding is visible daily ✓ Receipts are automatic at zero</p>`,
+ right: `<p>❌ <b>Provisioning on credit for a stranger.</b> → Bad debt. → ✅ Credit is for known/repeat clients — new names pay first or use the trial.</p>
+ <p>❌ <b>Collecting an instalment and noting it in a diary.</b> → Books disagree with reality. → ✅ Record it here the same minute — the balance and invoice update themselves.</p>
+ <p>❌ <b>Suspending a licence because a due date passed.</b> → Dead product at the client, angry MD. → ✅ Call first; suspension is a last resort you do manually and deliberately.</p>`,
+},
+cms: {
+ use: `<h4>What is this screen for?</h4><p>Edit the public landing page's words — hero headline, announcement bar, contact details, testimonials — without touching code or calling a developer.</p>
+ <ol><li>Type new text and press <b>Save Landing Content</b></li><li>Blank fields keep the landing page's built-in copy — you can never break the page</li><li>The announcement bar is perfect for festival offers ("25% off with DIWALI25") — blank hides it</li><li>Lead alerts email goes to whatever address you set here</li></ol>
+ <div class="tip"><b>Good to know:</b> the landing page picks changes up within 5 minutes (or instantly on a hard refresh) — the content travels through the same live API as prices.</div>
+ <h4>Who can use it</h4><p>Super Admin only.</p>`,
+ why: `<h4>Why this exists</h4><p>Marketing must move at the owner's speed, not the developer's calendar. A festival campaign that needs a deploy is a campaign that launches late.</p>
+ <div class="scen"><b>Picture this:</b> Wednesday 6 PM, management approves a Diwali push. You type the announcement line, create coupon DIWALI25, and share the ad on WhatsApp. The landing page is already carrying the offer before the tea gets cold.</div>`,
+ right: `<p>❌ <b>Writing long paragraphs in the hero.</b> → Visitors bounce. → ✅ One sharp headline + one persuasive sentence.</p>
+ <p>❌ <b>Leaving a finished offer in the announcement bar.</b> → Stale site, awkward calls. → ✅ Blank the field the day the offer ends.</p>`,
 },
 storage: {
  use: `<h4>What is this screen for?</h4><p>Cloud tenants' storage: average GB this month and the rental charge (₹3/GB slab pricing, 50 GB minimum).</p>
@@ -809,7 +950,7 @@ async function loadCoupons() {
     <td><b>${esc(c.code)}</b><div class="mini">${esc(c.description || '')}</div></td>
     <td>${c.type === 'percent' ? Number(c.value) + '% off' : '₹' + Number(c.value).toLocaleString('en-IN') + ' off'}</td>
     <td class="mini">${c.used_count}${c.max_uses ? ' / ' + c.max_uses : ''} used</td>
-    <td class="mini">${c.min_devices ? '≥ ' + c.min_devices + ' devices' : '—'}</td>
+    <td class="mini">${c.min_devices ? '≥ ' + c.min_devices + ' devices' : '—'}${c.exclusive_email ? '<div style="color:var(--warn);font-weight:700">exclusive: ' + esc(c.exclusive_email) + '</div>' : ''}</td>
     <td class="mini">${c.valid_until ? 'till ' + String(c.valid_until).slice(0, 10) : 'no expiry'}</td>
     <td><span class="pill ${c.active ? 'p-ok' : 'p-mut'}">${c.active ? 'active' : 'off'}</span></td>
     <td>${CAN_WRITE ? `<button class="link" onclick="toggleCoupon(${c.id}, ${c.active ? 0 : 1})">${c.active ? 'Disable' : 'Enable'}</button>` : ''}</td></tr>`).join('');
@@ -826,8 +967,10 @@ function newCoupon() {
   <div><label>Max uses (blank = unlimited)</label><input id="cf-max" type="number" min="1"></div>
   <div><label>Min devices (blank = any)</label><input id="cf-min" type="number" min="1"></div>
   <div><label>Valid until (blank = no expiry)</label><input id="cf-until" type="date"></div>
+  <div><label>Exclusive to one email (blank = public)</label><input id="cf-excl" type="email" placeholder="cfo@bigclient.in"></div>
   </div>
   <label>Description</label><input id="cf-desc" placeholder="Diwali festive offer" style="width:100%">
+  <div class="mini" style="margin-top:6px">Exclusive coupons auto-apply the moment that email is typed at signup (the "exclusive-offer catch") and are invisible to everyone else. Note: coupons stack AFTER the advance-period discount — price campaigns knowingly.</div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="saveCoupon()">Create coupon</button></div>`, true);
 }
@@ -837,7 +980,7 @@ async function saveCoupon() {
     if (!v('cf-code') || !v('cf-value')) { toast('Code and value are required'); return; }
     await api('coupons', {method:'POST', body:{code:v('cf-code'), type:v('cf-type'), value:v('cf-value'),
       max_uses:v('cf-max') || null, min_devices:v('cf-min') || null, valid_until:v('cf-until') || null,
-      description:v('cf-desc') || null, active:true}});
+      exclusive_email:v('cf-excl') || null, description:v('cf-desc') || null, active:true}});
     closeModal(); toast('Coupon created'); loadCoupons();
   } catch (e) { toast('Error: ' + e); }
 }

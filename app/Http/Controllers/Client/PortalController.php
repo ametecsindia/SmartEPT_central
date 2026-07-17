@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Services\ProductProvisioner;
 
 /**
  * /client portal shell + tenant-scoped printable documents.
@@ -18,6 +19,20 @@ class PortalController extends Controller
     public function index()
     {
         return view('client.portal', ['user' => auth('client')->user()->load('tenant')]);
+    }
+
+    /**
+     * GET /client/console — one-click SSO into the tenant's hosted SmartEPT
+     * console. Mints a short-lived signed ticket and redirects the browser to
+     * the product app's /admin?sso=… which trades it for a signed-in session.
+     */
+    public function console(ProductProvisioner $provisioner)
+    {
+        $tenant = auth('client')->user()->tenant;
+        $url = $provisioner->ssoUrl($tenant);
+        abort_unless($url, 404, 'Your hosted console is still being set up — WhatsApp 90000 98877 if this takes more than a day.');
+
+        return redirect()->away($url);
     }
 
     public function invoicePrint(Invoice $invoice)

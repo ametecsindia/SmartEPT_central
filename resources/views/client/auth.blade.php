@@ -60,7 +60,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
 <body>
 <div class="wrap">
   <aside class="summary">
-    <div class="brand"><div class="mk">EPT</div><div><b>SmartEPT</b><small>BY AMETECS</small></div></div>
+    <div class="brand" style="flex-direction:column;align-items:flex-start;gap:8px"><img src="/img/smartept-logo-dark.png" alt="SmartEPT" style="width:196px;max-width:72%;height:auto;display:block"></div>
     <div class="plan-name" id="sumPlan">SmartEPT Professional</div>
     <div class="plan-tag" id="sumTag">Estimate your subscription — free for the first 7 days.</div>
 
@@ -81,12 +81,20 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
       <input type="checkbox" id="setupChk" style="width:auto;margin-top:2px;accent-color:#22B8CF">
       <span>Add professional installation &amp; onboarding <span style="color:#7FA8AF">(one-time — we install &amp; set up SmartEPT for you). Skip it to self-install; you can request it later.</span></span>
     </label>
+    <div class="ctrl" id="couponCtrl"><label>Coupon code</label>
+      <div style="display:flex;gap:6px">
+        <input id="couponInp" placeholder="e.g. DIWALI25" style="flex:1;padding:7px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.2);color:#fff;font-size:12px;text-transform:uppercase">
+        <button type="button" id="couponBtn" style="padding:7px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:11.5px;font-weight:700;cursor:pointer">Apply</button>
+      </div>
+      <div id="couponMsg" style="font-size:10.5px;margin-top:5px;color:#7FE0EC"></div>
+    </div>
 
     <div class="inv" id="inv">
       <div class="ln"><span id="ivSubLbl">Subscription</span><b id="ivSub">—</b></div>
       <div class="ln disc" id="ivDiscRow" style="display:none"><span id="ivDiscLbl">Advance discount</span><b id="ivDisc">—</b></div>
       <div class="ln" id="ivSetupRow" style="display:none"><span>Setup &amp; onboarding (one-time)</span><b id="ivSetup">—</b></div>
       <div class="ln" id="ivHostRow" style="display:none"><span id="ivHostLbl">Cloud hosting &amp; storage</span><b id="ivHost">—</b></div>
+      <div class="ln disc" id="ivCoupRow" style="display:none"><span id="ivCoupLbl">Coupon</span><b id="ivCoup">—</b></div>
       <div class="ln sub"><span>GST 18%</span><b id="ivGst">—</b></div>
       <div class="ln tot"><span id="ivTotLbl">Payable now</span><b id="ivTot">—</b></div>
       <div class="eff" id="ivEff"></div>
@@ -115,12 +123,16 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     <label>Work email</label><input type="email" name="email" required maxlength="190">
     <label>Choose a password (min 8 characters)</label><input type="password" name="password" required minlength="8" autocomplete="new-password">
     <div class="row">
-      <div><label>State (for GST)</label><select name="state_code" id="stateSel"><option value="">Select…</option></select></div>
+      <div><label>State <span style="color:#D02748">*</span></label><select name="state_code" id="stateSel" required><option value="">Select…</option></select></div>
       <div><label>GSTIN <span style="font-weight:400;color:#878C99">(optional)</span></label><input name="gstin" id="gstinInp" maxlength="15" placeholder="36AAHCT0971F1ZB" style="text-transform:uppercase"></div>
     </div>
-    <div class="hint">GSTIN lets us raise a compliant tax invoice you can claim input credit on.</div>
+    <div class="hint">Your state decides how GST appears on your invoice — CGST+SGST for Telangana, IGST for other states. GSTIN lets you claim input credit.</div>
     <input type="hidden" name="plan" id="planField">
     <input type="hidden" name="device_estimate" id="devField">
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#565A66;font-weight:600;margin-top:10px;cursor:pointer">
+      <input type="checkbox" name="terms_accepted" required style="width:auto;margin-top:2px;accent-color:#0E7C8F">
+      <span>I agree to the <a href="/terms" target="_blank" style="color:#0B6373;font-weight:700">Terms</a> and <a href="/refunds" target="_blank" style="color:#0B6373;font-weight:700">Refund policy</a></span>
+    </label>
     <div class="otp-wrap" id="signupOtp">
       <label>Enter the 6-digit code we emailed you</label>
       <input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="••••••">
@@ -143,7 +155,8 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
   <div class="msg demo" id="demoMsg" style="display:none"></div>
   <div class="foot">Prefer a human? WhatsApp <a href="https://wa.me/919000098877?text=Hi%20Ametecs" target="_blank">90000 98877</a><br>
   Ametecs India Private Limited · sales@ametecsindia.com<br>
-  <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a></div>
+  <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a><br>
+  <span style="opacity:.8">SmartEPT™ · Developed by Ametecs India Private Limited · © 2026. All rights reserved.</span></div>
   </div>
 </div>
 
@@ -151,7 +164,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
 let signupStep = 1, forgotStep = 1;
 let PLANS=[], GST=18, CLOUDX=1.5, SETUP={base:5000,included:25,per:100}, STOR={slabs:[[1,500,3],[501,2048,2.5],[2049,null,2]],min_gb:50,min_inr:150};
-let SEL='professional', HOST='hosted', CYC='y';
+let SEL='professional', HOST='hosted', CYC='y', COUPON=null;
 const PERIOD = {q:{m:3,d:0,label:'Quarterly (3 months)'}, h:{m:6,d:0.10,label:'6-month advance'}, y:{m:12,d:0.25,label:'12-month advance'}};
 
 const STATES=[['37','Andhra Pradesh'],['12','Arunachal Pradesh'],['18','Assam'],['10','Bihar'],['22','Chhattisgarh'],['30','Goa'],['24','Gujarat'],['06','Haryana'],['02','Himachal Pradesh'],['20','Jharkhand'],['29','Karnataka'],['32','Kerala'],['23','Madhya Pradesh'],['27','Maharashtra'],['14','Manipur'],['17','Meghalaya'],['15','Mizoram'],['13','Nagaland'],['21','Odisha'],['03','Punjab'],['08','Rajasthan'],['11','Sikkim'],['33','Tamil Nadu'],['36','Telangana'],['16','Tripura'],['09','Uttar Pradesh'],['05','Uttarakhand'],['19','West Bengal'],['07','Delhi'],['04','Chandigarh'],['01','Jammu & Kashmir'],['26','Dadra & Nagar Haveli and Daman & Diu'],['31','Lakshadweep'],['35','Andaman & Nicobar'],['38','Ladakh'],['34','Puducherry']];
@@ -182,7 +195,14 @@ function render(){
   const setup=wantSetup?(SETUP.base+Math.max(0,dev-SETUP.included)*SETUP.per):0;
   let host=0,gb=0;
   if(HOST==='cloud'){const st=storagePerMonth(dev);host=st.cost*per.m;gb=st.gb;}
-  const taxable=sub+setup+host;
+  let taxable=sub+setup+host;
+  // Coupon applies AFTER the advance discount, BEFORE GST (server does the same maths).
+  let coupDisc=0;
+  const cr=document.getElementById('ivCoupRow');
+  if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
+    cr.style.display='';document.getElementById('ivCoupLbl').textContent='Coupon '+COUPON.code+(COUPON.type==='percent'?' ('+COUPON.value+'% off)':'');
+    document.getElementById('ivCoup').textContent='− '+inr(coupDisc);taxable-=coupDisc;}
+  else cr.style.display='none';
   const gstAmt=taxable*GST/100;
   const total=taxable+gstAmt;
   const effPerMo=sub/dev/per.m;
@@ -222,6 +242,35 @@ function render(){
   document.getElementById('cH').onclick=()=>segCyc('h');
   document.getElementById('cY').onclick=()=>segCyc('y');
   document.getElementById('setupChk').onchange=render;
+  // ---- Coupon apply (public coupon-check keeps signup, portal and admin on the same rules) ----
+  const cMsg=document.getElementById('couponMsg');
+  async function applyCoupon(code,quiet){
+    code=(code||'').trim().toUpperCase();
+    if(!code){COUPON=null;cMsg.textContent='';render();return;}
+    try{
+      const dev=Math.max(1,parseInt(document.getElementById('devCount').value||'1',10));
+      const email=(document.querySelector('#f-signup [name=email]')?.value||'').trim();
+      const r=await fetch('/api/v1/public/coupon-check',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},body:JSON.stringify({code,devices:dev,email:email||null})});
+      const j=await r.json();
+      if(j.ok){COUPON={code:j.code,type:j.type,value:j.value};cMsg.style.color='#7FE0EC';cMsg.textContent='✓ '+j.code+' applied'+(j.description?' — '+j.description:'');document.getElementById('couponInp').value=j.code;}
+      else{COUPON=null;cMsg.style.color='#FFB3C0';cMsg.textContent=quiet?'':'✗ Code not valid ('+(j.reason||'unknown')+')';}
+    }catch(e){if(!quiet){cMsg.style.color='#FFB3C0';cMsg.textContent='Could not check the code — try again.';}}
+    render();
+  }
+  document.getElementById('couponBtn').onclick=()=>applyCoupon(document.getElementById('couponInp').value,false);
+  document.getElementById('couponInp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyCoupon(e.target.value,false);}});
+  // ---- Exclusive-offer catch (blueprint §6): email typed → quietly check for a personal coupon ----
+  const emailInp=document.querySelector('#f-signup [name=email]');
+  if(emailInp)emailInp.addEventListener('blur',async()=>{
+    const email=emailInp.value.trim();
+    if(!email||COUPON)return;
+    try{
+      const r=await fetch('/api/v1/public/exclusive-offer',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},body:JSON.stringify({email})});
+      const j=await r.json();
+      if(j.ok){COUPON={code:j.code,type:j.type,value:j.value};document.getElementById('couponInp').value=j.code;
+        cMsg.style.color='#7FE0EC';cMsg.textContent='🎁 An exclusive offer for you was waiting — '+j.code+' applied automatically!';render();}
+    }catch(e){}
+  });
   try{
     const r=await fetch('/api/v1/public/plans',{headers:{Accept:'application/json'},cache:'no-store'});const j=await r.json();
     PLANS=j.plans||j.data||[];GST=j.gst_rate||18;CLOUDX=j.cloud_multiplier||1.5;

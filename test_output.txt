@@ -1,0 +1,57 @@
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\ExampleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthat true is true[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\CentralSmokeTest[39m
+  [32;1m✓[39;22m[90m [39m[90msetup fee math[39m[90m                                                                                                                                               [39m [90m1.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvolume tiers and cloud multiplier[39m[90m                                                                                                                            [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstorage slabs[39m[90m                                                                                                                                                [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgolden path order to licence to invoice[39m[90m                                                                                                                      [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mquotation flow manager requests management pays[39m[90m                                                                                                              [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmanagement can pay quote directly without approval step[39m[90m                                                                                                      [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlicence validation and device cap[39m[90m                                                                                                                            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlicense api endpoints[39m[90m                                                                                                                                        [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin auth wall[39m[90m                                                                                                                                              [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublic plans endpoint feeds the landing page[39m[90m                                                                                                                 [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ClientPortalTest[39m
+  [32;1m✓[39;22m[90m [39m[90mclient auth wall[39m[90m                                                                                                                                             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90msignup with otp provisions trial tenant[39m[90m                                                                                                                      [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlogin logout and overview[39m[90m                                                                                                                                    [39m [90m0.34s[39m  
+  [32;1m✓[39;22m[90m [39m[90mself service purchase creates order with pay link[39m[90m                                                                                                            [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mquotation raised from portal carries requester[39m[90m                                                                                                               [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mone click renewal extends same licence[39m[90m                                                                                                                       [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclient cannot see another tenants documents[39m[90m                                                                                                                  [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpassword reset via otp[39m[90m                                                                                                                                       [39m [90m0.13s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ExampleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe application returns a successful response[39m[90m                                                                                                                [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\FinancialFlowTest[39m
+  [32;1m✓[39;22m[90m [39m[90minvoice numbers run consecutively through the fy[39m[90m                                                                                                             [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mquotes have their own series[39m[90m                                                                                                                                 [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpartial payment provisions immediately with due invoice[39m[90m                                                                                                      [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrecording the balance settles and emails receipt once[39m[90m                                                                                                        [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdue credit provisions with zero received[39m[90m                                                                                                                     [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing credit due date is rejected for partial and due[39m[90m                                                                                                      [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mplain mark paid still works as before[39m[90m                                                                                                                        [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mledger is idempotent per gateway payment id[39m[90m                                                                                                                  [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90moverpayment is clamped to the balance[39m[90m                                                                                                                        [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcoupon is locked into a quote and redeemed once on provisioning[39m[90m                                                                                              [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexclusive coupon only works for its email[39m[90m                                                                                                                    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin tenant create rejects gstin state mismatch[39m[90m                                                                                                             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin tenant create makes a portal login with forced password[39m[90m                                                                                                [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbilling profile rejects gstin state mismatch[39m[90m                                                                                                                 [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpay page shows received and balance for credit orders[39m[90m                                                                                                        [39m [90m0.15s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\GstInvoiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mintra state invoice splits tax into cgst and sgst[39m[90m                                                                                                            [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90minter state invoice charges igst[39m[90m                                                                                                                             [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtenant without state defaults to local supply[39m[90m                                                                                                                [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mamount in words indian numbering[39m[90m                                                                                                                             [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegal pages are public[39m[90m                                                                                                                                       [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclient can read and update billing profile[39m[90m                                                                                                                   [39m [90m0.13s[39m  
+
+  [90mTests:[39m    [32;1m41 passed[39;22m[90m (214 assertions)[39m
+  [90mDuration:[39m [39m7.45s[39m
+
