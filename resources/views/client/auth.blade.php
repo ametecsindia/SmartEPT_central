@@ -60,7 +60,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
 <body>
 <div class="wrap">
   <aside class="summary">
-    <div class="brand" style="flex-direction:column;align-items:flex-start;gap:8px"><img src="/img/smartept-logo-dark.png" alt="SmartEPT" style="width:196px;max-width:72%;height:auto;display:block"></div>
+    <div class="brand" style="flex-direction:column;align-items:flex-start;gap:8px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT" style="width:210px;max-width:84%;height:auto;display:block"></div>
     <div class="plan-name" id="sumPlan">SmartEPT Professional</div>
     <div class="plan-tag" id="sumTag">Estimate your subscription — free for the first 7 days.</div>
 

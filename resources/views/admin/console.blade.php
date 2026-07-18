@@ -20,23 +20,23 @@ input,select,textarea{font-family:inherit;font-size:13.5px;padding:9px 11px;bord
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 4px}
 /* sidebar */
-aside{width:232px;background:linear-gradient(175deg,var(--navy1),#083039);color:#C9E2E7;padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+aside{width:232px;background:linear-gradient(175deg,var(--navy1),#083039);color:#C9E2E7;padding:12px 12px 10px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
 .brand .mk{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
 .brand b{font-size:15px;color:#fff}.brand small{display:block;font-size:8.5px;letter-spacing:2px;color:#7FA8AF}
-nav{flex:1;margin-top:14px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+nav{flex:1;margin-top:8px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
 nav::-webkit-scrollbar{width:5px}nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
 .nav-item{display:flex;align-items:center;gap:11px;padding:9.5px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#A9CBD1;cursor:pointer;margin-bottom:2px}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
 .nav-item.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
 .nav-ic{display:flex;align-items:center;opacity:.85}.nav-item.on .nav-ic{opacity:1}
-.nav-sec{font-size:10px;letter-spacing:1.8px;color:#5E858C;text-transform:uppercase;font-weight:800;margin:16px 12px 6px}
-.me{border-top:1px solid rgba(255,255,255,.1);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.nav-sec{font-size:10px;letter-spacing:1.8px;color:#5E858C;text-transform:uppercase;font-weight:800;margin:10px 12px 4px}
+.me{border-top:1px solid rgba(255,255,255,.1);padding-top:8px;display:flex;flex-direction:column;gap:7px}
 .me-row{display:flex;align-items:center;gap:9px}
 .me .av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
 .me b{font-size:12.5px;color:#fff;display:block}.me span{font-size:10.5px;color:#7FA8AF;text-transform:capitalize}
 .me form{width:100%}
-.me button{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:12px;font-weight:600;padding:9px;border-radius:8px;cursor:pointer}
+.me button{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:12px;font-weight:600;padding:7px;border-radius:8px;cursor:pointer}
 .me button:hover{background:var(--accent);border-color:var(--accent)}
 /* main */
 main{flex:1;padding:26px 30px;max-width:calc(100vw - 232px)}
@@ -105,7 +105,7 @@ tr:hover td{background:var(--card2)}
 <body data-role="{{ $user->role }}">
 
 <aside>
-  <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-dark.png" alt="SmartEPT Central" style="width:152px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CENTRAL &middot; SUPER ADMIN</small></div>
+  <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT Central" style="width:150px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CENTRAL &middot; SUPER ADMIN</small></div>
   <nav id="nav">
     <div class="nav-sec">Business</div>
     <div class="nav-item on" data-page="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></svg></span> Dashboard</div>
@@ -132,7 +132,7 @@ tr:hover td{background:var(--card2)}
       <div><b>{{ $user->name }}</b><span>{{ $user->role }}</span></div>
     </div>
     <form method="POST" action="/admin/logout">@csrf<button type="submit">&#x23FB;&nbsp; Sign out</button></form>
-    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09);font-size:9px;color:#6E9399;line-height:1.6">SmartEPT™ · Developed by Ametecs India Private Limited<br>© 2026 Ametecs India Private Limited. All rights reserved.</div>
+    <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.09);font-size:8.5px;color:#6E9399;line-height:1.4">SmartEPT™ · Developed by Ametecs India Private Limited<br>© 2026 Ametecs India Private Limited. All rights reserved.</div>
   </div>
 </aside>
 

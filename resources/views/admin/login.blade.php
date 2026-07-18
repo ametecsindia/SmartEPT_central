@@ -23,7 +23,7 @@ background:linear-gradient(135deg,#0E7C8F,#1899AE);cursor:pointer}
 </head>
 <body>
 <div class="card">
-  <div class="brand"><div class="mk">EPT</div><div><b>SmartEPT Central</b><small>AMETECS SUPER ADMIN</small></div></div>
+  <div class="brand" style="justify-content:center;margin-bottom:14px"><img src="/img/smartept-logo-h-light.png" alt="SmartEPT Central" style="width:220px;max-width:80%;height:auto;display:block"></div>
   <p class="sub">Sign in with your Ametecs admin account.</p>
   <form method="POST" action="/admin/login">
     @csrf

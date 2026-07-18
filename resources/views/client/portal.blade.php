@@ -106,7 +106,7 @@ tr:hover td{background:var(--card2)}
 <body>
 
 <aside>
-  <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-dark.png" alt="SmartEPT" style="width:152px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CLIENT PORTAL</small></div>
+  <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT" style="width:162px;max-width:96%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CLIENT PORTAL</small></div>
   <nav id="nav">
     <div class="nav-sec">My account</div>
     <div class="nav-item on" data-page="overview">
