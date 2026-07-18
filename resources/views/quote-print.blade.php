@@ -32,7 +32,7 @@ td{padding:8px 10px;border-bottom:1px solid #F0F1F4}
 <body>
 <div class="noprint"><button onclick="window.print()">Print / Save PDF</button></div>
 <div class="top">
-  <div><span class="mk">EPT</span><h1>QUOTATION</h1>
+  <div><img src="/img/smartept-logo-h-light.png" alt="SmartEPT by Ametecs" style="height:42px;width:auto;display:block;margin-bottom:8px"><h1>QUOTATION</h1>
     <div style="font-size:12px;color:#565A66">{{ $order->quote_number }} · {{ $order->created_at->format('d M Y') }} · valid 15 days</div></div>
   <div class="co"><b style="color:#15171C;font-size:13px">{{ $company['name'] }}</b><br>
     {{ $company['address'] }}<br>GSTIN: {{ $company['gstin'] }}<br>{{ $company['phone'] }} · {{ $company['email'] }}</div>

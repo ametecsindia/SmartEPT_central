@@ -60,7 +60,7 @@ td{padding:7px 9px;border-bottom:1px solid #F0F1F4;vertical-align:top}
 <div class="noprint"><button onclick="window.print()">Print / Save PDF</button></div>
 
 <div class="top">
-  <div><span class="mk">EPT</span><h1>TAX INVOICE</h1>
+  <div><img src="/img/smartept-logo-h-light.png" alt="SmartEPT by Ametecs" style="height:42px;width:auto;display:block;margin-bottom:8px"><h1>TAX INVOICE</h1>
     <div style="font-size:12px;color:#565A66">{{ $invoice->number }} · {{ $invoice->date->format('d M Y') }}</div></div>
   <div class="co"><b style="color:#15171C;font-size:13px">{{ $company['name'] }}</b><br>
     {{ $company['address'] }}<br>
