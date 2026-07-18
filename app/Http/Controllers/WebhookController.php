@@ -21,10 +21,18 @@ class WebhookController extends Controller
         }
 
         $payload = $request->json()->all();
+        $eventId = $request->header('x-razorpay-event-id');
+
+        // EPT-16: a redelivered event we already processed is a no-op (200).
+        if ($eventId && WebhookEvent::where('gateway', 'razorpay')
+                ->where('event_id', $eventId)->where('processed', true)->exists()) {
+            return response()->json(['ok' => true, 'duplicate' => true]);
+        }
+
         $event = WebhookEvent::create([
             'gateway' => 'razorpay',
             'event_type' => $payload['event'] ?? 'unknown',
-            'event_id' => $request->header('x-razorpay-event-id'),
+            'event_id' => $eventId,
             'payload' => $payload,
         ]);
 
@@ -61,10 +69,18 @@ class WebhookController extends Controller
         }
 
         $payload = $request->json()->all();
+        $eventId = $payload['id'] ?? null;
+
+        // EPT-16: a redelivered event we already processed is a no-op (200).
+        if ($eventId && WebhookEvent::where('gateway', 'stripe')
+                ->where('event_id', $eventId)->where('processed', true)->exists()) {
+            return response()->json(['ok' => true, 'duplicate' => true]);
+        }
+
         $event = WebhookEvent::create([
             'gateway' => 'stripe',
             'event_type' => $payload['type'] ?? 'unknown',
-            'event_id' => $payload['id'] ?? null,
+            'event_id' => $eventId,
             'payload' => $payload,
         ]);
 

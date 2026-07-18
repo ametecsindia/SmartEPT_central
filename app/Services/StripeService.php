@@ -35,7 +35,7 @@ class StripeService
                 'customer_email' => $order->tenant->email,
                 'line_items[0][price_data][currency]' => strtolower($order->currency),
                 'line_items[0][price_data][product_data][name]' => 'SmartEPT — ' . $order->description,
-                'line_items[0][price_data][unit_amount]' => (int) round($order->total * 100),
+                'line_items[0][price_data][unit_amount]' => (int) round($order->balance() * 100),
                 'line_items[0][quantity]' => 1,
                 'metadata[order_number]' => $order->number,
             ]);

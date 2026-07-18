@@ -35,8 +35,17 @@ class BillingService
 
     public function nextOrderNumber(): string
     {
-        $seq = (int) Setting::get('order_seq', 0) + 1;
-        Setting::set('order_seq', $seq);
+        // EPT-15: serialise the counter under a row lock so two concurrent
+        // createOrder() calls can never compute the same number. Own short
+        // transaction (callers aren't transactional); orders.number UNIQUE backstop.
+        $seq = DB::transaction(function () {
+            DB::table('settings')->insertOrIgnore(['key' => 'order_seq', 'value' => 0]);
+            $row = Setting::where('key', 'order_seq')->lockForUpdate()->first();
+            $seq = (int) $row->value + 1;
+            $row->update(['value' => $seq]);
+
+            return $seq;
+        });
 
         return sprintf('%s-%05d', Setting::get('order_prefix', 'SEPT-ORD'), $seq);
     }
@@ -62,17 +71,32 @@ class BillingService
     public static function nextFySeriesNumber(string $table, string $column, string $prefix): string
     {
         $fy = self::fyLabel();
-        $like = $prefix . '-' . $fy . '-%';
+        $seqKey = 'seq:' . $prefix . ':' . $fy;   // per-series, per-FY → resets 1 April
 
-        // Last 4 chars are the count. Max computed in PHP so the same code runs
-        // on MySQL (Laragon) and SQLite (tests) without dialect-specific casts.
-        $max = (int) DB::table($table)
-            ->where($column, 'like', $like)
-            ->pluck($column)
-            ->map(fn ($n) => (int) substr((string) $n, -4))
-            ->max();
+        // EPT-15: monotonic locked counter. Called from provisionIfNeeded() inside
+        // recordPayment's DB::transaction, so the row lock serialises concurrent
+        // settlements and two can never collide. Seeds once per FY from the live
+        // MAX, so a pre-counter table or a restored backup never re-issues a number
+        // already on a document; the counter only increases (deletions never
+        // duplicate); the UNIQUE index on the number column stays the backstop.
+        $next = DB::transaction(function () use ($seqKey, $table, $column, $prefix, $fy) {
+            $row = Setting::where('key', $seqKey)->lockForUpdate()->first();
 
-        return sprintf('%s-%s-%s-%04d', $prefix, $fy, now()->format('m'), $max + 1);
+            if (! $row) {
+                $like = $prefix . '-' . $fy . '-%';
+                $max = (int) DB::table($table)->where($column, 'like', $like)
+                    ->pluck($column)->map(fn ($n) => (int) substr((string) $n, -4))->max();
+                DB::table('settings')->insertOrIgnore(['key' => $seqKey, 'value' => $max]);
+                $row = Setting::where('key', $seqKey)->lockForUpdate()->first();
+            }
+
+            $next = (int) $row->value + 1;
+            $row->update(['value' => $next]);
+
+            return $next;
+        });
+
+        return sprintf('%s-%s-%s-%04d', $prefix, $fy, now()->format('m'), $next);
     }
 
     public function nextInvoiceNumber(): string
@@ -422,8 +446,21 @@ class BillingService
         ]);
 
         // 3. Coupon redemption — counted once, on the order that provisioned.
+        //    EPT-18: lock the coupon row and re-check the cap under the lock so a
+        //    max_uses code redeemed on two concurrent orders serialises here — the
+        //    second sees the cap met and does not double-count. Never throw: the
+        //    discount is already frozen into this order and the money captured.
         if (! empty($meta['coupon_code'])) {
-            \App\Models\Coupon::where('code', $meta['coupon_code'])->increment('used_count');
+            $coupon = \App\Models\Coupon::where('code', $meta['coupon_code'])->lockForUpdate()->first();
+            if ($coupon) {
+                if ($coupon->max_uses !== null && $coupon->used_count >= $coupon->max_uses) {
+                    AuditLog::write('coupon.overuse_blocked', $order, [
+                        'code' => $coupon->code, 'used_count' => $coupon->used_count, 'max_uses' => $coupon->max_uses,
+                    ]);
+                } else {
+                    $coupon->increment('used_count');
+                }
+            }
         }
 
         // 4. GST invoice — `paid` only if the ledger already covers the total,
