@@ -100,6 +100,23 @@ tr:hover td{background:var(--card2)}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--navy1);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;display:none;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.3)}
 .pager{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12.5px;color:var(--ink3)}
 @media(max-width:1100px){.stats{grid-template-columns:1fr 1fr}.modal .row{grid-template-columns:1fr}}
+/* ---- Mobile ---- */
+.ham{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--ink);font-size:19px;line-height:1;cursor:pointer;align-items:center;justify-content:center;flex:none}
+.nav-backdrop{display:none;position:fixed;inset:0;background:rgba(4,20,25,.5);z-index:30}
+@media(max-width:860px){
+  aside{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .26s ease;z-index:40;box-shadow:0 0 50px rgba(0,0,0,.5)}
+  body.nav-open aside{transform:translateX(0)}
+  body.nav-open .nav-backdrop{display:block}
+  main{max-width:100vw;padding:16px 14px}
+  .ham{display:inline-flex}
+  .topbar h1{font-size:18px}
+  .stats{grid-template-columns:1fr 1fr}
+  .filters{gap:8px}
+  .card{overflow-x:auto}
+  .card table{min-width:560px}
+  .modal{max-width:96vw}
+}
+@media(max-width:520px){.stats{grid-template-columns:1fr}}
 </style>
 </head>
 <body data-role="{{ $user->role }}">
@@ -136,8 +153,10 @@ tr:hover td{background:var(--card2)}
   </div>
 </aside>
 
+<div class="nav-backdrop" id="nav-backdrop" onclick="document.body.classList.remove('nav-open')"></div>
 <main>
   <div class="topbar">
+    <button class="ham" id="nav-toggle" aria-label="Menu" title="Menu" onclick="document.body.classList.toggle('nav-open')">☰</button>
     <h1 id="pageTitle">Dashboard</h1>
     <button class="help-btn" onclick="openHelp()" title="Screen help">i</button>
     <div class="sp"></div>
@@ -198,6 +217,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
   el.onclick = () => go(el.dataset.page);
 });
 function go(page) {
+  document.body.classList.remove('nav-open');
   PAGE = page;
   document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('on', e.dataset.page === page));
   document.getElementById('pageTitle').textContent = TITLES[page] || page;
