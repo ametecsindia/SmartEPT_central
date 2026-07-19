@@ -119,6 +119,11 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::get('settings', [Admin\ConfigApiController::class, 'settings']);
             Route::put('settings', [Admin\ConfigApiController::class, 'updateSettings']);
         Route::post('config/test-email', [Admin\ConfigApiController::class, 'testEmail']);
+        Route::get('wa-templates', [Admin\WaTemplateController::class, 'index']);
+        Route::post('wa-templates', [Admin\WaTemplateController::class, 'store']);
+        Route::put('wa-templates/{waTemplate}', [Admin\WaTemplateController::class, 'update']);
+        Route::delete('wa-templates/{waTemplate}', [Admin\WaTemplateController::class, 'destroy']);
+        Route::post('wa-templates/{waTemplate}/test', [Admin\WaTemplateController::class, 'test']);
         });
     });
 });

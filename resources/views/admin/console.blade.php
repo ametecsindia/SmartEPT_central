@@ -140,6 +140,7 @@ tr:hover td{background:var(--card2)}
     <div class="nav-item" data-page="coupons"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg></span> Coupons</div>
     <div class="nav-sec">System</div>
     <div class="nav-item" data-page="cms" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M7 13h6M7 16h10"/></svg></span> Landing CMS</div>
+    <div class="nav-item" data-page="watemplates" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.6-1.3A9 9 0 1 0 12 3z"/><path d="M8.6 9.4c.3 1.9 1.9 3.6 3.9 4.1"/></svg></span> WhatsApp Templates</div>
     <div class="nav-item" data-page="settings" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span> Settings</div>
     <div class="nav-item" data-page="audit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></span> Audit Log</div>
   </nav>
@@ -209,7 +210,7 @@ ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
 let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
 plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
-storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',settings:'Settings',audit:'Audit Log'};
+storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -240,6 +241,51 @@ const statusPill = s => ({quote:'p-info',active:'p-ok',trial:'p-info',paid:'p-ok
 const pill = s => `<span class="pill ${statusPill(s)}">${esc(s)}</span>`;
 
 let AUDIT_ACTION = '';
+let WA_PURPOSES = {};
+function waEdit(t) {
+  const p = t || {purpose:'welcome', name:'', language:'en', category:'utility', body:'', sample_values:'', var_count:0, status:'draft'};
+  const opts = Object.entries(WA_PURPOSES).map(([k,v]) => `<option value="${k}"${k===p.purpose?' selected':''}>${esc(v)}</option>`).join('');
+  const cats = ['utility','marketing','authentication'].map(c => `<option${c===(p.category||'utility')?' selected':''}>${c}</option>`).join('');
+  openModal(`<h2>${t?'Edit':'New'} WhatsApp template</h2>
+  <div class="sub">Use the EXACT template name approved in your Interakt dashboard.</div>
+  <div class="row">
+  <div><label>Purpose</label><select id="wa_purpose">${opts}</select></div>
+  <div><label>Template name (Interakt)</label><input id="wa_name" value="${esc(p.name)}" placeholder="smartept_welcome"></div>
+  <div><label>Language</label><input id="wa_lang" value="${esc(p.language||'en')}" placeholder="en"></div>
+  <div><label>Category</label><select id="wa_cat">${cats}</select></div></div>
+  <label>Body (reference — must match the approved template)</label>
+  <textarea id="wa_body" rows="3" placeholder="Hi {{1}}, thanks for your interest in SmartEPT…">${esc(p.body||'')}</textarea>
+  <label>Sample values (comma-separated — used for the test send; must match the {{n}} variables)</label>
+  <input id="wa_samples" value="${esc(p.sample_values||'')}" placeholder="Ejaz">
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="waSave(${t?t.id:0})">Save</button></div>`);
+}
+async function waSave(id) {
+  const samples = document.getElementById('wa_samples').value.trim();
+  const body = {
+    purpose: document.getElementById('wa_purpose').value,
+    name: document.getElementById('wa_name').value.trim(),
+    language: document.getElementById('wa_lang').value.trim() || 'en',
+    category: document.getElementById('wa_cat').value,
+    body: document.getElementById('wa_body').value,
+    sample_values: samples,
+    var_count: samples ? samples.split(',').filter(x => x.trim()).length : 0,
+  };
+  if (!body.name) { toast('Template name is required'); return; }
+  try { await api('wa-templates' + (id ? ('/' + id) : ''), {method: id ? 'PUT' : 'POST', body}); closeModal(); toast('Template saved'); go('watemplates'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function waTest(id) {
+  const mobile = prompt('Send a test of this template to which mobile number? (10-digit, +91 assumed)');
+  if (!mobile) return;
+  try { const r = await api('wa-templates/' + id + '/test', {method:'POST', body:{mobile}}); toast(r.message); go('watemplates'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function waDelete(id) {
+  if (!confirm('Remove this template from the registry? (It does not delete it from Interakt.)')) return;
+  try { await api('wa-templates/' + id, {method:'DELETE'}); toast('Deleted'); go('watemplates'); }
+  catch (e) { toast('Error: ' + e); }
+}
 const RENDER = {
 
 // ============ DASHBOARD ============
@@ -450,6 +496,26 @@ async settings() {
 },
 
 // ============ AUDIT ============
+  async watemplates() {
+    const d = await api('wa-templates');
+    WA_PURPOSES = d.purposes || {};
+    if (ROLE === 'super') ACTIONS.innerHTML = `<button class="btn btn-p" onclick="waEdit(null)">+ New template</button>`;
+    const cfg = d.configured
+      ? '<span class="pill p-ok">Interakt connected</span>'
+      : '<span class="pill p-warn">Interakt not configured</span> — add the API key in <b>Settings → WhatsApp API</b> first.';
+    const rows = (d.data || []).map(t => `<tr>
+      <td>${esc(WA_PURPOSES[t.purpose] || t.purpose)}</td>
+      <td><b>${esc(t.name)}</b><div class="mini">${esc(t.language||'en')} · ${esc(t.category||'utility')}${t.var_count?(' · '+t.var_count+' vars'):''}</div></td>
+      <td>${pill(t.status)}</td>
+      <td class="mini">${t.last_test_at ? new Date(t.last_test_at).toLocaleString() : '—'}${t.last_error?('<div style="color:var(--danger)">'+esc(t.last_error).slice(0,90)+'</div>'):''}</td>
+      <td class="row" style="flex-wrap:nowrap"><button class="link" onclick='waEdit(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Edit</button>
+      <button class="link" onclick="waTest(${t.id})">Send test</button>
+      <button class="link" style="color:var(--danger)" onclick="waDelete(${t.id})">Delete</button></td></tr>`).join('')
+      || '<tr><td colspan="5" class="mini">No templates yet. Create one per purpose (welcome, payment, renewal, lead, otp) using the EXACT name approved in Interakt, then Send test to mark it Approved.</td></tr>';
+    P.innerHTML = `<div class="card"><div class="mini" style="margin-bottom:10px">${cfg}</div>
+    <div class="mini" style="margin-bottom:12px">Interakt only <b>sends</b> templates that are <b>approved in the Interakt dashboard</b>. Register the same template here (exact name + sample values), then <b>Send test</b> — a successful test marks it Approved and the live flows (lead thank-you, welcome, payment, renewal, OTP) start using it automatically.</div>
+    <table><tr><th>Purpose</th><th>Template</th><th>Status</th><th>Last test</th><th></th></tr>${rows}</table></div>`;
+  },
 async audit() {
   const cur = AUDIT_ACTION || '';
   const d = await api('audit' + (cur ? ('?action=' + encodeURIComponent(cur)) : ''));

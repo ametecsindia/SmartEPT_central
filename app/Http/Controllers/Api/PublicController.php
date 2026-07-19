@@ -104,6 +104,17 @@ class PublicController extends Controller
             . MailService::signature()
         );
 
+        // Fire-and-forget WhatsApp thank-you to the lead — only sends when Interakt
+        // is configured AND a 'lead' template is approved; WaService never throws.
+        if ($lead->phone) {
+            \App\Services\WaService::sendTemplate([
+                'mobile' => $lead->phone,
+                'purpose' => 'lead',
+                'bodyValues' => [$lead->name],
+                'kind' => 'lead',
+            ]);
+        }
+
         return response()->json(['ok' => true, 'message' => 'Thank you! Our team will contact you shortly.'], 201);
     }
 
