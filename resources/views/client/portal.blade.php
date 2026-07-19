@@ -471,6 +471,19 @@ async function pgLicence() {
 
 // ---------- Buy & Renew ----------
 let BUY = {plan:'professional', devices:25, billing:'annual', deployment:'client_hosted', plans:[], coupon:''};
+let CALC_SEQ = 0; // guards against a slow older quote overwriting a newer selection
+const PERIOD_LABEL = { annual:'annual', half_yearly:'6-monthly', quarterly:'quarterly', monthly:'monthly' };
+// Per-device headline rate for the selected period (base formula: annual = published,
+// base = annual/0.75, quarterly = base, 6-monthly = base-10%). Volume tiers/cloud apply
+// in the summary below, which is the authoritative figure.
+function periodRate(p) {
+  const annual = Number(p.inr_annual), base = annual / 0.75;
+  const r = BUY.billing === 'annual' ? annual
+    : BUY.billing === 'half_yearly' ? base * 0.9
+    : BUY.billing === 'quarterly' ? base
+    : Number(p.inr_monthly);
+  return Math.round(r * 100) / 100;
+}
 
 async function pgBuy() {
   const el = document.getElementById('page');
@@ -525,18 +538,22 @@ function seg(e, id, cb) {
   cb(b.dataset.v);
 }
 function drawPlans() {
+  const per = PERIOD_LABEL[BUY.billing] || 'annual';
   document.getElementById('planGrid').innerHTML = BUY.plans.map(p => `
-    <div class="plan-card ${p.code === BUY.plan ? 'on' : ''}" onclick="BUY.plan='${esc(p.code)}';drawPlans();calcQuote()">
+    <div class="plan-card ${p.code === BUY.plan ? 'on' : ''}" onclick="BUY.plan='${esc(p.code)}';calcQuote()">
       <b>${esc(p.name)}${p.code === 'professional' ? ' ★' : ''}</b>
-      <div class="pr">₹${Number(p.inr_annual)}<small> /device/month · annual</small></div>
+      <div class="pr">₹${periodRate(p)}<small> /device/month · ${per}</small></div>
       <span class="mini">₹${Number(p.inr_monthly)} monthly · min ${p.min_devices} devices</span>
     </div>`).join('');
 }
 async function calcQuote() {
   const box = document.getElementById('quoteBox');
   if (!box) return;
+  const seq = ++CALC_SEQ;
+  drawPlans(); // reflect the selected plan + period on the cards immediately
   try {
     const q = await api('quote', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment, coupon_code:BUY.coupon || null}});
+    if (seq !== CALC_SEQ) return; // a newer selection superseded this response
     box.innerHTML = q.lines.map(l => `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('')
       + `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>`
       + `<div class="ln tt"><span>Total payable</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
@@ -544,7 +561,7 @@ async function calcQuote() {
     if (note) note.innerHTML = !BUY.coupon ? '' : (q.coupon?.ok
       ? '<span style="color:var(--ok);font-weight:700">✓ Coupon ' + esc(q.coupon.code) + ' applied — you save ' + fmtMoney(q.coupon.discount, q.currency) + '</span>'
       : '<span style="color:#D02748;font-weight:700">✗ Coupon not applied (' + esc(q.coupon?.reason || 'not valid') + ')</span>');
-  } catch (err) { box.innerHTML = '<span class="mini">' + esc(err.message) + '</span>'; }
+  } catch (err) { if (seq === CALC_SEQ) box.innerHTML = '<span class="mini">' + esc(err.message) + '</span>'; }
 }
 async function doBuy(asQuote) {
   try {
