@@ -22,6 +22,8 @@ class PublicController extends Controller
     public function plans()
     {
         $payload = Cache::remember('public_plans_v2', 300, function () {
+            $cfg = PricingService::config();
+
             return [
                 'plans' => Plan::with('volumeTiers')->where('active', true)->orderBy('sort')->get()
                     ->map(fn ($p) => [
@@ -32,22 +34,27 @@ class PublicController extends Controller
                         'usd_annual' => (float) $p->usd_annual,
                         'usd_monthly' => (float) $p->usd_monthly,
                         'min_devices' => (int) $p->min_devices,
+                        'storage_gb' => (int) $p->storage_gb,
                         'volume_tiers' => $p->volumeTiers->map(fn ($t) => [
                             'min' => (int) $t->min_devices,
                             'max' => $t->max_devices === null ? null : (int) $t->max_devices,
                             'rate' => (float) $t->rate_inr_annual,
                         ])->all(),
                     ])->all(),
-                'cloud_multiplier' => PricingService::CLOUD_MULTIPLIER,
+                'cloud_multiplier' => $cfg['cloud_multiplier'],
+                'cycles' => [
+                    'annual_discount' => $cfg['annual_discount'],
+                    'half_yearly_discount' => $cfg['half_yearly_discount'],
+                ],
                 'setup' => [
-                    'base' => PricingService::SETUP_FEE_BASE_INR,
-                    'included' => PricingService::SETUP_FEE_INCLUDED_DEVICES,
-                    'per_extra' => PricingService::SETUP_FEE_PER_EXTRA_DEVICE_INR,
+                    'base' => $cfg['setup_base'],
+                    'included' => $cfg['setup_included'],
+                    'per_extra' => $cfg['setup_per_extra'],
                 ],
                 'storage' => [
-                    'slabs' => PricingService::STORAGE_SLABS,
-                    'min_gb' => PricingService::STORAGE_MIN_GB,
-                    'min_inr' => 150,
+                    'slabs' => $cfg['storage_slabs'],
+                    'min_gb' => $cfg['storage_min_gb'],
+                    'min_inr' => $cfg['storage_min_inr'],
                 ],
                 'gst_rate' => (float) Setting::get('gst_rate', 18),
                 'trial' => ['days' => 7, 'devices' => 10, 'plan' => 'professional'],

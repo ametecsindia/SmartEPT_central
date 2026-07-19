@@ -361,7 +361,7 @@ class BillingApiController extends Controller
         $tenants = Tenant::where('deployment', 'cloud')->get()->map(function ($t) use ($start, $end) {
             $avg = (float) StorageUsage::where('tenant_id', $t->id)
                 ->whereBetween('date', [$start, $end])->avg('gb_used');
-            $billableGb = $avg > 0 ? (int) ceil(max($avg, PricingService::STORAGE_MIN_GB)) : 0;
+            $billableGb = $avg > 0 ? (int) ceil(max($avg, PricingService::config()['storage_min_gb'])) : 0;
 
             return [
                 'tenant_id' => $t->id,

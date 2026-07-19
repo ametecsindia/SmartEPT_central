@@ -34,6 +34,68 @@ class PricingService
     public const ECOSYSTEM_RATE_INR = 39;
     public const ECOSYSTEM_MIN_DEVICES = 25;
 
+    /** In-process memo of the DB-configurable pricing knobs. */
+    protected static ?array $cfg = null;
+
+    /**
+     * The admin-editable commercial knobs (Central -> Settings -> Pricing & Cloud).
+     * Every value falls back to the constant above when its Setting is unset, so
+     * the money path never breaks on a fresh install. Memoised per request.
+     */
+    public static function config(): array
+    {
+        if (self::$cfg !== null) {
+            return self::$cfg;
+        }
+
+        $r = \App\Models\Setting::whereIn('key', [
+            'pricing_annual_discount_pct', 'pricing_half_yearly_discount_pct', 'pricing_cloud_multiplier',
+            'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr',
+            'pricing_storage_min_gb', 'pricing_storage_min_inr', 'pricing_storage_slabs',
+        ])->pluck('value', 'key');
+
+        $slabs = self::STORAGE_SLABS;
+        if (! empty($r['pricing_storage_slabs'])) {
+            $decoded = json_decode($r['pricing_storage_slabs'], true);
+            if (is_array($decoded) && $decoded) {
+                $clean = [];
+                foreach ($decoded as $row) {
+                    if (! is_array($row) || count($row) < 3) {
+                        continue;
+                    }
+                    $clean[] = [(int) $row[0], ($row[1] === null || $row[1] === '') ? null : (int) $row[1], (float) $row[2]];
+                }
+                if ($clean) {
+                    $slabs = $clean;
+                }
+            }
+        }
+
+        $num = fn ($key, $def) => (isset($r[$key]) && $r[$key] !== '') ? (float) $r[$key] : $def;
+
+        return self::$cfg = [
+            'annual_discount'      => max(0.0, min(0.9, $num('pricing_annual_discount_pct', 25) / 100)),
+            'half_yearly_discount' => max(0.0, min(0.9, $num('pricing_half_yearly_discount_pct', 10) / 100)),
+            'cloud_multiplier'     => max(1.0, $num('pricing_cloud_multiplier', self::CLOUD_MULTIPLIER)),
+            'setup_base'           => (int) $num('pricing_setup_base_inr', self::SETUP_FEE_BASE_INR),
+            'setup_included'       => (int) $num('pricing_setup_included_devices', self::SETUP_FEE_INCLUDED_DEVICES),
+            'setup_per_extra'      => (int) $num('pricing_setup_per_extra_inr', self::SETUP_FEE_PER_EXTRA_DEVICE_INR),
+            'storage_min_gb'       => (int) $num('pricing_storage_min_gb', self::STORAGE_MIN_GB),
+            'storage_min_inr'      => $num('pricing_storage_min_inr', 150),
+            'storage_slabs'        => $slabs,
+        ];
+    }
+
+    /** "covers N devices[, +X x Rupee Y]" descriptor for setup lines (config-aware). */
+    public function setupCoverLabel(int $devices): string
+    {
+        $cfg = self::config();
+        $extra = max(0, $devices - $cfg['setup_included']);
+
+        return sprintf('covers %d devices%s', $cfg['setup_included'],
+            $extra > 0 ? ', +' . $extra . ' × ₹' . $cfg['setup_per_extra'] : '');
+    }
+
     /**
      * Per-device per-month licence rate.
      * Nullable params on purpose: a freshly-created Tenant model may not have
@@ -62,15 +124,20 @@ class PricingService
         // Ejaz's advance-period rule (locked 16-Jul): base monthly = annual / 0.75.
         // Quarterly pays base (0% off), half-yearly 10% off base, annual 25% off base
         // (which lands exactly on the published annual rate).
+        // Ejaz's advance-period rule (locked 16-Jul), now admin-configurable:
+        // base monthly = annual / (1 - annual_discount); quarterly pays base,
+        // half-yearly takes half_yearly_discount off base, annual is the published rate.
+        $cfg = self::config();
+        $annualBase = $annual / max(0.1, 1 - $cfg['annual_discount']);
         $rate = match ($billing) {
             'annual' => $annual,
-            'half_yearly' => round($annual / 0.75 * 0.90, 2),
-            'quarterly' => round($annual / 0.75, 2),
+            'half_yearly' => round($annualBase * (1 - $cfg['half_yearly_discount']), 2),
+            'quarterly' => round($annualBase, 2),
             default => (float) $plan->inr_monthly, // legacy monthly
         };
 
         if ($deployment === 'cloud') {
-            $rate = round($rate * self::CLOUD_MULTIPLIER);
+            $rate = round($rate * $cfg['cloud_multiplier']);
         }
 
         // Existing-customer discount (locked 19-Jul): flat 10% off for SmartDCM /
@@ -96,8 +163,7 @@ class PricingService
         $fee = $this->setupFee($devices);
         $lines = [[
             'type' => 'setup_fee',
-            'description' => sprintf('Installation & Onboarding service (covers 25 devices%s)',
-                $devices > 25 ? ', +' . ($devices - 25) . ' × ₹100' : ''),
+            'description' => 'Installation & Onboarding service (' . $this->setupCoverLabel($devices) . ')',
             'qty' => 1,
             'unit' => $fee,
             'amount' => (float) $fee,
@@ -107,9 +173,10 @@ class PricingService
 
     public function setupFee(int $devices): int
     {
-        $extra = max(0, $devices - self::SETUP_FEE_INCLUDED_DEVICES);
+        $cfg = self::config();
+        $extra = max(0, $devices - $cfg['setup_included']);
 
-        return self::SETUP_FEE_BASE_INR + $extra * self::SETUP_FEE_PER_EXTRA_DEVICE_INR;
+        return $cfg['setup_base'] + $extra * $cfg['setup_per_extra'];
     }
 
     /**
@@ -117,10 +184,11 @@ class PricingService
      */
     public function storageMonthly(float $gb): float
     {
-        $billableGb = (int) ceil(max($gb, self::STORAGE_MIN_GB));
+        $cfg = self::config();
+        $billableGb = (int) ceil(max($gb, $cfg['storage_min_gb']));
         $cost = 0.0;
 
-        foreach (self::STORAGE_SLABS as [$from, $to, $rate]) {
+        foreach ($cfg['storage_slabs'] as [$from, $to, $rate]) {
             if ($billableGb < $from) {
                 break;
             }
@@ -128,7 +196,7 @@ class PricingService
             $cost += ($upper - $from + 1) * $rate;
         }
 
-        return max($cost, 150.0); // ₹150/month minimum storage commitment
+        return max($cost, (float) $cfg['storage_min_inr']); // minimum monthly storage commitment
     }
 
     /**
@@ -157,8 +225,7 @@ class PricingService
             $fee = $this->setupFee($devices);
             $lines[] = [
                 'type' => 'setup_fee',
-                'description' => sprintf('One-time Setup & Onboarding (covers 25 devices%s)',
-                    $devices > 25 ? ', +' . ($devices - 25) . ' × ₹100' : ''),
+                'description' => 'One-time Setup & Onboarding (' . $this->setupCoverLabel($devices) . ')',
                 'qty' => 1,
                 'unit' => $fee,
                 'amount' => (float) $fee,

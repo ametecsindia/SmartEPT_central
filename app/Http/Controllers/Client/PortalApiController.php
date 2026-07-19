@@ -158,7 +158,7 @@ class PortalApiController extends Controller
             'is_cloud' => $tenant->deployment === 'cloud',
             'rows' => $rows,
             'avg_gb' => round($avg, 2),
-            'billable_gb' => $avg > 0 ? (int) ceil(max($avg, PricingService::STORAGE_MIN_GB)) : 0,
+            'billable_gb' => $avg > 0 ? (int) ceil(max($avg, PricingService::config()['storage_min_gb'])) : 0,
             'monthly_charge' => $avg > 0 ? round($this->pricing->storageMonthly($avg), 2) : 0,
         ]);
     }
