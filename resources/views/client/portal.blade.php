@@ -143,6 +143,9 @@ tr:hover td{background:var(--card2)}
     <div class="nav-item" data-page="account">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
       My Account</div>
+    <div class="nav-item" data-page="support">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-3.3A8.4 8.4 0 1 1 21 11.5z"/></svg>
+      Support</div>
   </nav>
   <div class="side-foot">
     <div class="me">
@@ -244,12 +247,43 @@ document.getElementById('nav').addEventListener('click', e => {
 });
 
 const TITLES = {overview:'Overview', licence:'Licence & Devices', install:'Install & Downloads', buy:'Buy & Renew',
-  billing:'Orders & Invoices', storage:'Cloud Storage', account:'My Account'};
+  billing:'Orders & Invoices', storage:'Cloud Storage', account:'My Account', support:'Support'};
 
 function render() {
   document.getElementById('pageTitle').textContent = TITLES[PAGE];
   document.getElementById('pageActions').innerHTML = '';
-  ({overview:pgOverview, licence:pgLicence, install:pgInstall, buy:pgBuy, billing:pgBilling, storage:pgStorage, account:pgAccount})[PAGE]();
+  ({overview:pgOverview, licence:pgLicence, install:pgInstall, buy:pgBuy, billing:pgBilling, storage:pgStorage, account:pgAccount, support:pgSupport})[PAGE]();
+}
+
+// ---------- Support ----------
+async function pgSupport() {
+  const el = document.getElementById('page');
+  el.innerHTML = '<p class="mini">Loading…</p>';
+  let d = { data: [] };
+  try { d = await api('tickets'); } catch (e) {}
+  const cats = ['general', 'billing', 'technical'].map(c => `<option value="${c}">${c}</option>`).join('');
+  const SP = { open:'p-warn', in_progress:'p-info', resolved:'p-ok', closed:'p-mut' };
+  const rows = (d.data || []).map(t => `<div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center"><b>${esc(t.subject)}</b><span class="pill ${SP[t.status] || 'p-mut'}">${esc(String(t.status).replace('_', ' '))}</span></div>
+    <div class="mini" style="white-space:pre-wrap;margin-top:6px">${esc(t.message)}</div>
+    ${t.admin_reply ? `<div style="margin-top:10px;padding:10px 12px;background:#E3F4F7;border-radius:8px;font-size:12.5px;color:#0B4A56"><b>Ametecs replied:</b><br>${esc(t.admin_reply)}</div>` : '<div class="mini" style="margin-top:8px">Awaiting a reply from Ametecs.</div>'}
+    <div class="mini" style="margin-top:6px">Raised ${esc(t.created_at || '')}${t.category ? ' · ' + esc(t.category) : ''}</div></div>`).join('');
+  el.innerHTML = `<div class="card"><h3>Raise a support ticket</h3>
+    <label>Subject</label><input id="tk-subj" placeholder="Short summary of the issue">
+    <label>Category</label><select id="tk-cat">${cats}</select>
+    <label>Describe your issue</label><textarea id="tk-msg" rows="4" placeholder="What's happening? Include any error message you saw."></textarea>
+    <div class="row" style="margin-top:12px;align-items:center;gap:10px"><button class="btn btn-p" onclick="submitTicket()">Send ticket</button>
+    <span class="mini">We reply by email and here. Urgent? WhatsApp <a class="link" href="https://wa.me/919000098877" target="_blank">90000 98877</a>.</span></div></div>
+    <h3 style="margin:18px 0 10px">Your tickets</h3>
+    ${rows || '<div class="card"><p class="mini">No tickets yet — raise one above.</p></div>'}`;
+}
+async function submitTicket() {
+  const subject = document.getElementById('tk-subj').value.trim();
+  const message = document.getElementById('tk-msg').value.trim();
+  const category = document.getElementById('tk-cat').value;
+  if (!subject || !message) { toast('Please add a subject and a description'); return; }
+  try { await api('tickets', { method: 'POST', body: { subject, message, category } }); toast('Ticket sent — we will be in touch'); pgSupport(); }
+  catch (e) { toast('Error: ' + e); }
 }
 
 function statusPill(s) {

@@ -49,6 +49,8 @@ Route::middleware('client.auth')->prefix('client')->group(function () {
         Route::get('account/billing', [Client\PortalApiController::class, 'billingProfile']);
         Route::put('account/billing', [Client\PortalApiController::class, 'updateBillingProfile']);
         Route::post('account/password', [Client\PortalApiController::class, 'changePassword']);
+        Route::get('tickets', [Client\PortalApiController::class, 'tickets']);
+        Route::post('tickets', [Client\PortalApiController::class, 'createTicket']);
     });
 });
 
@@ -89,10 +91,12 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
         Route::get('audit', [Admin\ConfigApiController::class, 'audit']);
         Route::get('leads', [Admin\LeadApiController::class, 'index']);       // R3-7
         Route::get('coupons', [Admin\CouponApiController::class, 'index']);   // R3-7
+        Route::get('tickets', [Admin\SupportTicketController::class, 'index']); // support desk
         Route::post('quote', [Admin\BillingApiController::class, 'quote']);
 
         // Write endpoints — super + sales
         Route::middleware('admin.role:super,sales')->group(function () {
+            Route::put('tickets/{ticket}', [Admin\SupportTicketController::class, 'update']);
             // Accountant CSV exports (GET downloads).
             Route::get('reports/gst-register', [Admin\ReportExportController::class, 'gstRegister']);
             Route::get('reports/collections', [Admin\ReportExportController::class, 'collections']);

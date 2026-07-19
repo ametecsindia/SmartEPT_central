@@ -433,4 +433,60 @@ class PortalApiController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    // ---------- Support tickets ----------
+
+    public function tickets()
+    {
+        $rows = \App\Models\SupportTicket::where('tenant_id', $this->tenant()->id)
+            ->latest('id')->limit(100)->get()
+            ->map(fn ($t) => [
+                'id'          => $t->id,
+                'subject'     => $t->subject,
+                'message'     => $t->message,
+                'category'    => $t->category,
+                'status'      => $t->status,
+                'admin_reply' => $t->admin_reply,
+                'created_at'  => optional($t->created_at)->toDateTimeString(),
+                'replied_at'  => optional($t->replied_at)->toDateTimeString(),
+            ]);
+
+        return response()->json(['data' => $rows]);
+    }
+
+    public function createTicket(Request $request)
+    {
+        $data = $request->validate([
+            'subject'  => ['required', 'string', 'max:160'],
+            'message'  => ['required', 'string', 'max:4000'],
+            'category' => ['nullable', 'in:general,billing,technical'],
+        ]);
+
+        $user = auth('client')->user();
+        $tenant = $this->tenant();
+
+        $ticket = \App\Models\SupportTicket::create([
+            'tenant_id'       => $tenant->id,
+            'subject'         => $data['subject'],
+            'message'         => $data['message'],
+            'category'        => $data['category'] ?? 'general',
+            'status'          => 'open',
+            'raised_by_name'  => $user->name,
+            'raised_by_email' => $user->email,
+        ]);
+
+        // Notify the Ametecs support inbox (fail-soft — never block the client).
+        try {
+            $to = Setting::get('sales_email', 'sales@ametecsindia.com');
+            app(MailService::class)->send(
+                $to,
+                'New support ticket #' . $ticket->id . ' — ' . $tenant->company_name,
+                "Client: {$tenant->company_name}\nFrom: {$user->name} <{$user->email}>\nCategory: {$ticket->category}\n\nSubject: {$ticket->subject}\n\n{$ticket->message}" . MailService::signature()
+            );
+        } catch (\Throwable $e) {
+            // ignore mail failures
+        }
+
+        return response()->json(['data' => ['id' => $ticket->id]], 201);
+    }
 }

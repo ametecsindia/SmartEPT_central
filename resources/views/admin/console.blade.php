@@ -136,6 +136,7 @@ tr:hover td{background:var(--card2)}
     <div class="nav-item" data-page="tenants"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="8.2" r="3.4"/><path d="M2.8 20.2a6.2 6.2 0 0 1 12.4 0"/><circle cx="17.2" cy="9.4" r="2.6"/><path d="M16 15.6a5 5 0 0 1 5.2 4.6"/></svg></span> Clients / Tenants</div>
     <div class="nav-item" data-page="trials"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 1.9"/></svg></span> Trials</div>
     <div class="nav-item" data-page="leads"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg></span> Leads</div>
+    <div class="nav-item" data-page="support"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-3.3A8.4 8.4 0 1 1 21 11.5z"/><path d="M9 10h.01M12.5 10h.01M16 10h.01"/></svg></span> Support</div>
     <div class="nav-sec">Licensing</div>
     <div class="nav-item" data-page="licences"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="8" cy="12" r="4.6"/><path d="M12.6 12H21M17.5 12v3.4M21 12v2.4"/></svg></span> Licences</div>
     <div class="nav-item" data-page="plans"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M3 7h18M3 12h18M3 17h12"/></svg></span> Plans &amp; Pricing</div>
@@ -222,7 +223,7 @@ let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
 plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
 storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log',
-help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports'};
+help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports',support:'Support'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -604,6 +605,26 @@ function dlReport(kind) {
   window.open(url, '_blank');
 }
 
+// ---- Support desk ----
+let TK_ROWS = {};
+const TK_PILL = { open: 'p-warn', in_progress: 'p-info', resolved: 'p-ok', closed: 'p-mut' };
+function tkOpen(id) {
+  const t = TK_ROWS[id]; if (!t) return;
+  const opts = ['open', 'in_progress', 'resolved', 'closed'].map(s => '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s.replace('_', ' ') + '</option>').join('');
+  openModal('<h2>Ticket #' + t.id + ' — ' + esc(t.subject) + '</h2>'
+    + '<div class="sub">' + esc(t.tenant || '') + ' · ' + esc(t.raised_by || '') + ' &lt;' + esc(t.raised_email || '') + '&gt; · ' + esc(t.category || '') + '</div>'
+    + '<div class="mini" style="white-space:pre-wrap;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:10px 0">' + esc(t.message) + '</div>'
+    + '<label>Reply to the client <span class="mini">(emails them)</span></label><textarea id="tk-reply" rows="4" placeholder="Type your reply…">' + esc(t.admin_reply || '') + '</textarea>'
+    + '<label>Status</label><select id="tk-status">' + opts + '</select>'
+    + '<div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>'
+    + '<button class="btn btn-p" onclick="tkSave(' + t.id + ')">Save &amp; send</button></div>', true);
+}
+async function tkSave(id) {
+  const body = { status: document.getElementById('tk-status').value, reply: document.getElementById('tk-reply').value };
+  try { await api('tickets/' + id, { method: 'PUT', body }); closeModal(); toast('Ticket updated'); go('support'); }
+  catch (e) { toast('Error: ' + e); }
+}
+
 const RENDER = {
 
 // ============ DOWNLOADS ============
@@ -686,6 +707,25 @@ async reports() {
     + '<div class="card"><h3>Collections</h3><p class="mini">Every payment &amp; refund received in the range — client, order, method, reference, amount.</p><button class="btn btn-p" onclick="dlReport(\'collections\')">Download CSV &rarr;</button></div>'
     + '<div class="card"><h3>Outstanding</h3><p class="mini">Live credit balances — order total, received, balance, due date, overdue flag.</p><button class="btn btn-p" onclick="dlReport(\'outstanding\')">Download CSV &rarr;</button></div>'
     + '</div>';
+},
+
+// ============ SUPPORT DESK ============
+async support() {
+  ACTIONS.innerHTML = '';
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('tickets');
+  TK_ROWS = {}; (d.data || []).forEach(t => { TK_ROWS[t.id] = t; });
+  const c = d.counts || {};
+  const chip = (s, l) => '<span class="pill ' + (TK_PILL[s] || 'p-mut') + '">' + (l || s) + ' ' + (c[s] || 0) + '</span>';
+  const rows = (d.data || []).map(t => '<tr onclick="tkOpen(' + t.id + ')" style="cursor:pointer">'
+    + '<td class="mini">' + esc(t.created_at || '') + '</td>'
+    + '<td><b>' + esc(t.tenant || '—') + '</b><div class="mini">' + esc(t.raised_by || '') + '</div></td>'
+    + '<td>' + esc(t.subject) + '<div class="mini">' + esc(t.category || '') + '</div></td>'
+    + '<td><span class="pill ' + (TK_PILL[t.status] || 'p-mut') + '">' + esc(String(t.status).replace('_', ' ')) + '</span></td>'
+    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at)) : '') + '</td></tr>').join('');
+  P.innerHTML = '<div class="card"><h3>Support tickets <span class="mini">' + chip('open', 'open') + ' · ' + chip('in_progress', 'in progress') + ' · ' + chip('resolved', 'resolved') + ' · ' + chip('closed', 'closed') + '</span></h3>'
+    + '<table><tr><th>Raised</th><th>Client</th><th>Subject</th><th>Status</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No tickets yet.</td></tr>') + '</table></div>';
 },
 
 // ============ HELP & TROUBLESHOOTING ============
