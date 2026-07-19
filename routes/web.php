@@ -93,6 +93,11 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
 
         // Write endpoints — super + sales
         Route::middleware('admin.role:super,sales')->group(function () {
+            // Accountant CSV exports (GET downloads).
+            Route::get('reports/gst-register', [Admin\ReportExportController::class, 'gstRegister']);
+            Route::get('reports/collections', [Admin\ReportExportController::class, 'collections']);
+            Route::get('reports/outstanding', [Admin\ReportExportController::class, 'outstanding']);
+
             Route::post('tenants', [Admin\TenantApiController::class, 'store']);
             Route::put('tenants/{tenant}', [Admin\TenantApiController::class, 'update']);
             Route::post('licences', [Admin\LicenceApiController::class, 'store']);

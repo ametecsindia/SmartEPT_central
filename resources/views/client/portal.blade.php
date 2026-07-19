@@ -10,11 +10,11 @@
 <title>{{ $user->tenant->company_name }} — SmartEPT Client Portal</title>
 <style>
 :root{--accent:#0E7C8F;--accent2:#22B8CF;--weak:#E3F4F7;--deep:#0B6373;--ink:#15171C;--ink2:#565A66;
---ink3:#878C99;--canvas:#F4F6F9;--card:#fff;--card2:#FAFBFC;--border:#E7E9EF;--border2:#DCDFE7;
+--ink3:#878C99;--canvas:#F1EFEA;--card:#fff;--card2:#FAF9F5;--border:#E5E1D8;--border2:#DAD6CC;
 --hair:#F0F1F4;--ok:#08875D;--ok-w:#E6F5EE;--warn:#B7791F;--warn-w:#FBF3E2;--danger:#D02748;
 --danger-w:#FBE9ED;--info:#0B72C9;--info-w:#E6F1FB;--navy1:#04252C;--navy2:#0B4A56}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter','Segoe UI',sans-serif;background:var(--canvas);color:var(--ink);font-size:14px;display:flex;min-height:100vh}
+body{font-family:'Inter','Segoe UI',sans-serif;background-color:var(--canvas);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.35'/%3E%3C/svg%3E"),radial-gradient(900px 320px at 85% -80px, rgba(34,184,207,.09), transparent 60%);background-blend-mode:soft-light,normal;background-attachment:fixed,fixed;color:var(--ink);font-size:14px;display:flex;min-height:100vh}
 button{font-family:inherit;cursor:pointer}
 input,select{font-family:inherit;font-size:13.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;width:100%;background:#fff;color:var(--ink)}
 input:focus,select:focus{outline:none;border-color:var(--accent)}

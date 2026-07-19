@@ -145,6 +145,7 @@ tr:hover td{background:var(--card2)}
     <div class="nav-item" data-page="invoices"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M6 2.5h9l4 4V21a.9.9 0 0 1-.9.9H6a.9.9 0 0 1-.9-.9V3.4a.9.9 0 0 1 .9-.9z"/><path d="M15 2.5V7h4.5M9 12h6M9 16h6"/></svg></span> Invoices</div>
     <div class="nav-item" data-page="storage"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span> Cloud Storage</div>
     <div class="nav-item" data-page="coupons"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg></span> Coupons</div>
+    <div class="nav-item" data-page="reports"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M6 2.5h9l4 4V21a.9.9 0 0 1-.9.9H6a.9.9 0 0 1-.9-.9V3.4a.9.9 0 0 1 .9-.9z"/><path d="M9 13h6M9 17h4M9 9h2"/></svg></span> Accountant Reports</div>
     <div class="nav-sec">System</div>
     <div class="nav-item" data-page="cms" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M7 13h6M7 16h10"/></svg></span> Landing CMS</div>
     <div class="nav-item" data-page="watemplates" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.6-1.3A9 9 0 1 0 12 3z"/><path d="M8.6 9.4c.3 1.9 1.9 3.6 3.9 4.1"/></svg></span> WhatsApp Templates</div>
@@ -167,6 +168,7 @@ tr:hover td{background:var(--card2)}
   <div class="topbar">
     <button class="ham" id="nav-toggle" aria-label="Menu" title="Menu" onclick="document.body.classList.toggle('nav-open')">☰</button>
     <h1 id="pageTitle">Dashboard</h1>
+    <button class="help-btn" onclick="go(PAGE)" title="Refresh this screen">&#x21bb;</button>
     <button class="help-btn" onclick="openHelp()" title="Screen help">i</button>
     <div class="sp"></div>
     <div id="pageActions"></div>
@@ -220,7 +222,7 @@ let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
 plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
 storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log',
-help:'Help & Troubleshooting',downloads:'Downloads'};
+help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -593,6 +595,15 @@ async function dlSaveLimits() {
   catch (e) { toast('Error: ' + e); }
 }
 
+// ---- Accountant CSV report downloads (session-authenticated GET links) ----
+function dlReport(kind) {
+  const f = (document.getElementById('rep-from') || {}).value || '';
+  const t = (document.getElementById('rep-to') || {}).value || '';
+  let url = '/admin/api/reports/' + kind;
+  if (kind !== 'outstanding') url += '?from=' + encodeURIComponent(f) + '&to=' + encodeURIComponent(t);
+  window.open(url, '_blank');
+}
+
 const RENDER = {
 
 // ============ DOWNLOADS ============
@@ -657,6 +668,24 @@ async downloads() {
     + (logRows || '<tr><td colspan="4" class="mini">No downloads yet.</td></tr>') + '</table></div>';
 
   P.innerHTML = catalogueCard + limitsCard + statsCard + logCard;
+},
+
+// ============ ACCOUNTANT REPORTS ============
+async reports() {
+  const d = new Date();
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const iso = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  P.innerHTML = '<div class="card"><h3>Accountant reports <span class="mini">download as CSV for Tally / Excel / your CA</span></h3>'
+    + '<div class="row" style="align-items:flex-end;gap:14px">'
+    + '<div><label>From</label><input type="date" id="rep-from" value="' + iso(first) + '" style="width:auto"></div>'
+    + '<div><label>To</label><input type="date" id="rep-to" value="' + iso(d) + '" style="width:auto"></div>'
+    + '</div>'
+    + '<div class="mini" style="margin-top:6px">Dates apply to the GST register &amp; Collections. Outstanding is always the current live balance.</div></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">'
+    + '<div class="card"><h3>GST register</h3><p class="mini">One row per invoice — taxable value, CGST/SGST/IGST, buyer GSTIN, place of supply, SAC. GSTR-1 style.</p><button class="btn btn-p" onclick="dlReport(\'gst-register\')">Download CSV &rarr;</button></div>'
+    + '<div class="card"><h3>Collections</h3><p class="mini">Every payment &amp; refund received in the range — client, order, method, reference, amount.</p><button class="btn btn-p" onclick="dlReport(\'collections\')">Download CSV &rarr;</button></div>'
+    + '<div class="card"><h3>Outstanding</h3><p class="mini">Live credit balances — order total, received, balance, due date, overdue flag.</p><button class="btn btn-p" onclick="dlReport(\'outstanding\')">Download CSV &rarr;</button></div>'
+    + '</div>';
 },
 
 // ============ HELP & TROUBLESHOOTING ============
