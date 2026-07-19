@@ -138,10 +138,13 @@ class ConfigApiController extends Controller
         ]);
     }
 
-    public function audit()
+    public function audit(Request $request)
     {
-        return response()->json(
-            \App\Models\AuditLog::with('adminUser:id,name')->latest()->paginate(50)
-        );
+        $q = \App\Models\AuditLog::with('adminUser:id,name')->latest();
+        if ($request->filled('action')) {
+            $q->where('action', $request->query('action'));
+        }
+
+        return response()->json($q->paginate(50));
     }
 }

@@ -219,6 +219,7 @@ const statusPill = s => ({quote:'p-info',active:'p-ok',trial:'p-info',paid:'p-ok
   cancelled:'p-mut',draft:'p-mut'}[s] || 'p-mut');
 const pill = s => `<span class="pill ${statusPill(s)}">${esc(s)}</span>`;
 
+let AUDIT_ACTION = '';
 const RENDER = {
 
 // ============ DASHBOARD ============
@@ -430,12 +431,29 @@ async settings() {
 
 // ============ AUDIT ============
 async audit() {
-  const d = await api('audit');
-  P.innerHTML = `<div class="card"><table><tr><th>When</th><th>Who</th><th>Action</th><th>Subject</th><th>Details</th></tr>
-  ${d.data.map(a => `<tr><td class="mini">${new Date(a.created_at).toLocaleString()}</td>
+  const cur = AUDIT_ACTION || '';
+  const d = await api('audit' + (cur ? ('?action=' + encodeURIComponent(cur)) : ''));
+  const base = (t) => t ? t.split(String.fromCharCode(92)).pop() : '';
+  const subj = (a) => a.subject_type ? (esc(base(a.subject_type)) + ' #' + (a.subject_id || '')) : '—';
+  const det = (a) => {
+    const m = a.meta;
+    if (!m || (typeof m === 'object' && !Object.keys(m).length)) return '—';
+    if (typeof m !== 'object') return esc(String(m));
+    return esc(Object.entries(m).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : (v && typeof v === 'object' ? JSON.stringify(v) : v))).join('  ·  ')).slice(0, 140) || '—';
+  };
+  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
+  const opts = ACTS.map((a) => '<option value="' + a + '"' + (a === cur ? ' selected' : '') + '>' + (a || 'All actions') + '</option>').join('');
+  P.innerHTML = `<div class="card">
+  <div class="row" style="margin-bottom:12px;align-items:flex-end">
+    <div><label>Filter action</label><select id="aud-act" onchange="AUDIT_ACTION=this.value;go('audit')">${opts}</select></div>
+    <button class="btn" onclick="go('audit')">Refresh</button>
+    <span class="mini" style="margin-left:auto">${(d.total ?? d.data.length)} entries${cur ? ' · filtered' : ''}</span>
+  </div>
+  <table><tr><th>When</th><th>Who</th><th>Action</th><th>Subject</th><th>Details</th></tr>
+  ${d.data.map((a) => `<tr><td class="mini">${new Date(a.created_at).toLocaleString()}</td>
   <td>${esc(a.admin_user?.name || 'system')}</td><td><b>${esc(a.action)}</b></td>
-  <td class="mini">${esc((a.subject_type||'').split('\\\\').pop())} #${a.subject_id||''}</td>
-  <td class="mini">${esc(JSON.stringify(a.meta||{}).slice(0,80))}</td></tr>`).join('')}</table></div>`;
+  <td class="mini">${subj(a)}</td>
+  <td class="mini">${det(a)}</td></tr>`).join('') || '<tr><td colspan="5" class="mini">No matching audit entries.</td></tr>'}</table></div>`;
 },
 };
 

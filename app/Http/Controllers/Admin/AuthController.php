@@ -27,14 +27,14 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
         auth('admin')->user()->update(['last_login_at' => now()]);
-        AuditLog::write('admin.login');
+        AuditLog::write('admin.login', null, ['ip' => $request->ip()]);
 
         return redirect('/admin');
     }
 
     public function logout(Request $request)
     {
-        AuditLog::write('admin.logout');
+        AuditLog::write('admin.logout', null, ['ip' => $request->ip()]);
         Auth::guard('admin')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
