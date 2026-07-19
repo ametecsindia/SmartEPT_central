@@ -446,7 +446,7 @@ function tenantForm(t = {}) {
   <div><label>GST state code (place of supply)</label><input id="f_state" maxlength="2" placeholder="36 = Telangana" value="${esc(t.state_code||'')}"></div>
   <div><label>Currency</label><select id="f_currency"><option ${t.currency==='INR'?'selected':''}>INR</option><option ${t.currency==='USD'?'selected':''}>USD</option></select></div>
   <div><label>Deployment</label><select id="f_deploy"><option value="client_hosted" ${t.deployment!=='cloud'?'selected':''}>Client-Hosted</option><option value="cloud" ${t.deployment==='cloud'?'selected':''}>SmartEPT Cloud</option></select></div>
-  <div><label>Ecosystem customer (SmartDCM/PRS)</label><select id="f_eco"><option value="0" ${!t.ecosystem_customer?'selected':''}>No</option><option value="1" ${t.ecosystem_customer?'selected':''}>Yes — ₹39 intro eligible</option></select></div>
+  <div><label>Ecosystem customer (SmartDCM/PRS)</label><select id="f_eco"><option value="0" ${!t.ecosystem_customer?'selected':''}>No</option><option value="1" ${t.ecosystem_customer?'selected':''}>Yes — 10% existing-customer discount</option></select></div>
   </div><label>Hosted console URL <span style="font-weight:400;color:#7A8B90">(SmartEPT-Cloud clients only — the address of their Ametecs-hosted admin console; the client portal links to it)</span></label>
   <input id="f_console" placeholder="https://client.smartept.cloud/admin" value="${esc(t.console_url||'')}">
   <label>Address</label><textarea id="f_addr" rows="2">${esc(t.address||'')}</textarea>
@@ -753,13 +753,13 @@ dashboard: {
 },
 tenants: {
  use: `<h4>What is this screen for?</h4><p>The master register of every SmartEPT customer — client-hosted and cloud.</p>
- <ol><li>Press <b>+ New Client</b> and fill company, contact, GSTIN</li><li>Choose deployment: Client-Hosted or SmartEPT Cloud</li><li>Mark <b>Ecosystem customer</b> if they already use SmartDCM/SmartPRS (₹39 intro rate applies automatically)</li><li>Optionally start a 7-day trial immediately</li><li>Open any client to see licences, devices, orders, invoices in one place</li></ol>
+ <ol><li>Press <b>+ New Client</b> and fill company, contact, GSTIN</li><li>Choose deployment: Client-Hosted or SmartEPT Cloud</li><li>Mark <b>Ecosystem customer</b> if they already use SmartDCM/SmartPRS (a flat 10% existing-customer discount applies automatically)</li><li>Optionally start a 7-day trial immediately</li><li>Open any client to see licences, devices, orders, invoices in one place</li></ol>
  <div class="tip"><b>Good to know:</b> the one-time Setup &amp; Onboarding fee (₹5,000 up to 25 devices + ₹100/extra) is charged automatically on the client's FIRST paid order — the system tracks who has paid it.</div>`,
  why: `<h4>Why this exists</h4><p>Every licence, payment and support call hangs off the client record. Clean records here = clean invoices and easy renewals later.</p>
  <div class="scen"><b>Picture this:</b> ABC Recoveries calls about adding 20 devices. You open their record: Professional, 50 devices at ₹49 volume rate, setup fee already paid, renewal in March. You quote 70 devices × ₹49 = ₹3,430/month in ten seconds, no setup fee again.</div>
  <p class="gain">✓ One source of truth ✓ Instant quotes ✓ GSTIN captured for clean invoices</p>`,
  right: `<p>❌ <b>Skipping GSTIN at creation.</b> → Invoice corrections later. → ✅ Capture GSTIN on day one.</p>
- <p>❌ <b>Forgetting the Ecosystem flag.</b> → Customer misses ₹39 intro rate, feels cheated. → ✅ Ask "do you use SmartDCM or SmartPRS?" on every call.</p>
+ <p>❌ <b>Forgetting the Ecosystem flag.</b> → Customer misses the 10% existing-customer discount, feels cheated. → ✅ Ask "do you use SmartDCM or SmartPRS?" on every call.</p>
  <p>❌ <b>Deleting clients.</b> → Orphaned invoices. → ✅ Use status churned instead.</p>`,
 },
 trials: {

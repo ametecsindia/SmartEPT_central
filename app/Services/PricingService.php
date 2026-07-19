@@ -27,7 +27,10 @@ class PricingService
         [2049, null, 2.00],
     ];
 
-    // Ecosystem introduction price (existing SmartDCM/SmartPRS customers, year 1).
+    // Existing-customer discount (locked 19-Jul): a flat 10% off for SmartDCM /
+    // SmartPRS customers, applied to EVERY plan, billing cycle and deployment.
+    // (Replaces the old ₹39 Professional-only intro; constants kept for reference.)
+    public const ECOSYSTEM_DISCOUNT = 0.10;
     public const ECOSYSTEM_RATE_INR = 39;
     public const ECOSYSTEM_MIN_DEVICES = 25;
 
@@ -43,11 +46,6 @@ class PricingService
         $billing = $billing ?: 'annual';
         $deployment = $deployment ?: 'client_hosted';
         $ecosystem = (bool) $ecosystem;
-
-        if ($ecosystem && $plan->code === 'professional' && $devices >= self::ECOSYSTEM_MIN_DEVICES
-            && $billing === 'annual' && $deployment === 'client_hosted') {
-            return self::ECOSYSTEM_RATE_INR;
-        }
 
         // Volume tiers are defined against the annual client-hosted rate.
         $annual = (float) $plan->inr_annual;
@@ -73,6 +71,12 @@ class PricingService
 
         if ($deployment === 'cloud') {
             $rate = round($rate * self::CLOUD_MULTIPLIER);
+        }
+
+        // Existing-customer discount (locked 19-Jul): flat 10% off for SmartDCM /
+        // SmartPRS customers — every plan, cycle and deployment.
+        if ($ecosystem) {
+            $rate = round($rate * (1 - self::ECOSYSTEM_DISCOUNT), 2);
         }
 
         return $rate;
