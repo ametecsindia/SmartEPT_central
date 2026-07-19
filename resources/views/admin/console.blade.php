@@ -146,6 +146,7 @@ tr:hover td{background:var(--card2)}
     <div class="nav-item" data-page="watemplates" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.6-1.3A9 9 0 1 0 12 3z"/><path d="M8.6 9.4c.3 1.9 1.9 3.6 3.9 4.1"/></svg></span> WhatsApp Templates</div>
     <div class="nav-item" data-page="settings" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span> Settings</div>
     <div class="nav-item" data-page="audit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></span> Audit Log</div>
+    <div class="nav-item" data-page="help" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.6-2.8 2.6"/><path d="M12 17h.01"/></svg></span> Help &amp; Troubleshooting</div>
   </nav>
   <div class="me">
     <div class="me-row">
@@ -213,7 +214,8 @@ ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
 let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
 plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
-storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log'};
+storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log',
+help:'Help & Troubleshooting'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -289,7 +291,252 @@ async function waDelete(id) {
   try { await api('wa-templates/' + id, {method:'DELETE'}); toast('Deleted'); go('watemplates'); }
   catch (e) { toast('Error: ' + e); }
 }
+// ============ HELP & TROUBLESHOOTING (system health + known issues + log) ============
+function ensureHelpCss() {
+  if (document.getElementById('help-css')) return;
+  const st = document.createElement('style'); st.id = 'help-css';
+  st.textContent =
+    '#hc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}'
+    + '@media(max-width:820px){#hc-grid{grid-template-columns:1fr}}'
+    + '.hc-item{display:flex;gap:11px;align-items:flex-start;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:var(--card)}'
+    + '.hc-item .dot{width:11px;height:11px;border-radius:50%;flex:none;margin-top:4px}'
+    + '.hc-ok .dot{background:var(--ok)}.hc-warn .dot{background:var(--warn)}.hc-down .dot{background:var(--danger)}'
+    + '.hc-item.hc-down{background:var(--danger-w);border-color:transparent}.hc-item.hc-warn{background:var(--warn-w);border-color:transparent}'
+    + '.hc-item b{font-size:12.5px;color:var(--ink)}.hc-item p{margin:3px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.5}'
+    + '.hc-item a{color:var(--accent);font-weight:700;cursor:pointer;font-size:11px;white-space:nowrap}'
+    + 'details.hkb{border:1px solid var(--border);border-radius:11px;margin-bottom:9px;background:var(--card);overflow:hidden}'
+    + 'details.hkb>summary{cursor:pointer;padding:12px 14px;font-weight:700;font-size:12.5px;color:var(--ink);list-style:none;display:flex;align-items:center;gap:10px}'
+    + 'details.hkb>summary::-webkit-details-marker{display:none}'
+    + 'details.hkb>summary::after{content:"\\25be";margin-left:auto;color:var(--ink3);transition:transform .15s}'
+    + 'details.hkb[open]>summary::after{transform:rotate(180deg)}'
+    + '.hkb-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap}'
+    + '.hkb-body{padding:2px 15px 14px;font-size:12px;line-height:1.6;color:var(--ink2)}'
+    + '.hkb-body p{margin:7px 0}.hkb-body b{color:var(--ink)}'
+    + '.hkb-body ol,.hkb-body ul{margin:6px 0 6px 18px;padding:0}.hkb-body li{margin:3px 0}'
+    + '.hkb-body code{background:var(--card2);padding:1.5px 6px;border-radius:5px;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace}'
+    + '.hkb-esc{background:var(--weak);border-radius:8px;padding:8px 11px;margin-top:10px!important;color:var(--deep)}'
+    + '.hkb-div{margin:18px 0 10px;font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--ink3);text-transform:uppercase}'
+    + '.hkb-flash{outline:2px solid var(--accent);outline-offset:1px}'
+    + '.hc-log{background:#0B1220;color:#D6E2F0;border-radius:11px;padding:14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.55;max-height:440px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}';
+  document.head.appendChild(st);
+}
+const WA = '90000 98877';
+const HELP_KB_CENTRAL = [
+  { id:'c-db', tag:'Platform', cls:'p-dang', title:'Billing, licences or client logins are failing',
+    kw:'database mysql sqlite connection central down billing licence login',
+    body:'<p><b>What you see:</b> Screens error, or licences/orders/logins do not work.</p>'
+      +'<p><b>Likely cause:</b> Central lost its database settings and fell back to an empty local database.</p>'
+      +'<p><b>How to check:</b> Run System Health above — the “Database connection” row will be red.</p>'
+      +'<p><b>How to fix:</b> In <code>.env</code> confirm <code>DB_CONNECTION=mysql</code> and the correct <code>DB_DATABASE</code>, run <code>migrate.bat</code>, then Laragon Stop All then Start All.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If the row is still red after this — WhatsApp '+WA+'.</p>' },
+  { id:'c-wa', tag:'WhatsApp', cls:'p-warn', title:'WhatsApp messages are not being sent',
+    kw:'whatsapp interakt not sending template approved api key otp welcome payment renewal',
+    body:'<p><b>What you see:</b> Welcome, payment, renewal or OTP WhatsApp messages never arrive.</p>'
+      +'<p><b>Likely cause:</b> Either the Interakt API key is missing / status is off, or the template used is not approved on Interakt.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “WhatsApp (Interakt)” row shows if it is configured. Then open <b>WhatsApp Templates</b> and confirm the template for that purpose shows <b>approved</b>.</p>'
+      +'<p><b>How to fix:</b></p><ol>'
+      +'<li>In <b>Settings → WhatsApp API</b>, paste the Interakt API key and set status to <b>active</b>.</li>'
+      +'<li>In <b>WhatsApp Templates</b>, make sure each purpose points to a template name that is <b>approved</b> in your Interakt dashboard, with matching variables.</li>'
+      +'<li>Use the template’s <b>Test</b> button to send yourself one.</li></ol>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If the key is set and the template is approved but sending still fails — WhatsApp '+WA+'.</p>' },
+  { id:'c-payments', tag:'Payments', cls:'p-warn', title:'Clients cannot pay online',
+    kw:'payment razorpay stripe gateway not working checkout webhook keys',
+    body:'<p><b>What you see:</b> The checkout/pay link fails, or online payment options do not appear.</p>'
+      +'<p><b>Likely cause:</b> No payment gateway keys are set, or the webhook secret is missing so paid orders are not marked paid automatically.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “Online payments” row shows whether Razorpay/Stripe is set up.</p>'
+      +'<p><b>How to fix:</b> Add the Razorpay and/or Stripe keys (including the webhook secret) in <b>Settings</b>. You can always record a manual/offline payment on the order in the meantime.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If keys are set but payments still fail or orders don’t auto-mark paid — WhatsApp '+WA+'.</p>' },
+  { id:'c-mail', tag:'Email', cls:'p-warn', title:'Invoices, OTPs or credential emails are not arriving',
+    kw:'email smtp mail not sending invoice otp credentials host settings test',
+    body:'<p><b>What you see:</b> Emailed invoices, OTPs or sign-in details never reach the client.</p>'
+      +'<p><b>Likely cause:</b> The SMTP mail settings are missing or wrong.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “Email sending” row. Then in <b>Settings</b> use <b>Send test email</b>.</p>'
+      +'<p><b>How to fix:</b> Fill the mail host, port, username, password and encryption in <b>Settings</b>, save, and send a test. Check spam if it still doesn’t show.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If the test email won’t send with correct details — WhatsApp '+WA+'.</p>' },
+  { id:'c-otp', tag:'Client login', cls:'p-warn', title:'A client cannot log in to the portal / OTP not received',
+    kw:'client portal login otp not received signup forgot password whatsapp email',
+    body:'<p><b>What you see:</b> A client can’t sign up or reset their password because the OTP never arrives.</p>'
+      +'<p><b>Likely cause:</b> OTPs go out over WhatsApp and/or email — if either is not configured, delivery fails.</p>'
+      +'<p><b>How to check:</b> Run System Health and confirm both “Email sending” and “WhatsApp (Interakt)” are green.</p>'
+      +'<p><b>How to fix:</b> Fix email (card above) and WhatsApp (card above). Confirm the client’s mobile/email on their tenant record is correct.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If both channels are green but OTP still fails — WhatsApp '+WA+'.</p>' },
+  { id:'c-provision', tag:'Provisioning', cls:'p-warn', title:'A new client’s console or licence didn’t provision',
+    kw:'provision provisioning tenant console sso secret licence issue new client hosted',
+    body:'<p><b>What you see:</b> After creating a client/order, their hosted console or licence isn’t set up, or one-click sign-in fails.</p>'
+      +'<p><b>Likely cause:</b> The shared provisioning/SSO secret in Central doesn’t match the one on the client server.</p>'
+      +'<p><b>How to check:</b> Open the <b>Application log</b> below right after provisioning — the newest lines usually name the failure.</p>'
+      +'<p><b>How to fix:</b> Confirm <code>PROVISION_SECRET</code> and <code>SSO_SHARED_SECRET</code> in Central’s <code>.env</code> match the client server’s values, then do a full Laragon restart on both.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> Send the copied log to WhatsApp '+WA+'.</p>' },
+  { id:'c-migrate', tag:'After an update', cls:'p-warn', title:'A new feature is missing or a screen errors after an update',
+    kw:'migration migrate database update pending feature missing column table',
+    body:'<p><b>What you see:</b> After a new build, a feature is missing or a screen throws a “column/table not found” error.</p>'
+      +'<p><b>Likely cause:</b> The database updates for the new build haven’t been applied.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “Database updates” row shows any pending count.</p>'
+      +'<p><b>How to fix:</b> Run <code>migrate.bat</code> in the Central app folder, then re-run System Health.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If migrate errors — copy it to WhatsApp '+WA+'.</p>' },
+  { id:'c-opcache', tag:'Updates not applying', cls:'p-warn', title:'My changes don’t take effect no matter what',
+    kw:'opcache validate timestamps frozen changes not applying restart cache',
+    body:'<p><b>What you see:</b> You change a setting or file, but Central keeps behaving the old way.</p>'
+      +'<p><b>Likely cause:</b> PHP’s code cache (OPcache) is set never to re-read files.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “PHP code cache (OPcache)” row will be amber.</p>'
+      +'<p><b>How to fix:</b> Set <code>opcache.validate_timestamps=1</code> in <code>php.ini</code>, then Laragon <b>Stop All</b> then <b>Start All</b> (a full stop, not a reload).</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If it stays amber after a full restart — WhatsApp '+WA+'.</p>' },
+  { id:'c-storage', tag:'Storage', cls:'p-dang', title:'Invoices or files won’t save / disk is full',
+    kw:'storage disk full not writable invoices pdf files save space',
+    body:'<p><b>What you see:</b> Invoice/quote PDFs or installer files fail to generate or download.</p>'
+      +'<p><b>Likely cause:</b> The storage folder isn’t writable or the disk is out of space.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “File storage” row shows the folder and whether it’s writable/near full.</p>'
+      +'<p><b>How to fix:</b> Free up disk space and make sure the web server account can write to the app’s <code>storage</code> folder.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If writable with space but files still fail — WhatsApp '+WA+'.</p>' },
+  { id:'c-500', tag:'A screen errors', cls:'p-dang', title:'A screen shows an error or won’t load',
+    kw:'500 internal server error screen not loading crash could not load',
+    body:'<p><b>What you see:</b> A screen shows “Could not load this screen” or a 500 error.</p>'
+      +'<p><b>Likely cause:</b> A code/template error on that screen, or the database issue above.</p>'
+      +'<p><b>How to check:</b> Open the <b>Application log</b> below and load the last 100 lines — the newest ERROR line names the file and line.</p>'
+      +'<p><b>How to fix:</b> If it points at the database, use the first card. Otherwise use “Copy for developer” and send the log to Ametecs.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> Any error that isn’t the database — WhatsApp '+WA+'.</p>' },
+];
+const HELP_KB_CLIENT = [
+  { id:'p-agent-db', tag:'Client · data', cls:'p-dang', title:'A client’s agent data / screenshots stopped arriving',
+    kw:'client agent data screenshots stopped sqlite mysql database fallback token rejected',
+    body:'<p><b>What the client sees:</b> Agents look fine on the PCs, but new screenshots/activity stop appearing in their console.</p>'
+      +'<p><b>Likely cause:</b> The client server’s web app fell back to an empty SQLite database, so agent logins can’t be verified and uploads are rejected.</p>'
+      +'<p><b>How to fix (on the client server):</b> In <code>.env</code> set <code>DB_CONNECTION=mysql</code> and <code>DB_DATABASE=smartept</code>, run <code>migrate.bat</code>, then Laragon Stop All then Start All, and re-login one agent. The client’s own Help → System Health confirms it.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-opcache', tag:'Client · updates', cls:'p-warn', title:'A client’s changes/fixes don’t take effect',
+    kw:'client opcache frozen validate timestamps changes not applying',
+    body:'<p><b>Cause:</b> OPcache on the client server is serving a frozen copy of the code.</p>'
+      +'<p><b>Fix (client server):</b> Set <code>opcache.validate_timestamps=1</code> in <code>php.ini</code>, then Laragon Stop All then Start All.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-license', tag:'Client · licence', cls:'p-warn', title:'A client’s recording is paused / “evaluation ended”',
+    kw:'client licence evaluation ended monitoring blocked storage paused key validate',
+    body:'<p><b>Cause:</b> The client’s licence key isn’t entered/validated, so recording is held.</p>'
+      +'<p><b>Fix:</b> Issue/confirm their licence here in <b>Licences</b>, then have them enter the key in their console’s Licence screen and validate. Recording resumes immediately.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-storage', tag:'Client · storage', cls:'p-dang', title:'A client’s screenshots aren’t saving / disk full',
+    kw:'client storage evidence disk full not writable nas screenshots not saving',
+    body:'<p><b>Cause:</b> The client’s evidence folder isn’t writable or the disk is full.</p>'
+      +'<p><b>Fix:</b> In their console → <b>Audit &amp; Ops → Local / On-premise storage</b>, point evidence at a bigger drive or NAS, and turn on automatic cleanup. Their Help → System Health shows the exact folder.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-agent-silent', tag:'Client · agents', cls:'p-warn', title:'A client’s agent stopped checking in',
+    kw:'client agent offline silent no heartbeat stopped reporting',
+    body:'<p><b>Cause:</b> The PC is off/asleep/off-network, or the agent was stopped.</p>'
+      +'<p><b>Fix:</b> Confirm the PC is on and online; reopen the agent from the Start Menu. Data recorded offline syncs automatically when it returns.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-agent-install', tag:'Client · agents', cls:'p-warn', title:'A client’s agent “isn’t responding” right after install',
+    kw:'client agent not responding after install defender smartscreen first run',
+    body:'<p><b>Cause:</b> Windows Defender/SmartScreen scans a new app on first run.</p>'
+      +'<p><b>Fix:</b> Wait ~30 seconds and reopen the agent from the Start Menu — it settles on its own.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-agent-upgrade', tag:'Client · good to know', cls:'p-info', title:'Updating a client’s agent keeps it paired',
+    kw:'client agent update over old preserves pairing upgrade keeps device paired',
+    body:'<p>Installing a newer agent over an existing one does not wipe pairing or settings — the PC stays paired. It’s safe to push updates to a whole fleet without re-pairing.</p>'
+      +'<p class="hkb-esc"><b>Note:</b> Only a full uninstall clears pairing. Questions? WhatsApp '+WA+'.</p>' },
+  { id:'p-migrate', tag:'Client · after update', cls:'p-warn', title:'A client feature is missing after an update',
+    kw:'client migration pending feature missing column table after update migrate',
+    body:'<p><b>Cause:</b> The client server’s database updates weren’t applied after the new build.</p>'
+      +'<p><b>Fix:</b> Run <code>migrate.bat</code> on the client server; their Help → System Health “Database updates” row confirms.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-gcs', tag:'Client · cloud', cls:'p-warn', title:'A client’s Cloud Storage says “libraries not installed”',
+    kw:'client cloud storage google gcs composer libraries not installed enable',
+    body:'<p><b>Fix (client server):</b> Run <code>deployment\\installers\\ENABLE-CLOUD-STORAGE.bat</code>, or in Laragon Terminal (one command per line): <code>cd /d C:\\laragon\\www\\smartept</code> then <code>composer require google/cloud-storage league/flysystem-google-cloud-storage</code>.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-composer', tag:'Client · setup', cls:'p-warn', title:'Composer fails with “does not contain valid JSON”',
+    kw:'client composer invalid json variable one line terminal reserved',
+    body:'<p><b>Cause:</b> A batch variable was named <code>COMPOSER</code>, or <code>cd</code> and a command were on one line.</p>'
+      +'<p><b>Fix:</b> In Laragon Terminal, type one command per line and never use a variable called <code>COMPOSER</code>.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+];
+function helpKbCard(c) {
+  return '<details class="hkb" id="' + c.id + '" data-kb="' + esc(c.kw || '') + '">'
+    + '<summary><span class="hkb-tag ' + c.cls + '">' + esc(c.tag) + '</span> ' + esc(c.title) + '</summary>'
+    + '<div class="hkb-body">' + c.body + '</div></details>';
+}
+async function helpRun() {
+  const box = document.getElementById('hc-grid'); if (!box) return;
+  box.innerHTML = '<div class="mini">Running checks…</div>';
+  const ov = document.getElementById('hc-overall'); if (ov) ov.style.display = 'none';
+  try {
+    const r = await api('diagnostics'); if (!r) return;
+    const M = { ok:['p-ok','All good'], warn:['p-warn','Needs attention'], down:['p-dang','Action needed'] };
+    const o = M[r.overall] || M.ok;
+    if (ov) { ov.className = 'pill ' + o[0]; ov.textContent = o[1]; ov.style.display = ''; }
+    const wn = document.getElementById('hc-when'); if (wn) wn.textContent = 'Checked ' + r.checked_at;
+    box.innerHTML = (r.checks || []).map(c => {
+      const cls = c.status === 'ok' ? 'hc-ok' : (c.status === 'warn' ? 'hc-warn' : 'hc-down');
+      const fix = c.fix ? ' <a onclick="openHelpKb(\'' + c.fix + '\')">How to fix this &rarr;</a>' : '';
+      return '<div class="hc-item ' + cls + '"><span class="dot"></span><div><b>'
+        + esc(c.label) + '</b><p>' + esc(c.detail) + fix + '</p></div></div>';
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div class="mini" style="color:var(--danger)">Could not run checks: ' + esc(String(e)) + '</div>';
+  }
+}
+function openHelpKb(id) {
+  const el = document.getElementById(id); if (!el) return;
+  el.open = true; el.scrollIntoView({ behavior:'smooth', block:'center' });
+  el.classList.add('hkb-flash'); setTimeout(() => el.classList.remove('hkb-flash'), 1600);
+}
+function filterHelpKb() {
+  const q = (document.getElementById('hkb-search').value || '').toLowerCase().trim();
+  document.querySelectorAll('#hkb-list details.hkb').forEach(d => {
+    const hay = (d.getAttribute('data-kb') || '') + ' ' + d.textContent.toLowerCase();
+    d.style.display = (!q || hay.indexOf(q) !== -1) ? '' : 'none';
+  });
+}
+async function loadHelpLog() {
+  const out = document.getElementById('hc-log'); if (!out) return;
+  out.textContent = 'Loading…'; const meta = document.getElementById('hc-log-meta'); if (meta) meta.textContent = '';
+  try {
+    const n = document.getElementById('hc-lines').value || 200;
+    const r = await api('logs?lines=' + n); if (!r) return;
+    if (!r.exists) { out.textContent = r.note || 'No log file yet.'; return; }
+    out.textContent = r.text || '(the log is empty)';
+    if (meta) meta.textContent = r.path + ' · ' + r.size_human + ' · last ' + r.lines + ' lines';
+    out.scrollTop = out.scrollHeight;
+  } catch (e) { out.textContent = 'Could not load the log: ' + String(e); }
+}
+function copyHelpLog() {
+  const t = document.getElementById('hc-log').textContent || '';
+  if (navigator.clipboard && t) {
+    navigator.clipboard.writeText(t).then(() => toast('Log copied — paste it to the developer.'),
+      () => toast('Copy failed — select the text and copy manually.'));
+  } else { toast('Nothing to copy yet — load the log first.'); }
+}
+
 const RENDER = {
+
+// ============ HELP & TROUBLESHOOTING ============
+async help() {
+  ensureHelpCss();
+  P.innerHTML =
+    '<div class="card"><h3>System Health <span class="mini">one click checks the database, storage, email, WhatsApp, payments &amp; more</span></h3>'
+    + '<div class="row" style="margin-bottom:12px;align-items:center;gap:10px">'
+    + '<button class="btn btn-p" onclick="helpRun()">Run checks</button>'
+    + '<span class="pill p-mut" id="hc-overall" style="display:none"></span>'
+    + '<span class="mini" id="hc-when"></span></div>'
+    + '<div id="hc-grid"><div class="mini">Press “Run checks” to test SmartEPT Central.</div></div></div>'
+
+    + '<div class="card"><h3>Known Issues — how to fix common problems <span class="mini">Central and the client product — plain language</span></h3>'
+    + '<div class="filters" style="margin-bottom:14px"><input id="hkb-search" oninput="filterHelpKb()" placeholder="Search problems… e.g. whatsapp, payment, screenshots, 500"></div>'
+    + '<div id="hkb-list">'
+    + '<div class="hkb-div">SmartEPT Central (this portal)</div>'
+    + HELP_KB_CENTRAL.map(helpKbCard).join('')
+    + '<div class="hkb-div">SmartEPT client product (helping a client site)</div>'
+    + HELP_KB_CLIENT.map(helpKbCard).join('')
+    + '</div></div>'
+
+    + '<div class="card"><h3>Application log <span class="mini">the most recent messages — copy them for the developer</span></h3>'
+    + '<div class="row" style="margin-bottom:10px;align-items:center;gap:8px">'
+    + '<span class="mini">Show last</span>'
+    + '<select id="hc-lines" style="width:auto"><option>100</option><option selected>200</option><option>500</option></select>'
+    + '<span class="mini">lines</span>'
+    + '<button class="btn btn-l" onclick="loadHelpLog()">Load log</button>'
+    + '<button class="btn btn-l" onclick="copyHelpLog()">Copy for developer</button>'
+    + '<span class="mini" id="hc-log-meta"></span></div>'
+    + '<pre id="hc-log" class="hc-log">Press “Load log” to read the most recent messages.</pre></div>';
+  helpRun();
+},
 
 // ============ DASHBOARD ============
 async dashboard() {

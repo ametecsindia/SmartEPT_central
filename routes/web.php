@@ -124,6 +124,11 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
         Route::put('wa-templates/{waTemplate}', [Admin\WaTemplateController::class, 'update']);
         Route::delete('wa-templates/{waTemplate}', [Admin\WaTemplateController::class, 'destroy']);
         Route::post('wa-templates/{waTemplate}/test', [Admin\WaTemplateController::class, 'test']);
+
+            // Help -> Troubleshooting: live System Health + in-app log viewer
+            // (Ametecs troubleshooting-in-app standard — non-technical self-service).
+            Route::get('diagnostics', [Admin\DiagnosticsController::class, 'checks']);
+            Route::get('logs', [Admin\DiagnosticsController::class, 'logs']);
         });
     });
 });
