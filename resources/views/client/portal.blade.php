@@ -20,19 +20,25 @@ input,select{font-family:inherit;font-size:13.5px;padding:9px 11px;border:1.5px 
 input:focus,select:focus{outline:none;border-color:var(--accent)}
 label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 4px}
 aside{width:232px;background:linear-gradient(175deg,var(--navy1),#083039);color:#C9E2E7;padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px;border-bottom:1px solid rgba(255,255,255,.1);flex:0 0 auto}
 .brand .mk{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
 .brand b{font-size:15px;color:#fff}.brand small{display:block;font-size:8.5px;letter-spacing:2px;color:#7FA8AF}
-nav{flex:1;margin-top:14px}
+nav{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;margin-top:14px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+nav::-webkit-scrollbar{width:5px}nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9.5px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#A9CBD1;cursor:pointer;margin-bottom:2px}
 .nav-item svg{width:17px;height:17px;flex:none}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
 .nav-item.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
 .nav-sec{font-size:10px;letter-spacing:1.8px;color:#5E858C;text-transform:uppercase;font-weight:800;margin:16px 12px 6px}
-.me{border-top:1px solid rgba(255,255,255,.1);padding-top:12px;display:flex;align-items:center;gap:9px}
-.me .av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
-.me b{font-size:12.5px;color:#fff;display:block}.me span{font-size:10.5px;color:#7FA8AF}
-.me form{margin-left:auto}
+.side-foot{flex:0 0 auto;border-top:1px solid rgba(255,255,255,.1);padding-top:12px}
+.me{display:flex;align-items:center;gap:9px}
+.me .av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex:none}
+.me .me-id{min-width:0;flex:1}
+.me b{font-size:12.5px;color:#fff;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me span{font-size:10.5px;color:#7FA8AF;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me form{margin-left:auto;flex:none}
+.me form button{cursor:pointer}
+.side-copy{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09);font-size:9px;color:#6E9399;line-height:1.6}
 .me button{background:none;border:1px solid rgba(255,255,255,.2);color:#A9CBD1;font-size:10.5px;padding:5px 9px;border-radius:7px}
 main{flex:1;padding:26px 30px;max-width:calc(100vw - 232px)}
 .topbar{display:flex;align-items:center;gap:14px;margin-bottom:20px}
@@ -136,11 +142,13 @@ tr:hover td{background:var(--card2)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
       My Account</div>
   </nav>
-  <div class="me">
-    <div class="av">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
-    <div><b>{{ $user->name }}</b><span>{{ $user->tenant->company_name }}</span></div>
-    <form method="POST" action="/client/logout">@csrf<button type="submit">Logout</button></form>
-    <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09);font-size:9px;color:#6E9399;line-height:1.6">SmartEPT™ · Developed by Ametecs India Private Limited<br>© 2026 Ametecs India Private Limited. All rights reserved.</div>
+  <div class="side-foot">
+    <div class="me">
+      <div class="av">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
+      <div class="me-id"><b>{{ $user->name }}</b><span>{{ $user->tenant->company_name }}</span></div>
+      <form method="POST" action="/client/logout">@csrf<button type="submit">Logout</button></form>
+    </div>
+    <div class="side-copy">SmartEPT™ · Developed by Ametecs India Private Limited<br>© 2026 Ametecs India Private Limited. All rights reserved.</div>
   </div>
 </aside>
 

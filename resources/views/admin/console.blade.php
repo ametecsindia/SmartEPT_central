@@ -24,7 +24,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 4px}
 /* sidebar */
 aside{width:232px;background:linear-gradient(175deg,var(--navy1),#083039);color:#C9E2E7;padding:12px 12px 10px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 10px;border-bottom:1px solid rgba(255,255,255,.1);flex:0 0 auto}
+#nav{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;margin:6px -4px;padding:2px 4px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+#nav::-webkit-scrollbar{width:5px}#nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
 .brand .mk{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
 .brand b{font-size:15px;color:#fff}.brand small{display:block;font-size:8.5px;letter-spacing:2px;color:#7FA8AF}
 nav{flex:1;margin-top:8px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
@@ -34,7 +36,7 @@ nav::-webkit-scrollbar{width:5px}nav::-webkit-scrollbar-thumb{background:rgba(25
 .nav-item.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
 .nav-ic{display:flex;align-items:center;opacity:.85}.nav-item.on .nav-ic{opacity:1}
 .nav-sec{font-size:10px;letter-spacing:1.8px;color:#5E858C;text-transform:uppercase;font-weight:800;margin:10px 12px 4px}
-.me{border-top:1px solid rgba(255,255,255,.1);padding-top:8px;display:flex;flex-direction:column;gap:7px}
+.me{border-top:1px solid rgba(255,255,255,.1);padding-top:8px;display:flex;flex-direction:column;gap:7px;flex:0 0 auto}
 .me-row{display:flex;align-items:center;gap:9px}
 .me .av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
 .me b{font-size:12.5px;color:#fff;display:block}.me span{font-size:10.5px;color:#7FA8AF;text-transform:capitalize}
