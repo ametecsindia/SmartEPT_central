@@ -410,12 +410,13 @@ async function loadTenants() {
   const q = document.getElementById('tq').value, st = document.getElementById('tst').value;
   const d = await api(`tenants?q=${encodeURIComponent(q)}&status=${st}`);
   document.getElementById('tlist').innerHTML = `<div class="card"><table>
-  <tr><th>Company</th><th>Contact</th><th>Deployment</th><th>Plan</th><th>Status</th><th></th></tr>
+  <tr><th>Company</th><th>Contact</th><th>Deployment</th><th>Plan</th><th>Storage</th><th>Status</th><th></th></tr>
   ${d.data.map(t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
   <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
   <td>${t.deployment === 'cloud' ? '<span class="pill p-info">SmartEPT Cloud</span>' : '<span class="pill p-mut">Client-hosted</span>'}${t.ecosystem_customer?' <span class="pill p-warn">Ecosystem</span>':''}</td>
-  <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td><td>${pill(t.status)}</td>
-  <td><button class="link" onclick="showTenant(${t.id})">Open</button></td></tr>`).join('') || '<tr><td colspan="6" class="mini">No clients found</td></tr>'}</table></div>`;
+  <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td>
+  <td class="mini">${t.storage ? `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:${t.storage.state==='OVER'?'#DC2626':t.storage.state==='WARN'?'#D97706':'#0E7C8F'}1a;color:${t.storage.state==='OVER'?'#DC2626':t.storage.state==='WARN'?'#D97706':'#0E7C8F'}">${t.storage.used_gb} / ${t.storage.quota_gb} GB · ${t.storage.pct}%</span>` : '<span class="mini">—</span>'}</td><td>${pill(t.status)}</td>
+  <td><button class="link" onclick="showTenant(${t.id})">Open</button></td></tr>`).join('') || '<tr><td colspan="7" class="mini">No clients found</td></tr>'}</table></div>`;
 }
 
 async function showTenant(id) {

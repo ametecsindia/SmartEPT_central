@@ -12,7 +12,7 @@ class TenantApiController extends Controller
 {
     public function index(Request $request)
     {
-        $q = Tenant::withCount(['licences'])->with('activeLicence.plan:id,code,name');
+        $q = Tenant::withCount(['licences'])->with('activeLicence.plan:id,code,name,storage_gb');
 
         if ($s = $request->query('status')) {
             $q->where('status', $s);
@@ -23,7 +23,14 @@ class TenantApiController extends Controller
                 ->orWhere('phone', 'like', "%$search%"));
         }
 
-        return response()->json($q->latest()->paginate(25));
+        $page = $q->latest()->paginate(25);
+        $page->getCollection()->transform(function ($t) {
+            $t->setAttribute('storage', $t->storageStatus());
+
+            return $t;
+        });
+
+        return response()->json($page);
     }
 
     public function show(Tenant $tenant)
