@@ -28,19 +28,68 @@ class LicenseController extends Controller
 
         $result = $this->licences->validate($data['key'], $data['fingerprint'] ?? null);
 
-        // EPT-27: record the installation's reported storage against its tenant, so the
-        // per-tenant storage badges in the console fill automatically on each phone-home.
-        if (($result['ok'] ?? false) && isset($data['storage_gb'])) {
+        // EPT-27: record reported storage + govern the quota (email at 90%, pause at 100%).
+        if ($result['ok'] ?? false) {
             $licence = \App\Models\Licence::where('key', $data['key'])->first();
             if ($licence && $licence->tenant_id) {
-                \App\Models\StorageUsage::updateOrCreate(
-                    ['tenant_id' => $licence->tenant_id, 'date' => now()->toDateString()],
-                    ['gb_used' => round((float) $data['storage_gb'], 3)]
-                );
+                if (isset($data['storage_gb'])) {
+                    \App\Models\StorageUsage::updateOrCreate(
+                        ['tenant_id' => $licence->tenant_id, 'date' => now()->toDateString()],
+                        ['gb_used' => round((float) $data['storage_gb'], 3)]
+                    );
+                }
+                $tenant = \App\Models\Tenant::with('activeLicence.plan')->find($licence->tenant_id);
+                if ($tenant) {
+                    $result['storage'] = $this->governStorage($tenant);
+                }
             }
         }
 
-        return response()->json($result, $result['ok'] ? 200 : 403);
+        return response()->json($result, ($result['ok'] ?? false) ? 200 : 403);
+    }
+
+    /** Compute the tenant's storage state, email once per escalation, return the wire block. */
+    private function governStorage(\App\Models\Tenant $tenant): array
+    {
+        $ss = $tenant->storageStatus();
+        $rank = ['OK' => 0, 'WARN' => 1, 'OVER' => 2];
+        $prev = $tenant->storage_alert_level ?: 'OK';
+
+        if (($rank[$ss['state']] ?? 0) > ($rank[$prev] ?? 0)) {
+            $this->emailStorageAlert($tenant, $ss);
+        }
+        if ($ss['state'] !== $prev) {
+            $tenant->forceFill(['storage_alert_level' => $ss['state']])->save();
+        }
+
+        return [
+            'used_gb' => $ss['used_gb'],
+            'quota_gb' => $ss['quota_gb'],
+            'pct' => $ss['pct'],
+            'state' => $ss['state'],
+            'pause_screenshots' => $ss['state'] === 'OVER',
+        ];
+    }
+
+    private function emailStorageAlert(\App\Models\Tenant $tenant, array $ss): void
+    {
+        try {
+            $over = $ss['state'] === 'OVER';
+            $to = $tenant->email ?: \App\Models\Setting::get('sales_email', 'sales@ametecsindia.com');
+            $subject = $over
+                ? 'SmartEPT storage is FULL — new screenshots paused (' . $tenant->company_name . ')'
+                : 'SmartEPT storage at ' . $ss['pct'] . '% — ' . $tenant->company_name;
+            $body = 'Hello ' . ($tenant->contact_name ?: $tenant->company_name) . ",\n\n"
+                . 'Your SmartEPT evidence storage is at ' . $ss['pct'] . '% (' . $ss['used_gb'] . ' GB of ' . $ss['quota_gb'] . " GB).\n\n"
+                . ($over
+                    ? "Because the quota is full, NEW screenshots are paused to protect your data — activity, attendance and app/website tracking continue as normal. To resume screenshots, free up space (retention cleanup) or upgrade your storage plan.\n"
+                    : "You are close to your storage limit. A retention cleanup or a storage upgrade now will avoid screenshots pausing when it fills.\n")
+                . "\nManage it from the SmartEPT console -> Audit & Ops -> storage."
+                . \App\Services\MailService::signature();
+            app(\App\Services\MailService::class)->send($to, $subject, $body);
+        } catch (\Throwable $e) {
+            // alerting is best-effort — never break the phone-home
+        }
     }
 
     public function activateDevice(Request $request)
