@@ -16,9 +16,9 @@
   --cov1:#04252C; --cov2:#083A44; --cov3:#0B4A56;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{font-family:'Inter','Segoe UI',-apple-system,sans-serif;color:var(--ink);background:#fff;line-height:1.6;font-size:16px}
-img{max-width:100%}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{font-family:'Inter','Segoe UI',-apple-system,sans-serif;color:var(--ink);background:#fff;line-height:1.6;font-size:16px;overflow-x:hidden;width:100%}
+img{max-width:100%;height:auto}
 a{text-decoration:none;color:inherit}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 .kicker{text-transform:uppercase;letter-spacing:2.5px;font-size:12px;font-weight:800;color:var(--accent)}
@@ -39,7 +39,7 @@ p.sec-sub{color:var(--ink2);font-size:17px;max-width:720px}
 .flow-step .n svg{width:20px;height:20px;color:#fff}
 
 /* ===== NAV ===== */
-nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+nav{position:sticky;top:0;z-index:200;width:100%;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
 .nav-in{display:flex;align-items:center;gap:26px;height:72px;max-width:1180px;margin:0 auto;padding:0 24px}
 .nav-logo img{height:52px;display:block}
 .nav-links{display:flex;gap:24px;margin-left:8px;flex:1}
@@ -223,9 +223,12 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
   .plans{grid-template-columns:1fr 1fr}
   .foot-grid{grid-template-columns:1fr 1fr}
   .hero h1{font-size:38px}
-  .nav-links{display:none}
   .hamb{display:block}
-  .nav-links.openm{display:flex;position:absolute;top:72px;left:0;right:0;background:#fff;flex-direction:column;padding:18px 24px;border-bottom:1px solid var(--border);gap:14px}
+  .nav-links{display:flex;position:absolute;top:72px;left:0;right:0;background:#fff;flex-direction:column;padding:12px 22px 16px;border-bottom:1px solid var(--border);gap:4px;margin-left:0;flex:none;z-index:200;box-shadow:0 22px 44px rgba(4,37,44,.18);opacity:0;visibility:hidden;transform:translateY(-12px);transition:opacity .22s ease,transform .22s ease,visibility .22s}
+  .nav-links.openm{opacity:1;visibility:visible;transform:none}
+  .nav-links a{padding:12px 4px;font-size:15px;border-bottom:1px solid var(--hair)}
+  .nav-links a:last-child{border-bottom:none}
+  .nav-in{padding:0 16px;gap:14px}
 }
 @media(max-width:600px){
   .nav-cta .login{display:none}
@@ -258,7 +261,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
       <a class="login" href="/admin" style="border:none;color:var(--ink3);padding:9px 6px">Admin</a>
       <a class="btn btn-primary trial" href="/client/signup">Start Free Trial</a>
     </div>
-    <button class="hamb" onclick="document.getElementById('navLinks').classList.toggle('openm')">☰</button>
+    <button class="hamb" id="navToggle" aria-label="Menu" aria-expanded="false">☰</button>
   </div>
 </nav>
 
@@ -588,6 +591,16 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
 </footer>
 
 <script>
+/* ===== mobile nav ===== */
+(function(){
+  var links=document.getElementById('navLinks'), h=document.getElementById('navToggle');
+  if(!links||!h) return;
+  function shut(){ links.classList.remove('openm'); h.setAttribute('aria-expanded','false'); }
+  h.addEventListener('click', function(e){ e.stopPropagation(); var o=links.classList.toggle('openm'); h.setAttribute('aria-expanded', o?'true':'false'); });
+  Array.prototype.forEach.call(links.querySelectorAll('a'), function(a){ a.addEventListener('click', shut); });
+  document.addEventListener('click', function(e){ if(links.classList.contains('openm') && !links.contains(e.target) && !h.contains(e.target)) shut(); });
+  window.addEventListener('resize', function(){ if(window.innerWidth>960) shut(); });
+})();
 /* ===== pricing toggles ===== */
 /* Built-in rates are the FALLBACK; live rates load from /api/v1/public/plans
    (edit a plan in /admin → Plans and this page follows within 5 minutes). */
