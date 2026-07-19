@@ -44,7 +44,9 @@ nav::-webkit-scrollbar{width:5px}nav::-webkit-scrollbar-thumb{background:rgba(25
 .me button{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:12px;font-weight:600;padding:7px;border-radius:8px;cursor:pointer}
 .me button:hover{background:var(--accent);border-color:var(--accent)}
 /* main */
-main{flex:1;padding:26px 30px;max-width:calc(100vw - 232px)}
+main{flex:1;padding:26px 30px;max-width:calc(100vw - 232px);display:flex;flex-direction:column;min-height:100vh}
+main>#page{flex:1 1 auto}
+.page-copy{margin-top:28px;padding-top:14px;border-top:1px solid var(--hair);text-align:center;font-size:10.5px;color:var(--ink3);line-height:1.5}
 .topbar{display:flex;align-items:center;gap:14px;margin-bottom:20px}
 .topbar h1{font-size:21px;font-weight:800}
 .help-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--accent);color:var(--accent);background:#fff;font-weight:800;font-size:13px}
@@ -157,7 +159,6 @@ tr:hover td{background:var(--card2)}
       <div><b>{{ $user->name }}</b><span>{{ $user->role }}</span></div>
     </div>
     <form method="POST" action="/admin/logout">@csrf<button type="submit">&#x23FB;&nbsp; Sign out</button></form>
-    <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.09);font-size:8.5px;color:#6E9399;line-height:1.4">SmartEPT™ · Developed by Ametecs India Private Limited<br>© 2026 Ametecs India Private Limited. All rights reserved.</div>
   </div>
 </aside>
 
@@ -171,6 +172,7 @@ tr:hover td{background:var(--card2)}
     <div id="pageActions"></div>
   </div>
   <div id="page"></div>
+  <div class="page-copy">© 2026 SmartEPT, developed by Ametecs India Private Limited — all rights reserved.</div>
 </main>
 
 <!-- generic modal -->
