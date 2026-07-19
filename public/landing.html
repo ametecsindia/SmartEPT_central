@@ -594,10 +594,10 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
 let RATES = { core:{annual:29,monthly:39}, pro:{annual:59,monthly:79}, ent:{annual:99,monthly:129} };
 let TIERS = [[25,59],[100,49],[250,39],[500,29],[1000,24],[Infinity,20]];
 let SETUP = { base:5000, included:25, per:100 };
-let CLOUD_X = 1.5, STOR_RATE = 3;
+let CLOUD_X = 1.5, STOR_RATE = 3, STOR_MIN_GB = 50, STOR_MIN_INR = 150, ANN_DISC = 0.25, HALF_DISC = 0.10;
 let bill='annual', host='hosted';
 function fmt(n){ return '₹' + n.toLocaleString('en-IN'); }
-function planPrice(k){ const A = RATES[k].annual; let r = bill==='quarterly' ? Math.round(A/0.75) : bill==='half_yearly' ? Math.round(A/0.75*0.9) : A; if(host==='cloud') r = Math.round(r*CLOUD_X); return r; }
+function planPrice(k){ const A = RATES[k].annual; let r = bill==='quarterly' ? Math.round(A/(1-ANN_DISC)) : bill==='half_yearly' ? Math.round(A/(1-ANN_DISC)*(1-HALF_DISC)) : A; if(host==='cloud') r = Math.round(r*CLOUD_X); return r; }
 function setBill(v){ bill=v; syncToggles(); render(); calc(); }
 function setHost(v){ host=v; syncToggles(); render(); calc(); }
 function syncToggles(){
@@ -609,9 +609,9 @@ function render(){
   document.querySelector('[data-plan=pro]').innerHTML  = fmt(planPrice('pro')) +'<small> /device/mo</small>';
   document.querySelector('[data-plan=ent]').innerHTML  = fmt(planPrice('ent')) +'<small> /device/mo</small>';
   const notes = document.querySelectorAll('.per-note');
-  notes.forEach(n=>n.textContent = host==='cloud' ? '+ storage from ₹3/GB/mo' : ({quarterly:'billed quarterly',half_yearly:'✓ save 10% vs quarterly',annual:'✓ save 25% vs quarterly'}[bill]));
+  notes.forEach(n=>n.textContent = host==='cloud' ? ('+ storage from ₹'+STOR_RATE+'/GB/mo') : ({quarterly:'billed quarterly',half_yearly:'✓ save '+Math.round(HALF_DISC*100)+'% vs quarterly',annual:'✓ save '+Math.round(ANN_DISC*100)+'% vs quarterly'}[bill]));
   document.getElementById('cloudNote').textContent = host==='cloud'
-    ? 'SmartEPT Cloud = client-hosted rate × 1.5 (managed hosting, monitoring, backup) + storage rental ₹3/GB/month. GST extra.'
+    ? ('SmartEPT Cloud = client-hosted rate × '+CLOUD_X+' (managed hosting, monitoring, backup) + storage rental ₹'+STOR_RATE+'/GB/month. GST extra.')
     : 'Prices per active device per month, ' + ({quarterly:'billed quarterly',half_yearly:'billed half-yearly',annual:'billed annually'}[bill]) + ', GST extra. You host the server — your data stays with you.';
   calc();
 }
@@ -625,12 +625,12 @@ function calc(){
   document.getElementById('devN').textContent = d;
   const cycleLbl = bill==='quarterly'?'Quarterly':bill==='half_yearly'?'Half-Yearly':'Annual';
   let tRate = tierRate(d);
-  let rate = bill==='quarterly' ? Math.round(tRate/0.75) : bill==='half_yearly' ? Math.round(tRate/0.75*0.9) : tRate;
+  let rate = bill==='quarterly' ? Math.round(tRate/(1-ANN_DISC)) : bill==='half_yearly' ? Math.round(tRate/(1-ANN_DISC)*(1-HALF_DISC)) : tRate;
   let cloud = host==='cloud';
   let r = cloud ? Math.round(rate*CLOUD_X) : rate;
   let monthly = d*r;
-  let storGB = Math.max(50, Math.ceil(d*2));           // rough 2 GB/device estimate
-  let storCost = cloud ? Math.max(150, Math.round(storGB*STOR_RATE)) : 0;
+  let storGB = Math.max(STOR_MIN_GB, Math.ceil(d*2));           // rough 2 GB/device estimate
+  let storCost = cloud ? Math.max(STOR_MIN_INR, Math.round(storGB*STOR_RATE)) : 0;
   document.getElementById('calcMode').textContent = (cloud?'SmartEPT Cloud':'Client-Hosted')+' · '+cycleLbl+' · Professional';
   document.getElementById('calcMonthly').textContent = fmt(monthly + storCost);
   document.getElementById('calcAnnual').textContent = fmt((monthly+storCost)*12);
@@ -680,7 +680,8 @@ function sendWA(e){
         TIERS = pro.volume_tiers.map(t => [t.max === null ? Infinity : +t.max, +t.rate]);
       if (d.setup) SETUP = {base:+d.setup.base, included:+d.setup.included, per:+d.setup.per_extra};
       if (d.cloud_multiplier) CLOUD_X = +d.cloud_multiplier;
-      if (d.storage && d.storage.slabs && d.storage.slabs.length) STOR_RATE = +d.storage.slabs[0][2];
+      if (d.cycles) { if (d.cycles.annual_discount!=null) ANN_DISC = +d.cycles.annual_discount; if (d.cycles.half_yearly_discount!=null) HALF_DISC = +d.cycles.half_yearly_discount; }
+      if (d.storage) { if (d.storage.slabs && d.storage.slabs.length) STOR_RATE = +d.storage.slabs[0][2]; if (d.storage.min_gb!=null) STOR_MIN_GB = +d.storage.min_gb; if (d.storage.min_inr!=null) STOR_MIN_INR = +d.storage.min_inr; }
       render();
     })
     .catch(() => {});
