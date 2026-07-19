@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\CheckoutController;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\OrderPayment;
 use App\Models\Setting;
 
 class InvoicePrintController extends Controller
@@ -30,6 +31,31 @@ class InvoicePrintController extends Controller
                 'upi_id' => Setting::get('upi_id', ''),
             ],
         ]);
+    }
+
+    public function creditNote(OrderPayment $payment)
+    {
+        abort_unless((float) $payment->amount < 0, 404); // credit notes are refund rows only
+        $order = $payment->order()->with('tenant', 'invoice')->firstOrFail();
+
+        return view('credit-note-print', [
+            'payment' => $payment,
+            'order' => $order,
+            'invoice' => $order->invoice,
+            'company' => $this->companyBlock(),
+        ]);
+    }
+
+    private function companyBlock(): array
+    {
+        return [
+            'name' => Setting::get('company_name', 'Ametecs India Private Limited'),
+            'address' => Setting::get('company_address', ''),
+            'gstin' => Setting::get('company_gstin', ''),
+            'phone' => Setting::get('company_phone', ''),
+            'email' => Setting::get('company_email', ''),
+            'state' => \App\Support\IndianStates::placeOfSupply(Setting::get('seller_state_code', '36')),
+        ];
     }
 
     public function quote(Order $order)

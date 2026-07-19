@@ -72,6 +72,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
     Route::get('/', [Admin\ConsoleController::class, 'index']);
     Route::get('/invoices/{invoice}/print', [Admin\InvoicePrintController::class, 'show']);
     Route::get('/orders/{order}/quote-print', [Admin\InvoicePrintController::class, 'quote']);
+    Route::get('/credit-notes/{payment}/print', [Admin\InvoicePrintController::class, 'creditNote']);
 
     Route::prefix('api')->group(function () {
         // Read endpoints — all roles
@@ -103,6 +104,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::post('setup-invoice', [Admin\BillingApiController::class, 'raiseSetupInvoice']);
             Route::post('orders/{order}/mark-paid', [Admin\BillingApiController::class, 'markPaid']);
             Route::post('orders/{order}/record-balance', [Admin\BillingApiController::class, 'recordBalance']); // §10 instalments
+            Route::post('orders/{order}/refund', [Admin\BillingApiController::class, 'refund']);
             Route::post('orders/{order}/approve-quote', [Admin\BillingApiController::class, 'approveQuote']);
             Route::post('trials/{tenant}/extend', [Admin\BillingApiController::class, 'extendTrial']);
             Route::post('storage', [Admin\BillingApiController::class, 'recordStorage']);

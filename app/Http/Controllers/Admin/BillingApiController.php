@@ -270,6 +270,44 @@ class BillingApiController extends Controller
         ]);
     }
 
+    /** Refund / credit note on an order (1.0 D5). Records a negative ledger row
+     *  and returns the printable credit-note URL. Cannot exceed net received. */
+    public function refund(Request $request, Order $order)
+    {
+        $received = $order->received();
+        if ($received <= 0) {
+            return response()->json(['error' => 'Nothing has been received on this order to refund.'], 422);
+        }
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:' . $received],
+            'method' => ['nullable', 'in:NEFT,UPI,cheque,cash,other,gateway'],
+            'reference' => ['nullable', 'string', 'max:190'],
+            'reason' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $payment = $this->billing->recordRefund($order, (float) $data['amount'], [
+                'method' => $data['method'] ?? null,
+                'reference' => $data['reference'] ?? null,
+                'reason' => $data['reason'],
+                'recorded_by' => auth('admin')->id(),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        $order = $order->fresh();
+
+        return response()->json([
+            'ok' => true,
+            'credit_note_number' => $payment->credit_note_number,
+            'print_url' => '/admin/credit-notes/' . $payment->id . '/print',
+            'received' => $order->received(),
+            'balance' => $order->balance(),
+        ]);
+    }
+
     // ---------- Invoices ----------
 
     public function invoices(Request $request)

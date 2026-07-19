@@ -365,6 +365,57 @@ class BillingService
     }
 
     /**
+     * Refund / credit-note (1.0 D5). A refund is a NEGATIVE row in the payments
+     * ledger, so received() drops automatically and the books stay consistent —
+     * no "refunded" enum that could disagree with the money (rev186 lesson).
+     * Cannot exceed net received. Provisioning is NOT auto-reversed (a commercial
+     * call handled by hand). Returns the credit-note payment row.
+     */
+    public function recordRefund(Order $order, float $amount, array $info = []): OrderPayment
+    {
+        $amount = round(abs($amount), 2);
+
+        return DB::transaction(function () use ($order, $amount, $info) {
+            $order = Order::lockForUpdate()->findOrFail($order->id);
+            $received = round((float) $order->payments()->sum('amount'), 2);
+
+            if ($amount <= 0 || $amount > $received) {
+                throw new \RuntimeException('Refund must be between '
+                    . number_format(0.01, 2) . ' and ' . number_format($received, 2)
+                    . ' (amount received on this order).');
+            }
+
+            $payment = OrderPayment::create([
+                'order_id' => $order->id,
+                'amount' => -$amount,                 // negative row = refund
+                'gateway' => 'refund',
+                'method' => $info['method'] ?? null,
+                'reference' => $info['reference'] ?? null,
+                'recorded_by' => $info['recorded_by'] ?? null,
+                'note' => $info['reason'] ?? null,
+                'credit_note_number' => $this->nextCreditNoteNumber(),
+                'paid_at' => now(),
+            ]);
+
+            AuditLog::write('order.refunded', $order, [
+                'amount' => $amount,
+                'credit_note' => $payment->credit_note_number,
+                'reason' => $info['reason'] ?? null,
+                'received_after' => round((float) $order->payments()->sum('amount'), 2),
+            ]);
+
+            return $payment;
+        });
+    }
+
+    /** GST-style FY credit-note series (same locked generator as invoices). */
+    public function nextCreditNoteNumber(): string
+    {
+        return self::nextFySeriesNumber('order_payments', 'credit_note_number',
+            Setting::get('credit_note_prefix', 'EPT-CN'));
+    }
+
+    /**
      * Admin "Record payment" on a quote/order — the credit-provisioning door
      * (master prompt §10). $data:
      *   payment_status: paid | partial | due

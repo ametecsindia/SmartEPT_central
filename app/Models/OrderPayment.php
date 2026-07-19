@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class OrderPayment extends Model
 {
     protected $fillable = ['order_id', 'amount', 'gateway', 'method', 'reference',
-        'gateway_payment_id', 'recorded_by', 'note', 'paid_at'];
+        'gateway_payment_id', 'recorded_by', 'note', 'credit_note_number', 'paid_at'];
 
     protected $casts = ['amount' => 'float', 'paid_at' => 'datetime'];
 
