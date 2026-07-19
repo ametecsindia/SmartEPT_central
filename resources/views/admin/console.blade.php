@@ -254,8 +254,8 @@ function waEdit(t) {
   <div><label>Language</label><input id="wa_lang" value="${esc(p.language||'en')}" placeholder="en"></div>
   <div><label>Category</label><select id="wa_cat">${cats}</select></div></div>
   <label>Body (reference — must match the approved template)</label>
-  <textarea id="wa_body" rows="3" placeholder="Hi {{1}}, thanks for your interest in SmartEPT…">${esc(p.body||'')}</textarea>
-  <label>Sample values (comma-separated — used for the test send; must match the {{n}} variables)</label>
+  <textarea id="wa_body" rows="3" placeholder="Hi @{{1}}, thanks for your interest in SmartEPT…">${esc(p.body||'')}</textarea>
+  <label>Sample values (comma-separated — used for the test send; must match the @{{n}} variables)</label>
   <input id="wa_samples" value="${esc(p.sample_values||'')}" placeholder="Ejaz">
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="waSave(${t?t.id:0})">Save</button></div>`);
