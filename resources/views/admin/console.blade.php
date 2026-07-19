@@ -326,7 +326,12 @@ function ensureHelpCss() {
     + '.hkb-esc{background:var(--weak);border-radius:8px;padding:8px 11px;margin-top:10px!important;color:var(--deep)}'
     + '.hkb-div{margin:18px 0 10px;font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--ink3);text-transform:uppercase}'
     + '.hkb-flash{outline:2px solid var(--accent);outline-offset:1px}'
-    + '.hc-log{background:#0B1220;color:#D6E2F0;border-radius:11px;padding:14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.55;max-height:440px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}';
+    + '.hc-log{background:#0B1220;color:#D6E2F0;border-radius:11px;padding:14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.55;max-height:440px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}'
+    + '.htabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}'
+    + '.htab{appearance:none;border:0;background:none;cursor:pointer;padding:9px 16px;font-size:12.5px;font-weight:700;color:var(--ink3);border-bottom:2px solid transparent;margin-bottom:-1px}'
+    + '.htab.on{color:var(--accent);border-bottom-color:var(--accent)}'
+    + '.htab:hover{color:var(--ink)}'
+    + '.htab-panel{display:none}.htab-panel.on{display:block}';
   document.head.appendChild(st);
 }
 const WA = '90000 98877';
@@ -481,8 +486,13 @@ async function helpRun() {
     box.innerHTML = '<div class="mini" style="color:var(--danger)">Could not run checks: ' + esc(String(e)) + '</div>';
   }
 }
+function helpTab(name) {
+  document.querySelectorAll('#page .htab').forEach(b => b.classList.toggle('on', b.dataset.ht === name));
+  document.querySelectorAll('#page .htab-panel').forEach(p => p.classList.toggle('on', p.dataset.ht === name));
+}
 function openHelpKb(id) {
   const el = document.getElementById(id); if (!el) return;
+  helpTab('fix'); // the KB lives on the "Fix a problem" tab — switch to it first
   el.open = true; el.scrollIntoView({ behavior:'smooth', block:'center' });
   el.classList.add('hkb-flash'); setTimeout(() => el.classList.remove('hkb-flash'), 1600);
 }
@@ -818,14 +828,19 @@ async support() {
 async help() {
   ensureHelpCss();
   P.innerHTML =
-    '<div class="card"><h3>System Health <span class="mini">one click checks the database, storage, email, WhatsApp, payments &amp; more</span></h3>'
+    '<div class="htabs">'
+    + '<button class="htab on" data-ht="health" onclick="helpTab(\'health\')">System Health</button>'
+    + '<button class="htab" data-ht="fix" onclick="helpTab(\'fix\')">Fix a problem</button>'
+    + '<button class="htab" data-ht="log" onclick="helpTab(\'log\')">Application log</button>'
+    + '</div>'
+    + '<div class="card htab-panel on" data-ht="health"><h3>System Health <span class="mini">one click checks the database, storage, email, WhatsApp, payments &amp; more</span></h3>'
     + '<div class="row" style="margin-bottom:12px;align-items:center;gap:10px">'
     + '<button class="btn btn-p" onclick="helpRun()">Run checks</button>'
     + '<span class="pill p-mut" id="hc-overall" style="display:none"></span>'
     + '<span class="mini" id="hc-when"></span></div>'
     + '<div id="hc-grid"><div class="mini">Press “Run checks” to test SmartEPT Central.</div></div></div>'
 
-    + '<div class="card"><h3>Known Issues — how to fix common problems <span class="mini">Central and the client product — plain language</span></h3>'
+    + '<div class="card htab-panel" data-ht="fix"><h3>Known Issues — how to fix common problems <span class="mini">Central and the client product — plain language</span></h3>'
     + '<div class="filters" style="margin-bottom:14px"><input id="hkb-search" oninput="filterHelpKb()" placeholder="Search problems… e.g. whatsapp, payment, screenshots, 500"></div>'
     + '<div id="hkb-list">'
     + '<div class="hkb-div">SmartEPT Central (this portal)</div>'
@@ -834,7 +849,7 @@ async help() {
     + HELP_KB_CLIENT.map(helpKbCard).join('')
     + '</div></div>'
 
-    + '<div class="card"><h3>Application log <span class="mini">the most recent messages — copy them for the developer</span></h3>'
+    + '<div class="card htab-panel" data-ht="log"><h3>Application log <span class="mini">the most recent messages — copy them for the developer</span></h3>'
     + '<div class="row" style="margin-bottom:10px;align-items:center;gap:8px">'
     + '<span class="mini">Show last</span>'
     + '<select id="hc-lines" style="width:auto"><option>100</option><option selected>200</option><option>500</option></select>'

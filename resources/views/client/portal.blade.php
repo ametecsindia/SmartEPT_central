@@ -87,6 +87,11 @@ tr:hover td{background:var(--card2)}
 .quote-box{background:var(--weak);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:12.5px;color:var(--deep)}
 .quote-box .ln{display:flex;justify-content:space-between;padding:3px 0;gap:14px}
 .quote-box .tt{border-top:1.5px solid rgba(11,99,115,.25);margin-top:6px;padding-top:6px;font-weight:800;font-size:14px}
+.quote-box .ln-sub{font-size:11px;color:var(--ink3);font-weight:600;margin-top:1px}
+.calc-ex{background:#fff;border:1px solid var(--border2);border-radius:10px;padding:11px 13px;margin-top:12px}
+.calc-ex .calc-cfg{font-weight:800;font-size:12.5px;color:var(--deep);margin-bottom:4px}
+.calc-ex .mini{margin:2px 0}
+.calc-ex .save{color:var(--ok);font-weight:700}
 .overlay{position:fixed;inset:0;background:rgba(4,37,44,.55);display:none;align-items:flex-start;justify-content:center;z-index:40;padding:40px 16px;overflow-y:auto}
 .overlay.show{display:flex}
 .modal{background:#fff;border-radius:16px;width:100%;max-width:560px;padding:24px 26px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
@@ -330,6 +335,11 @@ async function pgOverview() {
     </tbody></table>
     <p class="mini" style="margin-top:10px">Something wrong here? Message us on WhatsApp
     <a class="link" href="https://wa.me/${esc(OV.whatsapp)}" target="_blank">${esc(OV.whatsapp)}</a> and we will fix it.</p>
+  </div>
+  <div class="card">
+    <h3>See a sample report</h3>
+    <p class="mini" style="margin-bottom:10px">Curious what SmartEPT produces? Open a sample team-productivity report — the same layout your management receives, with illustrative data. No setup or agents needed.</p>
+    <a class="btn btn-p" href="/sample-report.html" target="_blank" style="text-decoration:none">View sample report →</a>
   </div>`;
 }
 function goBuy() { document.querySelector('[data-page=buy]').click(); }
@@ -554,7 +564,22 @@ async function calcQuote() {
   try {
     const q = await api('quote', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment, coupon_code:BUY.coupon || null}});
     if (seq !== CALC_SEQ) return; // a newer selection superseded this response
-    box.innerHTML = q.lines.map(l => `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('')
+    // Transparency: plain-language config + per-device rate + advance-period savings,
+    // then the itemised lines (showing qty × unit where the backend provides it).
+    const plan = BUY.plans.find(p => p.code === BUY.plan) || {};
+    const rate = periodRate(plan), mo = Number(plan.inr_monthly) || 0;
+    const saveM = Math.round(Math.max(0, mo - rate) * 100) / 100;
+    const savePct = mo ? Math.round((mo - rate) / mo * 100) : 0;
+    const cfg = `${plan.name || BUY.plan} · ${BUY.devices} device${BUY.devices === 1 ? '' : 's'} · ${PERIOD_LABEL[BUY.billing] || 'annual'} in advance · ${BUY.deployment === 'cloud' ? 'SmartEPT Cloud' : 'your server'}`;
+    const explain = `<div class="calc-ex"><div class="calc-cfg">${esc(cfg)}</div>`
+      + `<div class="mini">Rate for this period: <b>₹${rate}</b> per device / month`
+      + (saveM > 0 ? ` — <span class="save">you save ₹${saveM}/device/month vs monthly billing (${savePct}% off)</span>` : '')
+      + `.</div><div class="mini">GST is added on top; “Total payable” below is the final amount.</div></div>`;
+    box.innerHTML = explain + q.lines.map(l => {
+      const sub = (l.qty && l.unit != null && Math.abs(Number(l.qty)) !== 1)
+        ? `<div class="ln-sub">${l.qty} × ${fmtMoney(l.unit, q.currency)}</div>` : '';
+      return `<div class="ln"><span>${esc(l.description)}${sub}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`;
+    }).join('')
       + `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>`
       + `<div class="ln tt"><span>Total payable</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
     const note = document.getElementById('couponNote');

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEPT — Sample Productivity Report</title>
+<style>
+:root{--accent:#0E7C8F;--accent2:#22B8CF;--weak:#E3F4F7;--deep:#0B6373;--ink:#15171C;--ink2:#565A66;
+--ink3:#878C99;--canvas:#F1EFEA;--card:#fff;--border:#E5E1D8;--border2:#DAD6CC;--ok:#08875D;--ok-w:#E6F5EE;
+--warn:#B7791F;--warn-w:#FBF3E2;--danger:#D02748;--danger-w:#FBE9ED;--navy1:#04252C;--navy2:#0B4A56}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--canvas);color:var(--ink);font-size:13.5px;line-height:1.5;padding:26px 16px}
+.sheet{max-width:960px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(4,37,44,.10)}
+.hd{background:linear-gradient(140deg,var(--navy1),var(--navy2));color:#fff;padding:26px 30px;position:relative}
+.hd .brand{display:flex;align-items:center;gap:12px}
+.hd .mk{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff}
+.hd b.nm{font-size:19px;font-weight:800;letter-spacing:.3px}
+.hd .nm small{display:block;font-size:9px;letter-spacing:2.5px;color:#7FA8AF;font-weight:700}
+.hd h1{font-size:15px;font-weight:700;margin-top:16px;color:#DCEEF1}
+.hd .meta{display:flex;gap:26px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#9FC4CB}
+.hd .meta b{color:#fff}
+.ribbon{position:absolute;top:16px;right:-38px;transform:rotate(45deg);background:var(--warn);color:#fff;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:6px 44px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.body{padding:24px 30px 30px}
+.sec-t{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--deep);margin:26px 0 12px;display:flex;align-items:center;gap:9px}
+.sec-t:first-child{margin-top:4px}
+.sec-t::after{content:"";flex:1;height:1px;background:var(--border)}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}
+.kpi{border:1px solid var(--border);border-radius:12px;padding:13px 14px;background:var(--card2,#FAF9F5)}
+.kpi .l{font-size:10.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px}
+.kpi .v{font-size:24px;font-weight:800;color:var(--deep);margin-top:3px;line-height:1}
+.kpi .d{font-size:10.5px;color:var(--ink2);margin-top:3px}
+.kpi.g .v{color:var(--ok)}.kpi.w .v{color:var(--warn)}.kpi.r .v{color:var(--danger)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink3);font-weight:800;padding:8px 10px;border-bottom:2px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid var(--hair,#F0F1F4)}
+td b{font-weight:700}
+tr:last-child td{border-bottom:0}
+.sub{font-size:11px;color:var(--ink3)}
+.bar{height:7px;border-radius:5px;background:var(--weak);overflow:hidden;min-width:70px}
+.bar>span{display:block;height:100%;border-radius:5px}
+.pill{display:inline-block;font-size:10.5px;font-weight:800;padding:2.5px 9px;border-radius:20px}
+.pill.ok{background:var(--ok-w);color:var(--ok)}.pill.wn{background:var(--warn-w);color:var(--warn)}.pill.dn{background:var(--danger-w);color:var(--danger)}
+.two{display:grid;grid-template-columns:1.15fr 1fr;gap:26px}
+.usage .row{display:flex;align-items:center;gap:12px;margin:9px 0}
+.usage .nm{width:150px;font-weight:600;font-size:12.5px;flex:none}
+.usage .bar{flex:1}
+.usage .tm{width:56px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:12px}
+.trend{display:flex;align-items:flex-end;gap:10px;height:132px;padding:6px 2px 0}
+.trend .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
+.trend .cb{width:100%;max-width:34px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+.trend .cl{font-size:10.5px;color:var(--ink3);font-weight:600}
+.trend .cv{font-size:10.5px;font-weight:800;color:var(--deep)}
+.att{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.att .c{border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+.att .c .v{font-size:26px;font-weight:800;line-height:1}
+.att .c .l{font-size:11px;color:var(--ink2);margin-top:4px;font-weight:600}
+.ft{border-top:1px solid var(--border);margin-top:28px;padding:18px 30px;font-size:11px;color:var(--ink3);background:var(--card2,#FAF9F5);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.note{background:var(--warn-w);border:1px solid #EAD9B4;border-radius:10px;padding:10px 13px;font-size:11.5px;color:#6B551D;margin-top:4px}
+.actions{max-width:960px;margin:0 auto 14px;display:flex;justify-content:flex-end;gap:9px}
+.btn{border:1.5px solid var(--border2);background:#fff;color:var(--deep);font-weight:700;font-size:12.5px;padding:8px 15px;border-radius:9px;text-decoration:none;cursor:pointer}
+.btn.p{background:var(--accent);border-color:var(--accent);color:#fff}
+@media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border:0}.actions{display:none}.ribbon{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.usage .nm{width:110px}}
+</style>
+</head>
+<body>
+<div class="actions">
+  <a class="btn" href="javascript:window.print()">Print / Save as PDF</a>
+  <a class="btn p" href="javascript:window.close()">Close</a>
+</div>
+<div class="sheet">
+  <div class="hd">
+    <div class="ribbon">SAMPLE</div>
+    <div class="brand">
+      <div class="mk">SE</div>
+      <div><b class="nm">SmartEPT<small>BY AMETECS</small></b></div>
+    </div>
+    <h1>Team Productivity Report</h1>
+    <div class="meta">
+      <span>Organisation <b>Acme Textiles Pvt Ltd</b> <i>(illustrative)</i></span>
+      <span>Period <b>1–7 July 2026</b></span>
+      <span>Prepared for <b>Management review</b></span>
+    </div>
+  </div>
+  <div class="body">
+
+    <div class="sec-t">At a glance</div>
+    <div class="kpis">
+      <div class="kpi g"><div class="l">Avg productivity</div><div class="v">82%</div><div class="d">▲ 4% vs last week</div></div>
+      <div class="kpi"><div class="l">Employees tracked</div><div class="v">24</div><div class="d">across 4 teams</div></div>
+      <div class="kpi"><div class="l">Avg active hours</div><div class="v">7.1</div><div class="d">per working day</div></div>
+      <div class="kpi w"><div class="l">Attendance</div><div class="v">94%</div><div class="d">3 late arrivals</div></div>
+      <div class="kpi r"><div class="l">Policy alerts</div><div class="v">7</div><div class="d">2 need review</div></div>
+    </div>
+
+    <div class="sec-t">Daily productivity trend</div>
+    <div class="trend">
+      <div class="col"><span class="cv">76%</span><div class="cb" style="height:76%"></div><span class="cl">Mon</span></div>
+      <div class="col"><span class="cv">81%</span><div class="cb" style="height:81%"></div><span class="cl">Tue</span></div>
+      <div class="col"><span class="cv">85%</span><div class="cb" style="height:85%"></div><span class="cl">Wed</span></div>
+      <div class="col"><span class="cv">79%</span><div class="cb" style="height:79%"></div><span class="cl">Thu</span></div>
+      <div class="col"><span class="cv">88%</span><div class="cb" style="height:88%"></div><span class="cl">Fri</span></div>
+      <div class="col"><span class="cv">72%</span><div class="cb" style="height:72%"></div><span class="cl">Sat</span></div>
+      <div class="col"><span class="cv">0%</span><div class="cb" style="height:3%;background:var(--border2)"></div><span class="cl">Sun</span></div>
+    </div>
+
+    <div class="sec-t">Team members</div>
+    <table>
+      <tr><th>Employee</th><th>Team</th><th>Active</th><th>Idle</th><th style="width:150px">Productive</th><th>Top application</th><th>Status</th></tr>
+      <tr><td><b>Priya Nair</b><div class="sub">Design</div></td><td>Creative</td><td>7.9h</td><td>0.6h</td><td><div class="bar"><span style="width:93%;background:var(--ok)"></span></div><span class="sub">93%</span></td><td>Adobe Illustrator</td><td><span class="pill ok">Excellent</span></td></tr>
+      <tr><td><b>Rahul Menon</b><div class="sub">Backend</div></td><td>Engineering</td><td>7.4h</td><td>0.9h</td><td><div class="bar"><span style="width:88%;background:var(--ok)"></span></div><span class="sub">88%</span></td><td>VS Code</td><td><span class="pill ok">Excellent</span></td></tr>
+      <tr><td><b>Sana Sheikh</b><div class="sub">Accounts</div></td><td>Finance</td><td>7.0h</td><td>1.1h</td><td><div class="bar"><span style="width:84%;background:var(--ok)"></span></div><span class="sub">84%</span></td><td>Tally Prime</td><td><span class="pill ok">On track</span></td></tr>
+      <tr><td><b>Arjun Rao</b><div class="sub">Sales</div></td><td>Revenue</td><td>6.6h</td><td>1.7h</td><td><div class="bar"><span style="width:74%;background:var(--warn)"></span></div><span class="sub">74%</span></td><td>Outlook</td><td><span class="pill wn">Watch</span></td></tr>
+      <tr><td><b>Neha Gupta</b><div class="sub">Support</div></td><td>Success</td><td>7.2h</td><td>0.8h</td><td><div class="bar"><span style="width:86%;background:var(--ok)"></span></div><span class="sub">86%</span></td><td>Freshdesk</td><td><span class="pill ok">On track</span></td></tr>
+      <tr><td><b>Vikram Singh</b><div class="sub">Marketing</div></td><td>Growth</td><td>5.9h</td><td>2.3h</td><td><div class="bar"><span style="width:61%;background:var(--danger)"></span></div><span class="sub">61%</span></td><td>YouTube</td><td><span class="pill dn">Needs review</span></td></tr>
+    </table>
+
+    <div class="sec-t">Where the time went</div>
+    <div class="two">
+      <div class="usage">
+        <div class="row"><span class="nm">Work applications</span><span class="bar"><span style="width:64%;background:var(--ok)"></span></span><span class="tm">64%</span></div>
+        <div class="row"><span class="nm">Business websites</span><span class="bar"><span style="width:18%;background:var(--accent)"></span></span><span class="tm">18%</span></div>
+        <div class="row"><span class="nm">Communication</span><span class="bar"><span style="width:9%;background:var(--accent2)"></span></span><span class="tm">9%</span></div>
+        <div class="row"><span class="nm">Social / streaming</span><span class="bar"><span style="width:6%;background:var(--warn)"></span></span><span class="tm">6%</span></div>
+        <div class="row"><span class="nm">Idle / away</span><span class="bar"><span style="width:3%;background:var(--ink3)"></span></span><span class="tm">3%</span></div>
+      </div>
+      <div>
+        <div class="att">
+          <div class="c"><div class="v" style="color:var(--ok)">23</div><div class="l">Present</div></div>
+          <div class="c"><div class="v" style="color:var(--warn)">3</div><div class="l">Late</div></div>
+          <div class="c"><div class="v" style="color:var(--danger)">1</div><div class="l">Absent</div></div>
+        </div>
+        <div class="note">Screenshots and webcam evidence are captured automatically on policy violations, so every alert in this report can be reviewed with visual proof in the console.</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="ft">
+    <span>SmartEPT — Employee Productivity Tracking · Sample report generated for demonstration.</span>
+    <span>© 2026 SmartEPT, developed by Ametecs India Private Limited — all rights reserved.</span>
+  </div>
+</div>
+</body>
+</html>
