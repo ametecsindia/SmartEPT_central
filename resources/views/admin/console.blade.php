@@ -391,6 +391,18 @@ async settings() {
   <div class="card"><h3>Stripe (USD international)</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
   ${f('stripe_publishable_key','Publishable key')}${f('stripe_secret_key','Secret key','password')}${f('stripe_webhook_secret','Webhook signing secret','password')}</div>
   <div class="mini">Webhook URL: <b>${location.origin}/webhooks/stripe</b> · event: checkout.session.completed</div></div>
+  <div class="card"><h3>Email (SMTP) — your outgoing mail server</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('mail_host','SMTP host (e.g. smtp.gmail.com)')}${f('mail_port','Port (587 = TLS, 465 = SSL)')}
+  ${f('mail_username','Username')}${f('mail_password','Password / app password','password')}
+  ${f('mail_encryption','Encryption (tls / ssl / none)')}${f('mail_from_name','From name (e.g. SmartEPT Billing)')}
+  ${f('mail_from_address','From address (e.g. billing@yourcompany.com)')}</div>
+  <div class="row" style="margin-top:10px"><input id="test_email_to" placeholder="Send a test to… (email)" style="max-width:260px"><button class="btn" onclick="sendTestEmail()">Send test email</button> <span class="mini" id="test_email_msg"></span></div>
+  <div class="mini">Gmail: use an App Password, not your login. Leave host blank to keep the server's built-in mail.</div></div>
+  <div class="card"><h3>WhatsApp API (Interakt) — send OTPs &amp; alerts over WhatsApp</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('interakt_api_key','API Key (Interakt Secret Key)','password')}${f('interakt_sender_number','Sender number')}
+  ${f('interakt_waba_id','WABA ID (optional)')}${f('interakt_api_url','API URL (blank = Interakt default)')}
+  ${f('interakt_status','Status (active / inactive)')}</div>
+  <div class="mini">Same as SmartPRS: paste the Interakt Secret Key, set the sender number, status active. Leave API URL blank for the Interakt default. Business-initiated WhatsApp needs approved templates in Interakt — the send service + template registry come next. (Click-to-chat number is in Company &amp; Tax above.)</div></div>
   <button class="btn btn-p" onclick="saveSettings()">Save Settings</button>`;
 },
 
@@ -410,13 +422,12 @@ async function loadTenants() {
   const q = document.getElementById('tq').value, st = document.getElementById('tst').value;
   const d = await api(`tenants?q=${encodeURIComponent(q)}&status=${st}`);
   document.getElementById('tlist').innerHTML = `<div class="card"><table>
-  <tr><th>Company</th><th>Contact</th><th>Deployment</th><th>Plan</th><th>Storage</th><th>Status</th><th></th></tr>
+  <tr><th>Company</th><th>Contact</th><th>Deployment</th><th>Plan</th><th>Status</th><th></th></tr>
   ${d.data.map(t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
   <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
   <td>${t.deployment === 'cloud' ? '<span class="pill p-info">SmartEPT Cloud</span>' : '<span class="pill p-mut">Client-hosted</span>'}${t.ecosystem_customer?' <span class="pill p-warn">Ecosystem</span>':''}</td>
-  <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td>
-  <td class="mini">${t.storage ? `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:${t.storage.state==='OVER'?'#DC2626':t.storage.state==='WARN'?'#D97706':'#0E7C8F'}1a;color:${t.storage.state==='OVER'?'#DC2626':t.storage.state==='WARN'?'#D97706':'#0E7C8F'}">${t.storage.used_gb} / ${t.storage.quota_gb} GB · ${t.storage.pct}%</span>` : '<span class="mini">—</span>'}</td><td>${pill(t.status)}</td>
-  <td><button class="link" onclick="showTenant(${t.id})">Open</button></td></tr>`).join('') || '<tr><td colspan="7" class="mini">No clients found</td></tr>'}</table></div>`;
+  <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td><td>${pill(t.status)}</td>
+  <td><button class="link" onclick="showTenant(${t.id})">Open</button></td></tr>`).join('') || '<tr><td colspan="6" class="mini">No clients found</td></tr>'}</table></div>`;
 }
 
 async function showTenant(id) {
@@ -545,7 +556,7 @@ async function loadOrders() {
     ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
     : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
   <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:''}` :
-  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>${CAN_WRITE?` <button class="link" onclick="refundOrder(${o.id},'${esc(o.number)}',${(o.total - (o.balance ?? 0)).toFixed(2)})">Refund</button>`:''}`:'')}</td></tr>`).join('') || '<tr><td colspan="7" class="mini">No orders</td></tr>'}</table></div>`;
+  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="7" class="mini">No orders</td></tr>'}</table></div>`;
 }
 async function approveQuote(id) {
   try { await api(`orders/${id}/approve-quote`, {method:'POST'}); toast('Quotation approved — now payable'); loadOrders(); }
@@ -681,35 +692,6 @@ async function doRecordBalance(id) {
   } catch (e) { toast('Error: ' + e); }
 }
 
-function refundOrder(id, number, received) {
-  openModal(`<h2>Refund / credit note — ${esc(number)}</h2>
-  <div class="sub">Received on this order: <b>${fmtMoney(received)}</b>. Records a refund in the payments ledger and generates a numbered GST credit note. You cannot refund more than was received.</div>
-  <div class="row">
-    <div><label>Refund amount (₹)</label><input id="rf_amount" type="number" min="0.01" step="0.01" max="${received}" value="${received}"></div>
-    <div><label>Method</label><select id="rf_method"><option>NEFT</option><option>UPI</option><option>cheque</option><option>cash</option><option value="gateway">gateway</option><option>other</option></select></div>
-  </div>
-  <label>Reason (printed on the credit note)</label><input id="rf_reason" placeholder="e.g. Service cancelled within refund window" maxlength="255">
-  <label>Reference (optional)</label><input id="rf_ref" placeholder="UTR / cheque no.">
-  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
-  <button class="btn btn-p" onclick="doRefund(${id})">Record refund + credit note</button></div>`);
-}
-async function doRefund(id) {
-  const amount = +document.getElementById('rf_amount').value;
-  const reason = document.getElementById('rf_reason').value.trim();
-  if (!amount || amount <= 0) return toast('Enter a refund amount.');
-  if (!reason) return toast('Please enter a reason for the credit note.');
-  try {
-    const r = await api(`orders/${id}/refund`, {method:'POST', body:{
-      amount, reason,
-      method: document.getElementById('rf_method').value,
-      reference: document.getElementById('rf_ref').value}});
-    closeModal();
-    toast('Refund recorded — credit note ' + r.credit_note_number);
-    window.open(r.print_url, '_blank');
-    go('orders');
-  } catch (e) { toast('Error: ' + e); }
-}
-
 // ---------- trials helpers ----------
 async function extendTrial(id) {
   const days = prompt('Extend trial by how many days? (1–30)', '7');
@@ -744,6 +726,18 @@ async function saveSettings() {
   document.querySelectorAll('[id^=set_]').forEach(el => body[el.id.slice(4)] = el.value);
   try { await api('settings', {method:'PUT', body}); toast('Settings saved'); }
   catch (e) { toast('Error: ' + e); }
+}
+async function sendTestEmail() {
+  const to = (document.getElementById('test_email_to')||{}).value?.trim();
+  const msg = document.getElementById('test_email_msg');
+  if (!to) { msg.textContent = 'Enter an email address first.'; msg.style.color = '#DC2626'; return; }
+  msg.style.color = ''; msg.textContent = 'Saving settings & sending…';
+  try {
+    const body = {}; document.querySelectorAll('[id^=set_]').forEach(el => body[el.id.slice(4)] = el.value);
+    await api('settings', {method:'PUT', body});
+    const r = await api('config/test-email', {method:'POST', body:{to}});
+    msg.textContent = r.message; msg.style.color = r.ok ? '#16A34A' : '#DC2626';
+  } catch (e) { msg.textContent = 'Error: ' + e; msg.style.color = '#DC2626'; }
 }
 function editPlan(p) {
   openModal(`<h2>Edit ${esc(p.name)}</h2><div class="row">

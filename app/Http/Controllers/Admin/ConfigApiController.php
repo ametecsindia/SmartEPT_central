@@ -38,6 +38,8 @@ class ConfigApiController extends Controller
     private const EDITABLE_SETTINGS = [
         'gst_rate', 'invoice_prefix', 'quote_prefix', 'order_prefix', 'company_name', 'company_address',
         'company_gstin', 'company_phone', 'company_email', 'whatsapp_number',
+        'mail_host', 'mail_port', 'mail_username', 'mail_password', 'mail_encryption', 'mail_from_address', 'mail_from_name',
+        'interakt_api_url', 'interakt_api_key', 'interakt_sender_number', 'interakt_waba_id', 'interakt_status',
         'razorpay_key_id', 'razorpay_key_secret', 'razorpay_webhook_secret',
         'stripe_publishable_key', 'stripe_secret_key', 'stripe_webhook_secret',
         // Landing CMS (master prompt §5) — marketing edits at the owner's speed.
@@ -48,6 +50,7 @@ class ConfigApiController extends Controller
 
     private const SECRET_SETTINGS = [
         'razorpay_key_secret', 'razorpay_webhook_secret', 'stripe_secret_key', 'stripe_webhook_secret',
+        'mail_password', 'interakt_api_key',
     ];
 
     public function settings()
@@ -81,6 +84,25 @@ class ConfigApiController extends Controller
         \Illuminate\Support\Facades\Cache::forget('public_plans_v2');
 
         return response()->json(['ok' => true]);
+    }
+
+    /** POST config/test-email — send a test using the current SMTP settings. */
+    public function testEmail(Request $request)
+    {
+        $data = $request->validate(['to' => ['required', 'email']]);
+        $ok = app(\App\Services\MailService::class)->send(
+            $data['to'],
+            'SmartEPT — test email',
+            "This is a test email from SmartEPT Central.\nIf you received it, your SMTP settings are working."
+            . \App\Services\MailService::signature()
+        );
+
+        return response()->json([
+            'ok' => $ok,
+            'message' => $ok
+                ? 'Test email sent to ' . $data['to'] . ' — check the inbox (and spam).'
+                : 'Could not send. Check the SMTP host, port, username and password, then try again.',
+        ]);
     }
 
     public function audit()
