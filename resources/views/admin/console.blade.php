@@ -152,6 +152,7 @@ tr:hover td{background:var(--card2)}
     <div class="nav-item" data-page="watemplates" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.6-1.3A9 9 0 1 0 12 3z"/><path d="M8.6 9.4c.3 1.9 1.9 3.6 3.9 4.1"/></svg></span> WhatsApp Templates</div>
     <div class="nav-item" data-page="downloads" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5"/><path d="M5 21h14"/></svg></span> Downloads</div>
     <div class="nav-item" data-page="settings" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span> Settings</div>
+    <div class="nav-item" data-page="users" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="8.2" r="3.4"/><path d="M2.8 20.2a6.2 6.2 0 0 1 12.4 0"/><circle cx="17.2" cy="9.4" r="2.6"/><path d="M16 15.6a5 5 0 0 1 5.2 4.6"/></svg></span> Users &amp; Roles</div>
     <div class="nav-item" data-page="audit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></span> Audit Log</div>
     <div class="nav-item" data-page="help" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.6-2.8 2.6"/><path d="M12 17h.01"/></svg></span> Help &amp; Troubleshooting</div>
   </nav>
@@ -223,7 +224,7 @@ let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
 plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
 storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log',
-help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports',support:'Support'};
+help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports',support:'Support',users:'Users & Roles'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -625,6 +626,67 @@ async function tkSave(id) {
   catch (e) { toast('Error: ' + e); }
 }
 
+// ---- Admin users & roles ----
+let AU_ROWS = {};
+const AU_ROLES = [['super', 'Super admin — full access'], ['sales', 'Sales — business & money'], ['support', 'Support — read + tickets']];
+const AU_V = (id) => (document.getElementById(id) || {}).value || '';
+function auAdd() { auForm(null); }
+function auEdit(id) { auForm(AU_ROWS[id]); }
+function auForm(u) {
+  const isNew = !u; u = u || { name: '', email: '', role: 'support', active: true };
+  const roleOpts = AU_ROLES.map(([v, l]) => '<option value="' + v + '"' + (v === u.role ? ' selected' : '') + '>' + esc(l) + '</option>').join('');
+  openModal('<h2>' + (isNew ? 'Add' : 'Edit') + ' admin user</h2>'
+    + '<label>Name</label><input id="au-name" value="' + esc(u.name || '') + '" placeholder="Full name">'
+    + (isNew ? '<label>Email</label><input id="au-email" type="email" placeholder="name@ametecsindia.com">' : '<div class="sub">' + esc(u.email) + '</div>')
+    + '<label>Role</label><select id="au-role">' + roleOpts + '</select>'
+    + (isNew ? '<label>Temporary password (min 8)</label><input id="au-pass" type="text" placeholder="give them this to sign in">' : '')
+    + (isNew ? '' : '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="au-active" ' + (u.active ? 'checked' : '') + '> Active (can sign in)</label>')
+    + '<div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>'
+    + '<button class="btn btn-p" onclick="auSave(' + (isNew ? 0 : u.id) + ')">Save</button></div>');
+}
+async function auSave(id) {
+  try {
+    if (!id) {
+      const body = { name: AU_V('au-name'), email: AU_V('au-email'), role: AU_V('au-role'), password: AU_V('au-pass') };
+      if (!body.name || !body.email || !body.password) { toast('Name, email and password are required'); return; }
+      await api('admin-users', { method: 'POST', body });
+    } else {
+      const body = { name: AU_V('au-name'), role: AU_V('au-role'), active: document.getElementById('au-active').checked };
+      await api('admin-users/' + id, { method: 'PUT', body });
+    }
+    closeModal(); toast('Saved'); go('users');
+  } catch (e) { toast('Error: ' + e); }
+}
+async function auReset(id, name) {
+  const p = prompt('New password for ' + name + ' (min 8 characters):');
+  if (!p) return;
+  try { await api('admin-users/' + id + '/reset-password', { method: 'POST', body: { password: p } }); toast('Password reset'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function auDelete(id, name) {
+  if (!confirm('Remove admin user "' + name + '"? They will no longer be able to sign in.')) return;
+  try { await api('admin-users/' + id, { method: 'DELETE' }); toast('Removed'); go('users'); }
+  catch (e) { toast('Error: ' + e); }
+}
+function auMatrixCard() {
+  const M = [
+    ['Dashboard', 'view', 'view', 'view'], ['Clients / Tenants', 'manage', 'manage', 'view'],
+    ['Trials', 'manage', 'manage', 'view'], ['Leads', 'manage', 'manage', 'view'],
+    ['Support tickets', 'manage', 'manage', 'manage'], ['Licences', 'manage', 'manage', 'view'],
+    ['Plans & Pricing', 'manage', 'view', '—'], ['Orders & Payments', 'manage', 'manage', '—'],
+    ['Credit & Invoices', 'manage', 'manage', '—'], ['Cloud Storage', 'manage', 'manage', '—'],
+    ['Coupons', 'manage', 'manage', '—'], ['Accountant Reports', 'manage', 'manage', '—'],
+    ['Downloads', 'manage', '—', '—'], ['Landing CMS', 'manage', '—', '—'],
+    ['WhatsApp Templates', 'manage', '—', '—'], ['Settings', 'manage', '—', '—'],
+    ['Users & Roles', 'manage', '—', '—'], ['Audit Log', 'view', 'view', 'view'],
+  ];
+  const cell = (v) => v === 'manage' ? '<span class="pill p-ok">manage</span>' : (v === 'view' ? '<span class="pill p-info">view</span>' : '<span class="mini">—</span>');
+  const rows = M.map((m) => '<tr><td><b>' + esc(m[0]) + '</b></td><td>' + cell(m[1]) + '</td><td>' + cell(m[2]) + '</td><td>' + cell(m[3]) + '</td></tr>').join('');
+  return '<div class="card"><h3>Permission matrix <span class="mini">what each role can do — enforced on the server</span></h3>'
+    + '<table><tr><th>Module</th><th>Super admin</th><th>Sales</th><th>Support</th></tr>' + rows + '</table>'
+    + '<div class="mini" style="margin-top:8px"><b>manage</b> = view + create/edit · <b>view</b> = read only · <b>—</b> = no access</div></div>';
+}
+
 const RENDER = {
 
 // ============ DOWNLOADS ============
@@ -707,6 +769,30 @@ async reports() {
     + '<div class="card"><h3>Collections</h3><p class="mini">Every payment &amp; refund received in the range — client, order, method, reference, amount.</p><button class="btn btn-p" onclick="dlReport(\'collections\')">Download CSV &rarr;</button></div>'
     + '<div class="card"><h3>Outstanding</h3><p class="mini">Live credit balances — order total, received, balance, due date, overdue flag.</p><button class="btn btn-p" onclick="dlReport(\'outstanding\')">Download CSV &rarr;</button></div>'
     + '</div>';
+},
+
+// ============ USERS & ROLES ============
+async users() {
+  ACTIONS.innerHTML = '<button class="btn btn-p" onclick="auAdd()">+ Add user</button>';
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('admin-users');
+  AU_ROWS = {}; (d.data || []).forEach(u => { AU_ROWS[u.id] = u; });
+  const RP = { super: 'p-ok', sales: 'p-info', support: 'p-mut' };
+  const rows = (d.data || []).map(u => {
+    const nm = esc((u.name || '').replace(/'/g, ''));
+    return '<tr><td><b>' + esc(u.name) + '</b>' + (u.is_self ? ' <span class="mini">(you)</span>' : '') + '<div class="mini">' + esc(u.email) + '</div></td>'
+      + '<td><span class="pill ' + (RP[u.role] || 'p-mut') + '">' + esc(u.role) + '</span></td>'
+      + '<td>' + (u.active ? '<span class="pill p-ok">active</span>' : '<span class="pill p-dang">disabled</span>') + '</td>'
+      + '<td class="mini">' + (u.last_login_at ? esc(u.last_login_at) : 'never') + '</td>'
+      + '<td style="white-space:nowrap"><button class="link" onclick="auEdit(' + u.id + ')">Edit</button> '
+      + '<button class="link" onclick="auReset(' + u.id + ',\'' + nm + '\')">Reset password</button>'
+      + (u.is_self ? '' : ' <button class="link" style="color:var(--danger)" onclick="auDelete(' + u.id + ',\'' + nm + '\')">Delete</button>')
+      + '</td></tr>';
+  }).join('');
+  P.innerHTML = '<div class="card"><h3>Admin users <span class="mini">who can sign in to SmartEPT Central</span></h3>'
+    + '<table><tr><th>User</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No users.</td></tr>') + '</table></div>'
+    + auMatrixCard();
 },
 
 // ============ SUPPORT DESK ============

@@ -145,6 +145,13 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::post('download-artifacts/{artifact}', [Admin\DownloadApiController::class, 'save']);
             Route::delete('download-artifacts/{artifact}', [Admin\DownloadApiController::class, 'destroy']);
             Route::post('download-limits', [Admin\DownloadApiController::class, 'saveLimits']);
+
+            // Admin staff accounts + roles (SmartPRS-style).
+            Route::get('admin-users', [Admin\AdminUserController::class, 'index']);
+            Route::post('admin-users', [Admin\AdminUserController::class, 'store']);
+            Route::put('admin-users/{adminUser}', [Admin\AdminUserController::class, 'update']);
+            Route::post('admin-users/{adminUser}/reset-password', [Admin\AdminUserController::class, 'resetPassword']);
+            Route::delete('admin-users/{adminUser}', [Admin\AdminUserController::class, 'destroy']);
         });
     });
 });
