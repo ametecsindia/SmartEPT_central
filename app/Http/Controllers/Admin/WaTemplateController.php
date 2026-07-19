@@ -28,11 +28,48 @@ class WaTemplateController extends Controller
 
     public function index()
     {
+        self::seedDefaults();
+
         return response()->json([
             'data' => WaTemplate::orderBy('purpose')->orderBy('id')->get(),
             'purposes' => self::PURPOSES,
             'configured' => (bool) WaService::config(),
         ]);
+    }
+
+    /**
+     * Seed the platform default templates once, so the registry ships ready —
+     * each row matches the variable ORDER the live flows send. Admin may edit the
+     * wording, submit the template in the Interakt dashboard, then a successful
+     * Send-test marks it Approved. Seeds only when the registry is empty, so a
+     * deliberately deleted template is never resurrected.
+     */
+    public static function seedDefaults(): void
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('wa_templates') || WaTemplate::exists()) {
+            return;
+        }
+        $portal = rtrim(config('app.url'), '/') . '/client';
+        $rows = [
+            ['purpose' => 'welcome', 'name' => 'smartept_welcome', 'category' => 'utility', 'var_count' => 3,
+                'body' => "Hi {{1}}, welcome to SmartEPT! Your 7-day trial for {{2}} is now live.\nSign in anytime at {{3}}. Our team is here whenever you need a hand. — Team Ametecs",
+                'sample_values' => 'Ravi Kumar, Apex Collections Pvt Ltd, ' . $portal],
+            ['purpose' => 'payment', 'name' => 'smartept_payment', 'category' => 'utility', 'var_count' => 5,
+                'body' => "Hi {{1}}, we have received your payment of {{2}} for order {{3}}.\nTax invoice: {{4}}. Your SmartEPT licence is active till {{5}}.\nManage everything in your client portal. — Team Ametecs",
+                'sample_values' => 'Apex Collections Pvt Ltd, Rs. 8850.00, EPT-1024, EPT-INV-1024, 06 Sep 2026'],
+            ['purpose' => 'renewal', 'name' => 'smartept_renewal', 'category' => 'utility', 'var_count' => 5,
+                'body' => "Hi {{1}}, your SmartEPT {{2}} licence expires {{3}} ({{4}}).\nRenew in a minute here: {{5}}\nRenewing on time keeps your attendance and productivity records unbroken. — Team Ametecs",
+                'sample_values' => 'Ravi Kumar, Professional, in 7 days, 06 Sep 2026, ' . $portal],
+            ['purpose' => 'lead', 'name' => 'smartept_lead', 'category' => 'utility', 'var_count' => 1,
+                'body' => "Hi {{1}}, thank you for your interest in SmartEPT! Our team will reach out to you shortly.\nMeanwhile, reply here with any questions. — Team Ametecs",
+                'sample_values' => 'Ravi Kumar'],
+            ['purpose' => 'otp', 'name' => 'smartept_otp', 'category' => 'authentication', 'var_count' => 1,
+                'body' => "{{1}} is your SmartEPT verification code. It is valid for 10 minutes. For your security, do not share this code with anyone.",
+                'sample_values' => '482913'],
+        ];
+        foreach ($rows as $r) {
+            WaTemplate::create($r + ['language' => 'en', 'status' => 'draft']);
+        }
     }
 
     public function store(Request $request)

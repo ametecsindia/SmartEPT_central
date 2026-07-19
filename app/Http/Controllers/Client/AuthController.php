@@ -43,7 +43,7 @@ class AuthController extends Controller
             return response()->json(['error' => 'This email already has a SmartEPT account. Please sign in instead.'], 422);
         }
 
-        $code = $this->otp->issue($data['email'], 'signup');
+        $code = $this->otp->issue($data['email'], 'signup', $data['phone'] ?? null);
 
         return response()->json([
             'ok' => true,
@@ -126,6 +126,21 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $user->update(['last_login_at' => now()]);
         AuditLog::write('client.signup', $user->tenant, ['email' => $user->email]);
+
+        // 1.0 Interakt welcome — fire-and-forget; only sends when Interakt is
+        // configured AND a 'welcome' template is approved. WaService never throws.
+        if (! empty($data['phone'])) {
+            \App\Services\WaService::sendTemplate([
+                'mobile' => $data['phone'],
+                'purpose' => 'welcome',
+                'bodyValues' => [
+                    $data['contact_name'] ?: $data['company_name'],
+                    $data['company_name'],
+                    url('/client'),
+                ],
+                'kind' => 'welcome',
+            ]);
+        }
 
         return response()->json(['ok' => true, 'redirect' => '/client']);
     }

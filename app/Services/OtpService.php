@@ -25,7 +25,7 @@ class OtpService
      * Returns the plain code so the caller can decide whether to expose it
      * (test mode only — never in production responses).
      */
-    public function issue(string $email, string $purpose): string
+    public function issue(string $email, string $purpose, ?string $mobile = null): string
     {
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -52,6 +52,17 @@ class OtpService
             . 'It is valid for ' . self::TTL_MINUTES . ' minutes. If you did not request this, please ignore this email.'
             . MailService::signature()
         );
+
+        // 1.0 Interakt OTP — also deliver the code by WhatsApp when a mobile is
+        // known (signup) and Interakt + an approved 'otp' template exist.
+        if ($mobile) {
+            \App\Services\WaService::sendTemplate([
+                'mobile' => $mobile,
+                'purpose' => 'otp',
+                'bodyValues' => [$code],
+                'kind' => 'otp',
+            ]);
+        }
 
         return $code;
     }

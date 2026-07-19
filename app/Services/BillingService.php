@@ -562,6 +562,23 @@ class BillingService
             'SmartEPT — payment received' . ($invoice ? ' · Invoice ' . $invoice->number : ''),
             $body
         );
+
+        // 1.0 Interakt payment confirmation — best-effort, only when configured
+        // and a 'payment' template is approved. WaService never throws.
+        if ($tenant->phone) {
+            \App\Services\WaService::sendTemplate([
+                'mobile' => $tenant->phone,
+                'purpose' => 'payment',
+                'bodyValues' => [
+                    $tenant->company_name,
+                    $symbol . number_format((float) $order->total, 2),
+                    $order->number,
+                    $invoice ? $invoice->number : 'to follow',
+                    ($licence && $licence->expires_at) ? $licence->expires_at->toDateString() : '-',
+                ],
+                'kind' => 'payment',
+            ]);
+        }
     }
 
     /** Warm part-payment acknowledgement with the live balance and due date. */

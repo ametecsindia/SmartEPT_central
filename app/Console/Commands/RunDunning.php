@@ -80,6 +80,23 @@ class RunDunning extends Command
                 . MailService::signature();
 
             $this->mail->send($licence->tenant->email, $subject, $body);
+
+            // 1.0 Interakt renewal reminder — same milestone, best-effort.
+            if ($licence->tenant->phone) {
+                \App\Services\WaService::sendTemplate([
+                    'mobile' => $licence->tenant->phone,
+                    'purpose' => 'renewal',
+                    'bodyValues' => [
+                        $licence->tenant->contact_name ?: $licence->tenant->company_name,
+                        $licence->plan->name ?? $licence->plan->code ?? 'SmartEPT',
+                        $when,
+                        $licence->expires_at->toDateString(),
+                        rtrim(config('app.url'), '/') . '/client',
+                    ],
+                    'kind' => 'renewal',
+                ]);
+            }
+
             $this->info("Renewal reminder ({$days}d): {$licence->key}");
         }
     }
