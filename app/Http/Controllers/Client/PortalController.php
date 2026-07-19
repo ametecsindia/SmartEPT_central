@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Controller;
 use App\Models\DownloadArtifact;
+use App\Models\DownloadLog;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Setting;
@@ -104,12 +105,44 @@ class PortalController extends Controller
         return $files[0] ?? null;
     }
 
-    /** GET /client/download/{slug} — auth-walled installer download. */
+    /** GET /client/download/{slug} — auth-walled installer download (quota-limited + logged). */
     public function download(string $slug)
     {
+        $slug = self::LEGACY_ALIAS[$slug] ?? $slug;
         $path = self::artifactPath($slug);
 
         abort_unless($path, 404, 'This installer is not published yet — WhatsApp 90000 98877 and we will send it to you.');
+
+        $tenant = auth('client')->user()->tenant;
+        if ($tenant) {
+            $q = DownloadLog::quotaFor($tenant);
+
+            // Per-app, per-day cap.
+            $today = DownloadLog::where('tenant_id', $tenant->id)
+                ->where('artifact_slug', $slug)
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+            abort_if($today >= $q['daily'], 429,
+                "Daily download limit reached for this installer ({$q['daily']} per day). Please try again tomorrow — "
+                . 'or WhatsApp 90000 98877 if you need it sooner.');
+
+            // Total downloads this calendar month.
+            $month = DownloadLog::where('tenant_id', $tenant->id)
+                ->where('created_at', '>=', now()->startOfMonth())
+                ->count();
+            abort_if($month >= $q['monthly'], 429,
+                "Monthly download limit reached ({$q['monthly']} per month). WhatsApp 90000 98877 and we'll sort you out.");
+
+            $row = DownloadArtifact::where('slug', $slug)->first();
+            DownloadLog::create([
+                'tenant_id'      => $tenant->id,
+                'tenant_name'    => $tenant->company_name,
+                'artifact_slug'  => $slug,
+                'artifact_title' => $row->title ?? $slug,
+                'platform'       => $row->platform ?? null,
+                'ip'             => request()->ip(),
+            ]);
+        }
 
         return response()->download($path);
     }

@@ -311,6 +311,7 @@ async function pgInstall() {
       <code style="flex:1;background:#F2F7F8;border:1px solid #DCEAEC;border-radius:8px;padding:11px 13px;font-size:14px;letter-spacing:1px;color:#0B4A56">${esc(key)}</code>
       <button class="btn btn-l" onclick="copyKey('${esc(key)}')">Copy</button>
     </div>
+    ${d.quota ? `<div class="mini" style="margin-top:10px">Downloads this month: <b>${esc(String(d.quota.used_month))}</b> of ${esc(String(d.quota.monthly))} used · up to ${esc(String(d.quota.daily_per_app))} per installer per day.${d.quota.month_remaining <= 2 ? ` <span style="color:#B7791F">Only ${esc(String(d.quota.month_remaining))} left this month — WhatsApp <a class="link" href="https://wa.me/919000098877" target="_blank">90000 98877</a> if you need more.</span>` : ''}</div>` : ''}
   </div>`;
 
   if (isCloud) {

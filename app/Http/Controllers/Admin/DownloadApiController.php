@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\DownloadArtifact;
+use App\Models\DownloadLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -31,7 +32,33 @@ class DownloadApiController extends Controller
                 'upload_max' => ini_get('upload_max_filesize'),
                 'post_max'   => ini_get('post_max_size'),
             ],
+            'quota'           => DownloadLog::limits(),
+            'log'             => $this->recentLog(),
+            'tenant_stats'    => $this->tenantStats(),
         ]);
+    }
+
+    /**
+     * POST /admin/api/download-limits — set the per-client download quotas.
+     * Blank clears the override (falls back to the built-in default).
+     */
+    public function saveLimits(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'download_daily_free'   => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'download_daily_paid'   => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'download_monthly_free' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'download_monthly_paid' => ['nullable', 'integer', 'min:0', 'max:100000'],
+        ]);
+
+        foreach (array_keys(DownloadLog::DEFAULTS) as $key) {
+            if (array_key_exists($key, $data)) {
+                \App\Models\Setting::set($key, $data[$key] === null ? '' : (string) $data[$key]);
+            }
+        }
+        AuditLog::write('download.limits_updated', null, DownloadLog::limits());
+
+        return response()->json(['ok' => true, 'quota' => DownloadLog::limits()]);
     }
 
     /**
@@ -154,6 +181,45 @@ class DownloadApiController extends Controller
             'uploaded_by'  => $a->uploaded_by,
             'updated_at'   => optional($a->updated_at)->toDateTimeString(),
         ];
+    }
+
+    /** Most recent downloads (who / what / when / from where). */
+    private function recentLog(): array
+    {
+        return DownloadLog::latest('id')->limit(100)->get()->map(fn (DownloadLog $l) => [
+            'tenant_id'  => $l->tenant_id,
+            'tenant'     => $l->tenant_name ?: ('#' . $l->tenant_id),
+            'artifact'   => $l->artifact_title ?: $l->artifact_slug,
+            'platform'   => $l->platform,
+            'ip'         => $l->ip,
+            'at'         => optional($l->created_at)->toDateTimeString(),
+        ])->all();
+    }
+
+    /** Per-tenant cumulative totals (all-time / this month / today / last). */
+    private function tenantStats(): array
+    {
+        $monthStart = now()->startOfMonth();
+        $today = now()->toDateString();
+
+        $month = DownloadLog::where('created_at', '>=', $monthStart)
+            ->selectRaw('tenant_id, count(*) c')->groupBy('tenant_id')->pluck('c', 'tenant_id');
+        $day = DownloadLog::whereDate('created_at', $today)
+            ->selectRaw('tenant_id, count(*) c')->groupBy('tenant_id')->pluck('c', 'tenant_id');
+
+        return DownloadLog::selectRaw('tenant_id, max(tenant_name) tenant_name, count(*) total, max(created_at) last_at')
+            ->groupBy('tenant_id')
+            ->orderByDesc('total')
+            ->limit(200)
+            ->get()
+            ->map(fn ($r) => [
+                'tenant_id'  => $r->tenant_id,
+                'tenant'     => $r->tenant_name ?: ('#' . $r->tenant_id),
+                'total'      => (int) $r->total,
+                'this_month' => (int) ($month[$r->tenant_id] ?? 0),
+                'today'      => (int) ($day[$r->tenant_id] ?? 0),
+                'last_at'    => $r->last_at,
+            ])->all();
     }
 
     /** Installer files currently sitting in storage/app/downloads. */

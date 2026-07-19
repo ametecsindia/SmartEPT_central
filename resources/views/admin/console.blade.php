@@ -578,6 +578,16 @@ async function dlDelete(id, title) {
   try { await api('download-artifacts/' + id, { method: 'DELETE' }); toast('Removed'); go('downloads'); }
   catch (e) { toast('Error: ' + e); }
 }
+async function dlSaveLimits() {
+  const body = {
+    download_daily_free: document.getElementById('lim_df').value,
+    download_monthly_free: document.getElementById('lim_mf').value,
+    download_daily_paid: document.getElementById('lim_dp').value,
+    download_monthly_paid: document.getElementById('lim_mp').value,
+  };
+  try { await api('download-limits', { method: 'POST', body }); toast('Limits saved'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
 
 const RENDER = {
 
@@ -604,11 +614,45 @@ async downloads() {
       + '<button class="link" style="color:var(--danger)" onclick="dlDelete(' + a.id + ',\'' + esc((a.title || '').replace(/'/g, '')) + '\')">Delete</button>'
       + '</td></tr>';
   }).join('');
-  P.innerHTML = '<div class="card"><h3>Installer downloads <span class="mini">what clients see on their Install &amp; Downloads page — publish to make a file live</span></h3>'
+  const catalogueCard = '<div class="card"><h3>Installer downloads <span class="mini">what clients see on their Install &amp; Downloads page — publish to make a file live</span></h3>'
     + '<table><tr><th>Download</th><th>File</th><th>Status</th><th>Updated</th><th></th></tr>'
     + (rows || '<tr><td colspan="5" class="mini">No downloads yet — click “+ Add download”.</td></tr>') + '</table>'
     + '<div class="mini" style="margin-top:10px">Max upload size on this server: <b>' + esc(DL_LIMITS.upload_max || '?') + '</b> (POST limit ' + esc(DL_LIMITS.post_max || '?')
     + '). For larger installers, drop the file into <code>storage/app/downloads</code> and choose “use a file already on the server”.</div></div>';
+
+  // Anti-abuse quotas (editable).
+  const q = d.quota || {};
+  const qv = k => (q[k] === undefined || q[k] === null) ? '' : q[k];
+  const limitsCard = '<div class="card"><h3>Per-client download limits <span class="mini">stops misuse — blank = built-in default</span></h3>'
+    + '<div class="row">'
+    + '<div><label>Trial — per day, each app</label><input id="lim_df" type="number" min="0" value="' + esc(qv('download_daily_free')) + '" placeholder="2"></div>'
+    + '<div><label>Trial — per month (total)</label><input id="lim_mf" type="number" min="0" value="' + esc(qv('download_monthly_free')) + '" placeholder="5"></div>'
+    + '<div><label>Paid — per day, each app</label><input id="lim_dp" type="number" min="0" value="' + esc(qv('download_daily_paid')) + '" placeholder="5"></div>'
+    + '<div><label>Paid — per month (total)</label><input id="lim_mp" type="number" min="0" value="' + esc(qv('download_monthly_paid')) + '" placeholder="20"></div>'
+    + '</div>'
+    + '<div class="row" style="margin-top:12px;align-items:center;gap:10px"><button class="btn btn-p" onclick="dlSaveLimits()">Save limits</button>'
+    + '<span class="mini">“Trial” = clients not yet Active. “Each app” counts every installer (agent Win/Mac/Linux, server) separately per day. Monthly is the total across all installers.</span></div></div>';
+
+  // Per-client cumulative totals.
+  const stats = d.tenant_stats || [];
+  const statsRows = stats.map(s => '<tr><td><b>' + esc(s.tenant) + '</b><div class="mini">Tenant #' + esc(String(s.tenant_id == null ? '—' : s.tenant_id)) + '</div></td>'
+    + '<td>' + s.today + '</td><td>' + s.this_month + '</td><td><b>' + s.total + '</b></td>'
+    + '<td class="mini">' + (s.last_at ? esc(s.last_at) : '—') + '</td></tr>').join('');
+  const statsCard = '<div class="card"><h3>Downloads by client <span class="mini">cumulative totals</span></h3>'
+    + '<table><tr><th>Client</th><th>Today</th><th>This month</th><th>All-time</th><th>Last download</th></tr>'
+    + (statsRows || '<tr><td colspan="5" class="mini">No downloads yet.</td></tr>') + '</table></div>';
+
+  // Recent events.
+  const log = d.log || [];
+  const logRows = log.map(l => '<tr><td class="mini">' + (l.at ? esc(l.at) : '—') + '</td>'
+    + '<td><b>' + esc(l.tenant) + '</b><div class="mini">#' + esc(String(l.tenant_id == null ? '—' : l.tenant_id)) + '</div></td>'
+    + '<td>' + esc(l.artifact || '') + (l.platform ? ' <span class="mini">(' + esc(l.platform) + ')</span>' : '') + '</td>'
+    + '<td class="mini">' + (l.ip ? esc(l.ip) : '') + '</td></tr>').join('');
+  const logCard = '<div class="card"><h3>Recent downloads <span class="mini">latest 100 — who downloaded what, when &amp; from where</span></h3>'
+    + '<table><tr><th>When</th><th>Client</th><th>Installer</th><th>IP</th></tr>'
+    + (logRows || '<tr><td colspan="4" class="mini">No downloads yet.</td></tr>') + '</table></div>';
+
+  P.innerHTML = catalogueCard + limitsCard + statsCard + logCard;
 },
 
 // ============ HELP & TROUBLESHOOTING ============

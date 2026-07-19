@@ -135,6 +135,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::post('download-artifacts', [Admin\DownloadApiController::class, 'save']);
             Route::post('download-artifacts/{artifact}', [Admin\DownloadApiController::class, 'save']);
             Route::delete('download-artifacts/{artifact}', [Admin\DownloadApiController::class, 'destroy']);
+            Route::post('download-limits', [Admin\DownloadApiController::class, 'saveLimits']);
         });
     });
 });

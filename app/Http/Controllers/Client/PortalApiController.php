@@ -6,6 +6,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\DownloadArtifact;
+use App\Models\DownloadLog;
 use App\Models\Licence;
 use App\Models\Plan;
 use App\Models\Setting;
@@ -206,6 +207,16 @@ class PortalApiController extends Controller
         $serverReady = (bool) PortalController::artifactPath('server-windows');
         $serverRow = $meta['server-windows'] ?? null;
 
+        // Anti-abuse quota: how many downloads this tenant has left this month.
+        $quota = DownloadLog::quotaFor($tenant);
+        $usedMonth = 0;
+        try {
+            $usedMonth = DownloadLog::where('tenant_id', $tenant->id)
+                ->where('created_at', '>=', now()->startOfMonth())->count();
+        } catch (\Throwable $e) {
+            $usedMonth = 0;
+        }
+
         return response()->json([
             'deployment'  => $tenant->deployment,
             'console_url' => $tenant->console_url,
@@ -219,6 +230,13 @@ class PortalApiController extends Controller
                 'version' => $serverRow->version ?? null,
                 'notes'   => $serverRow->notes ?? null,
                 'size'    => $serverReady && $serverRow ? $serverRow->humanSize() : null,
+            ],
+            'quota'       => [
+                'is_paid'         => $quota['is_paid'],
+                'daily_per_app'   => $quota['daily'],
+                'monthly'         => $quota['monthly'],
+                'used_month'      => $usedMonth,
+                'month_remaining' => max(0, $quota['monthly'] - $usedMonth),
             ],
         ]);
     }
