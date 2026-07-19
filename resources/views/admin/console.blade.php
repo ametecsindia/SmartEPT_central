@@ -144,6 +144,7 @@ tr:hover td{background:var(--card2)}
     <div class="nav-sec">System</div>
     <div class="nav-item" data-page="cms" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M7 13h6M7 16h10"/></svg></span> Landing CMS</div>
     <div class="nav-item" data-page="watemplates" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.6-1.3A9 9 0 1 0 12 3z"/><path d="M8.6 9.4c.3 1.9 1.9 3.6 3.9 4.1"/></svg></span> WhatsApp Templates</div>
+    <div class="nav-item" data-page="downloads" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5"/><path d="M5 21h14"/></svg></span> Downloads</div>
     <div class="nav-item" data-page="settings" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span> Settings</div>
     <div class="nav-item" data-page="audit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></span> Audit Log</div>
     <div class="nav-item" data-page="help" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.6-2.8 2.6"/><path d="M12 17h.01"/></svg></span> Help &amp; Troubleshooting</div>
@@ -215,7 +216,7 @@ let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
 plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
 storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log',
-help:'Help & Troubleshooting'};
+help:'Help & Troubleshooting',downloads:'Downloads'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -504,7 +505,111 @@ function copyHelpLog() {
   } else { toast('Nothing to copy yet — load the log first.'); }
 }
 
+// ============ DOWNLOADS (super-admin installer catalogue) ============
+let DL_ROWS = {}, DL_FILES = [], DL_LIMITS = {};
+const DL_PLAT = { windows:'Windows', mac:'macOS', linux:'Linux' };
+function dlAdd() { dlForm(null); }
+function dlEdit(id) { dlForm(DL_ROWS[id]); }
+function dlForm(a) {
+  a = a || { category:'agent', platform:'windows', title:'', version:'', description:'', notes:'', is_published:false, filename:'' };
+  const catOpt = [['agent','Employee Agent'],['server','Admin Server']].map(([v,l]) => '<option value="'+v+'"'+(v===a.category?' selected':'')+'>'+l+'</option>').join('');
+  const platOpt = [['windows','Windows'],['mac','macOS'],['linux','Linux']].map(([v,l]) => '<option value="'+v+'"'+(v===a.platform?' selected':'')+'>'+l+'</option>').join('');
+  const fileOpt = ['<option value="">— none —</option>'].concat(DL_FILES.map(f =>
+    '<option value="'+esc(f.name)+'"'+(f.name===a.filename?' selected':'')+'>'+esc(f.name)+' ('+esc(f.size_human)+')</option>')).join('');
+  openModal('<h2>' + (a.id?'Edit':'Add') + ' download</h2>'
+    + '<div class="row"><div><label>Type</label><select id="dl_cat">'+catOpt+'</select></div>'
+    + '<div><label>Platform</label><select id="dl_plat">'+platOpt+'</select></div></div>'
+    + '<label>Title</label><input id="dl_title" value="'+esc(a.title||'')+'" placeholder="SmartEPT Employee Agent — Windows">'
+    + '<label>Version</label><input id="dl_ver" value="'+esc(a.version||'')+'" placeholder="e.g. 1.0.3">'
+    + '<label>Short description</label><textarea id="dl_desc" rows="2" placeholder="One line shown to clients">'+esc(a.description||'')+'</textarea>'
+    + '<label>Release / install notes</label><textarea id="dl_notes" rows="2" placeholder="What changed, install tips…">'+esc(a.notes||'')+'</textarea>'
+    + '<div style="height:1px;background:var(--border);margin:14px 0"></div>'
+    + '<label>Upload installer file <span class="mini">(optional — replaces the attached file)</span></label>'
+    + '<input type="file" id="dl_file">'
+    + '<label style="margin-top:10px">…or use a file already on the server <span class="mini">(from storage/app/downloads)</span></label>'
+    + '<select id="dl_existing">'+fileOpt+'</select>'
+    + '<div class="mini" style="margin-top:5px">Currently attached: <b>'+(a.filename?esc(a.filename):'none')+'</b>. Max upload on this server: <b>'+esc(DL_LIMITS.upload_max||'?')+'</b>. Larger files: drop into <code>storage/app/downloads</code> and pick above.</div>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" id="dl_pub" '+(a.is_published?'checked':'')+'> Published (visible to clients)</label>'
+    + '<div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>'
+    + '<button class="btn btn-p" onclick="dlSave('+(a.id||0)+')">Save</button></div>', true);
+}
+function dlFd(fromForm, row) {
+  const fd = new FormData();
+  if (fromForm) {
+    fd.append('category', document.getElementById('dl_cat').value);
+    fd.append('platform', document.getElementById('dl_plat').value);
+    fd.append('title', document.getElementById('dl_title').value.trim());
+    fd.append('version', document.getElementById('dl_ver').value.trim());
+    fd.append('description', document.getElementById('dl_desc').value);
+    fd.append('notes', document.getElementById('dl_notes').value);
+    fd.append('is_published', document.getElementById('dl_pub').checked ? '1' : '0');
+    const ex = document.getElementById('dl_existing').value;
+    if (ex) fd.append('existing_file', ex);
+    const fi = document.getElementById('dl_file');
+    if (fi.files && fi.files[0]) fd.append('file', fi.files[0]);
+  } else {
+    fd.append('category', row.category); fd.append('platform', row.platform || '');
+    fd.append('title', row.title || ''); fd.append('version', row.version || '');
+    fd.append('description', row.description || ''); fd.append('notes', row.notes || '');
+    fd.append('is_published', row._pub ? '1' : '0');
+  }
+  return fd;
+}
+async function dlPost(id, fd) {
+  const res = await fetch('/admin/api/download-artifacts' + (id ? ('/' + id) : ''), {
+    method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }, body: fd });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw (data.message || data.error || 'Save failed');
+  return data;
+}
+async function dlSave(id) {
+  const fd = dlFd(true);
+  if (!fd.get('title')) { toast('Title is required'); return; }
+  try { await dlPost(id, fd); closeModal(); toast('Download saved'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function dlPublish(id, pub) {
+  const a = DL_ROWS[id]; if (!a) return;
+  try { await dlPost(id, dlFd(false, Object.assign({}, a, { _pub: pub }))); toast(pub ? 'Published' : 'Unpublished'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function dlDelete(id, title) {
+  if (!confirm('Remove “' + title + '” from the downloads list? (The file stays on the server.)')) return;
+  try { await api('download-artifacts/' + id, { method: 'DELETE' }); toast('Removed'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
+
 const RENDER = {
+
+// ============ DOWNLOADS ============
+async downloads() {
+  ACTIONS.innerHTML = '<button class="btn btn-p" onclick="dlAdd()">+ Add download</button>';
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('download-artifacts');
+  DL_ROWS = {}; DL_FILES = d.available_files || []; DL_LIMITS = d.limits || {};
+  (d.data || []).forEach(a => { DL_ROWS[a.id] = a; });
+  const rows = (d.data || []).map(a => {
+    const plat = a.platform ? (DL_PLAT[a.platform] || a.platform) : '—';
+    const file = a.file_present
+      ? '<span class="mini">' + esc(a.filename || '') + (a.size_human ? ' · ' + esc(a.size_human) : '') + '</span>'
+      : '<span class="mini" style="color:var(--warn)">no file attached</span>';
+    const status = a.is_published ? '<span class="pill p-ok">Published</span>' : '<span class="pill p-mut">Draft</span>';
+    return '<tr><td><b>' + esc(a.title) + '</b><div class="mini">' + esc(a.category) + ' · ' + plat
+      + (a.version ? ' · v' + esc(a.version) : '') + '</div></td>'
+      + '<td>' + file + '</td><td>' + status + '</td>'
+      + '<td class="mini">' + (a.uploaded_by ? esc(a.uploaded_by) : '—') + (a.updated_at ? '<br>' + esc(a.updated_at) : '') + '</td>'
+      + '<td style="white-space:nowrap">'
+      + '<button class="link" onclick="dlEdit(' + a.id + ')">Edit</button> '
+      + '<button class="link" onclick="dlPublish(' + a.id + ',' + (a.is_published ? 0 : 1) + ')">' + (a.is_published ? 'Unpublish' : 'Publish') + '</button> '
+      + '<button class="link" style="color:var(--danger)" onclick="dlDelete(' + a.id + ',\'' + esc((a.title || '').replace(/'/g, '')) + '\')">Delete</button>'
+      + '</td></tr>';
+  }).join('');
+  P.innerHTML = '<div class="card"><h3>Installer downloads <span class="mini">what clients see on their Install &amp; Downloads page — publish to make a file live</span></h3>'
+    + '<table><tr><th>Download</th><th>File</th><th>Status</th><th>Updated</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No downloads yet — click “+ Add download”.</td></tr>') + '</table>'
+    + '<div class="mini" style="margin-top:10px">Max upload size on this server: <b>' + esc(DL_LIMITS.upload_max || '?') + '</b> (POST limit ' + esc(DL_LIMITS.post_max || '?')
+    + '). For larger installers, drop the file into <code>storage/app/downloads</code> and choose “use a file already on the server”.</div></div>';
+},
 
 // ============ HELP & TROUBLESHOOTING ============
 async help() {

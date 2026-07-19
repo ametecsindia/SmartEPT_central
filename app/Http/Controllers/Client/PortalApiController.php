@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\DownloadArtifact;
 use App\Models\Licence;
 use App\Models\Plan;
 use App\Models\Setting;
@@ -171,12 +172,54 @@ class PortalApiController extends Controller
     {
         $tenant = $this->tenant()->load('activeLicence');
 
+        // Metadata (version / notes) from the managed catalogue, keyed by slug.
+        $meta = [];
+        try {
+            $meta = DownloadArtifact::whereIn('slug', ['agent-windows', 'agent-mac', 'agent-linux', 'server-windows'])
+                ->get()->keyBy('slug');
+        } catch (\Throwable $e) {
+            $meta = collect();
+        }
+
+        // An OS entry is offered when a file resolves for it (managed+published, or a legacy build drop).
+        $agentPlatform = function (string $slug, string $platform, string $label) use ($meta) {
+            $ready = (bool) PortalController::artifactPath($slug);
+            $row = $meta[$slug] ?? null;
+
+            return [
+                'slug'     => $slug,
+                'platform' => $platform,
+                'label'    => $label,
+                'ready'    => $ready,
+                'version'  => $row->version ?? null,
+                'notes'    => $row->notes ?? null,
+                'size'     => $ready && $row ? $row->humanSize() : null,
+            ];
+        };
+
+        $agents = [
+            $agentPlatform('agent-windows', 'windows', 'Windows'),
+            $agentPlatform('agent-mac', 'mac', 'macOS'),
+            $agentPlatform('agent-linux', 'linux', 'Linux'),
+        ];
+
+        $serverReady = (bool) PortalController::artifactPath('server-windows');
+        $serverRow = $meta['server-windows'] ?? null;
+
         return response()->json([
-            'deployment' => $tenant->deployment,
+            'deployment'  => $tenant->deployment,
             'console_url' => $tenant->console_url,
             'licence_key' => optional($tenant->activeLicence)->key,
-            'agent_ready' => (bool) PortalController::artifactPath('agent'),
-            'admin_ready' => (bool) PortalController::artifactPath('admin'),
+            'agents'      => $agents,
+            'agent_ready' => (bool) collect($agents)->firstWhere('ready', true), // any OS ready (back-compat)
+            'admin_ready' => $serverReady,
+            'server'      => [
+                'slug'    => 'server-windows',
+                'ready'   => $serverReady,
+                'version' => $serverRow->version ?? null,
+                'notes'   => $serverRow->notes ?? null,
+                'size'    => $serverReady && $serverRow ? $serverRow->humanSize() : null,
+            ],
         ]);
     }
 

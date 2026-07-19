@@ -129,6 +129,12 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             // (Ametecs troubleshooting-in-app standard — non-technical self-service).
             Route::get('diagnostics', [Admin\DiagnosticsController::class, 'checks']);
             Route::get('logs', [Admin\DiagnosticsController::class, 'logs']);
+
+            // Managed installer catalogue — upload/publish agent (Win/Mac/Linux) + server.
+            Route::get('download-artifacts', [Admin\DownloadApiController::class, 'index']);
+            Route::post('download-artifacts', [Admin\DownloadApiController::class, 'save']);
+            Route::post('download-artifacts/{artifact}', [Admin\DownloadApiController::class, 'save']);
+            Route::delete('download-artifacts/{artifact}', [Admin\DownloadApiController::class, 'destroy']);
         });
     });
 });

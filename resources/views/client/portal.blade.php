@@ -334,7 +334,7 @@ async function pgInstall() {
           <li>Set the Server URL to your SmartEPT Console address (shown to the left).</li>
           <li>The employee signs in &amp; consents; the device uses one seat.</li>
         </ol>
-        ${dlBtn('agent', d.agent_ready)}
+        ${agentDownloads(d)}
       </div>
     </div>
     <div class="card" style="margin-top:16px"><h3>Managed cloud — nothing to self-host</h3>
@@ -353,7 +353,7 @@ async function pgInstall() {
         <li>Paste your licence key when asked to activate.</li>
         <li>Open the admin console and create your team logins.</li>
       </ol>
-      ${dlBtn('admin', d.admin_ready)}
+      ${serverDownload(d)}
     </div>
     <div class="card dcard">
       <div class="dhead"><div class="dicon">💻</div><div><h3 style="margin:0">SmartEPT Employee Agent</h3><span class="mini">Install on each employee PC · after the server</span></div></div>
@@ -369,6 +369,33 @@ async function pgInstall() {
   </div>
   <div class="card" style="margin-top:16px"><h3>Need help deploying?</h3>
   <p class="mini">Our team can install &amp; configure SmartEPT for you remotely. WhatsApp <a class="link" href="https://wa.me/919000098877" target="_blank">90000 98877</a> or email <a class="link" href="mailto:sales@ametecsindia.com">sales@ametecsindia.com</a>. (Didn't buy setup up front? Ask us to raise an installation invoice.)</p></div>`;
+}
+const OS_ICON = { windows: '🪟', mac: '🍎', linux: '🐧' };
+function agentDownloads(d) {
+  const list = (d.agents || []);
+  const ready = list.filter(a => a.ready);
+  if (!ready.length) {
+    return `<button class="btn btn-l" onclick="installSoon('agent')">Notify me / request build</button>`;
+  }
+  const btns = ready.map(a => {
+    const v = a.version ? ` <span style="opacity:.75;font-weight:600">v${esc(a.version)}</span>` : '';
+    return `<a class="btn btn-p" href="/client/download/${a.slug}">${OS_ICON[a.platform] || '⬇'} ${esc(a.label)}${v}</a>`;
+  }).join('');
+  const notesRows = ready.filter(a => a.notes || a.size).map(a =>
+    `${esc(a.label)}${a.size ? ' · ' + esc(a.size) : ''}${a.notes ? ' — ' + esc(a.notes) : ''}`).join('<br>');
+  const missing = list.filter(a => !a.ready).map(a => a.label);
+  const missNote = missing.length ? `<div class="mini" style="margin-top:6px">${esc(missing.join(' & '))} available on request — WhatsApp <a class="link" href="https://wa.me/919000098877" target="_blank">90000 98877</a>.</div>` : '';
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap">${btns}</div>`
+    + (notesRows ? `<div class="mini" style="margin-top:6px">${notesRows}</div>` : '') + missNote;
+}
+function serverDownload(d) {
+  const s = d.server || {};
+  if (!s.ready) {
+    return `<button class="btn btn-l" onclick="installSoon('admin')">Notify me / request build</button>`;
+  }
+  const v = s.version ? ` <span style="opacity:.75;font-weight:600">v${esc(s.version)}</span>` : '';
+  return `<a class="btn btn-p" href="/client/download/${s.slug || 'server-windows'}">Download installer →${v}</a>`
+    + ((s.notes || s.size) ? `<div class="mini" style="margin-top:6px">${s.size ? esc(s.size) : ''}${s.notes ? (s.size ? ' — ' : '') + esc(s.notes) : ''}</div>` : '');
 }
 function installSoon(art) {
   const label = art === 'admin' ? 'the Admin Server installer' : (art === 'console' ? 'my hosted SmartEPT Console link' : 'the Employee Agent installer');

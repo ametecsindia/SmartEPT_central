@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Controller;
+use App\Models\DownloadArtifact;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Setting;
@@ -56,17 +57,40 @@ class PortalController extends Controller
         ]);
     }
 
-    /**
-     * R3 installers: newest published installer file for an artifact, or null.
-     * Files live in storage/app/downloads/ — the BUILD-*.bat scripts drop them here.
-     */
-    public static function artifactPath(string $artifact): ?string
-    {
-        $patterns = [
-            'agent' => ['SmartEPT-Agent-Setup*.exe', 'SmartEPT-Agent*.zip'],
-            'admin' => ['SmartEPT-Admin-Server-Setup*.exe', 'SmartEPT-Admin-Server*.zip'],
-        ][$artifact] ?? null;
+    /** Old download links / API keys → new per-OS slugs. */
+    public const LEGACY_ALIAS = [
+        'agent' => 'agent-windows',
+        'admin' => 'server-windows',
+    ];
 
+    /** Build-script drop patterns per slug — the fallback when no file is attached in the admin. */
+    private const LEGACY_GLOB = [
+        'agent-windows'  => ['SmartEPT-Agent-Setup*.exe', 'SmartEPT-Agent*.exe', 'SmartEPT-Agent*.zip'],
+        'agent-mac'      => ['SmartEPT-Agent*.dmg', 'SmartEPT-Agent*.pkg'],
+        'agent-linux'    => ['SmartEPT-Agent*.deb', 'SmartEPT-Agent*.AppImage', 'SmartEPT-Agent*.tar.gz'],
+        'server-windows' => ['SmartEPT-Admin-Server-Setup*.exe', 'SmartEPT-Admin-Server*.exe', 'SmartEPT-Admin-Server*.zip'],
+    ];
+
+    /**
+     * Resolve the installer file for a slug, or null when unavailable.
+     * Rule: if a managed file is attached in the admin, the publish flag decides.
+     * If no managed file is attached, fall back to whatever the BUILD-*.bat
+     * scripts dropped in storage/app/downloads/ (so existing builds keep working).
+     */
+    public static function artifactPath(string $slug): ?string
+    {
+        $slug = self::LEGACY_ALIAS[$slug] ?? $slug;
+
+        try {
+            $row = DownloadArtifact::where('slug', $slug)->first();
+            if ($row && $row->filename) {
+                return $row->is_published ? $row->filePath() : null;
+            }
+        } catch (\Throwable $e) {
+            // download_artifacts table not migrated yet — fall through to legacy glob.
+        }
+
+        $patterns = self::LEGACY_GLOB[$slug] ?? null;
         if (! $patterns) {
             return null;
         }
@@ -75,18 +99,15 @@ class PortalController extends Controller
         foreach ($patterns as $p) {
             $files = array_merge($files, glob(storage_path('app/downloads/' . $p)) ?: []);
         }
-
         usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));
 
         return $files[0] ?? null;
     }
 
-    /** GET /client/download/{artifact} — auth-walled installer download. */
-    public function download(string $artifact)
+    /** GET /client/download/{slug} — auth-walled installer download. */
+    public function download(string $slug)
     {
-        abort_unless(in_array($artifact, ['agent', 'admin'], true), 404);
-
-        $path = self::artifactPath($artifact);
+        $path = self::artifactPath($slug);
 
         abort_unless($path, 404, 'This installer is not published yet — WhatsApp 90000 98877 and we will send it to you.');
 
