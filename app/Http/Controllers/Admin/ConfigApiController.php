@@ -25,6 +25,7 @@ class ConfigApiController extends Controller
             'perpetual_device_inr' => ['sometimes', 'integer', 'min:0'],
             'perpetual_server_inr' => ['sometimes', 'integer', 'min:0'],
             'min_devices' => ['sometimes', 'integer', 'min:1'],
+            'storage_gb' => ['sometimes', 'integer', 'min:0'],
             'features' => ['sometimes', 'array'],
             'active' => ['sometimes', 'boolean'],
         ]);
@@ -46,6 +47,10 @@ class ConfigApiController extends Controller
         'landing_hero_title', 'landing_hero_subtitle', 'landing_announcement',
         'landing_contact_phone', 'landing_contact_email', 'landing_testimonials',
         'sales_email',
+        // Pricing, billing cycles & cloud — Central -> Settings -> Pricing & Cloud
+        'pricing_annual_discount_pct', 'pricing_half_yearly_discount_pct', 'pricing_cloud_multiplier',
+        'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr',
+        'pricing_storage_min_gb', 'pricing_storage_min_inr', 'pricing_storage_slabs',
     ];
 
     private const SECRET_SETTINGS = [
@@ -53,11 +58,24 @@ class ConfigApiController extends Controller
         'mail_password', 'interakt_api_key',
     ];
 
+    /** Effective defaults surfaced in the Settings form when a pricing knob is unset. */
+    public const PRICING_DEFAULTS = [
+        'pricing_annual_discount_pct' => 25,
+        'pricing_half_yearly_discount_pct' => 10,
+        'pricing_cloud_multiplier' => 1.5,
+        'pricing_setup_base_inr' => 5000,
+        'pricing_setup_included_devices' => 25,
+        'pricing_setup_per_extra_inr' => 100,
+        'pricing_storage_min_gb' => 50,
+        'pricing_storage_min_inr' => 150,
+        'pricing_storage_slabs' => '[[1,500,3],[501,2048,2.5],[2049,null,2]]',
+    ];
+
     public function settings()
     {
         $out = [];
         foreach (self::EDITABLE_SETTINGS as $key) {
-            $value = Setting::get($key, '');
+            $value = Setting::get($key, self::PRICING_DEFAULTS[$key] ?? '');
             if (in_array($key, self::SECRET_SETTINGS) && $value !== '') {
                 $value = '••••••••' . substr($value, -4);
             }
@@ -69,6 +87,21 @@ class ConfigApiController extends Controller
 
     public function updateSettings(Request $request)
     {
+        if ($request->filled('pricing_storage_slabs')) {
+            $slabs = json_decode((string) $request->input('pricing_storage_slabs'), true);
+            $valid = is_array($slabs) && $slabs !== [];
+            foreach ((array) $slabs as $row) {
+                if (! is_array($row) || count($row) < 3 || ! is_numeric($row[0])
+                    || ! ($row[1] === null || is_numeric($row[1])) || ! is_numeric($row[2])) {
+                    $valid = false;
+                    break;
+                }
+            }
+            if (! $valid) {
+                return response()->json(['message' => 'Storage slabs must be a JSON list of [from_gb, to_gb|null, rate], e.g. [[1,500,3],[501,2048,2.5],[2049,null,2]].'], 422);
+            }
+        }
+
         foreach ($request->only(self::EDITABLE_SETTINGS) as $key => $value) {
             if ($value === null || str_starts_with((string) $value, '••••')) {
                 continue; // masked secrets unchanged

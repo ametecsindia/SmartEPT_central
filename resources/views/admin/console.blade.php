@@ -293,13 +293,17 @@ async licences() {
 
 // ============ PLANS ============
 async plans() {
-  const resp = await api('plans');
+  const [resp, s] = await Promise.all([api('plans'), api('settings').catch(()=>({}))]);
   const plans = Array.isArray(resp) ? resp : (resp.data || []);
-  P.innerHTML = plans.map(p => `<div class="card"><h3>${esc(p.name)} <span class="mini">(${esc(p.code)})</span> ${p.active?'':pill('suspended')}</h3>
-  <table><tr><th>INR Annual</th><th>INR Monthly</th><th>USD Annual</th><th>Perpetual/Device</th><th>Server Licence</th><th>Min Devices</th><th></th></tr>
-  <tr><td>₹${p.inr_annual}</td><td>₹${p.inr_monthly}</td><td>$${p.usd_annual}</td><td>₹${Number(p.perpetual_device_inr).toLocaleString('en-IN')}</td><td>₹${Number(p.perpetual_server_inr).toLocaleString('en-IN')}</td><td>${p.min_devices}</td>
+  const aD = (+s.pricing_annual_discount_pct||25)/100, hD = (+s.pricing_half_yearly_discount_pct||10)/100, cx = (+s.pricing_cloud_multiplier||1.5);
+  window.__PRICING = {aD, hD, cx};
+  const q = A => Math.round(A/Math.max(0.1,1-aD)), h = A => Math.round(A/Math.max(0.1,1-aD)*(1-hD));
+  P.innerHTML = `<div class="mini" style="margin-bottom:10px">Billing cycles: <b>Quarterly / Half-Yearly / Annual</b>. You edit the <b>Annual</b> rate; Quarterly &amp; Half-Yearly derive from it using the discounts in <b>Settings → Pricing &amp; Cloud</b> (now ${Math.round(aD*100)}% off annual, ${Math.round(hD*100)}% off half-yearly · Cloud × ${cx}). The public landing &amp; calculator follow within 5 minutes.</div>` + plans.map(p => `<div class="card"><h3>${esc(p.name)} <span class="mini">(${esc(p.code)})</span> ${p.active?'':pill('suspended')}</h3>
+  <table><tr><th>Quarterly</th><th>Half-Yearly</th><th>Annual</th><th>Cloud storage</th><th>Perpetual/Device</th><th>Server Licence</th><th>Min Devices</th><th></th></tr>
+  <tr><td>₹${q(p.inr_annual)}</td><td>₹${h(p.inr_annual)}</td><td><b>₹${p.inr_annual}</b></td><td>${p.storage_gb!=null?p.storage_gb+' GB':'—'}</td><td>₹${Number(p.perpetual_device_inr).toLocaleString('en-IN')}</td><td>₹${Number(p.perpetual_server_inr).toLocaleString('en-IN')}</td><td>${p.min_devices}</td>
   <td>${ROLE==='super' ? `<button class="link" onclick='editPlan(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>`:''}</td></tr></table>
-  ${p.volume_tiers?.length ? `<div class="mini" style="margin-top:8px"><b>Volume tiers:</b> ${p.volume_tiers.map(t=>`${t.min_devices}–${t.max_devices??'∞'}: ₹${t.rate_inr_annual}`).join(' · ')}</div>`:''}
+  <div class="mini" style="margin-top:4px">Per active device / month, GST extra. USD annual $${p.usd_annual}. (Monthly ₹${p.inr_monthly} — legacy, not offered on new plans.)</div>
+  ${p.volume_tiers?.length ? `<div class="mini" style="margin-top:8px"><b>Volume tiers (annual):</b> ${p.volume_tiers.map(t=>`${t.min_devices}–${t.max_devices??'∞'}: ₹${t.rate_inr_annual}`).join(' · ')}</div>`:''}
   <div class="mini" style="margin-top:6px"><b>Features:</b> ${Object.entries(p.features||{}).map(([k,v])=>`${k}=${v}`).join(', ')}</div></div>`).join('');
 },
 
@@ -403,6 +407,24 @@ async settings() {
   ${f('interakt_waba_id','WABA ID (optional)')}${f('interakt_api_url','API URL (blank = Interakt default)')}
   ${f('interakt_status','Status (active / inactive)')}</div>
   <div class="mini">Same as SmartPRS: paste the Interakt Secret Key, set the sender number, status active. Leave API URL blank for the Interakt default. Business-initiated WhatsApp needs approved templates in Interakt — the send service + template registry come next. (Click-to-chat number is in Company &amp; Tax above.)</div></div>
+  <div class="card"><h3>Pricing, Billing Cycles &amp; Cloud — the whole commercial model, editable here</h3>
+  <div class="mini" style="margin-bottom:8px">Publish the <b>Annual</b> rate per plan on the Plans &amp; Pricing screen. Quarterly &amp; Half-Yearly derive from it using the discounts below; the landing page, calculator and quotes all follow within 5 minutes.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 16px">
+  ${f('pricing_annual_discount_pct','Annual discount % (off the base rate)')}
+  ${f('pricing_half_yearly_discount_pct','Half-yearly discount % (off base)')}
+  ${f('pricing_cloud_multiplier','Cloud multiplier (× client-hosted rate)')}</div>
+  <h4 style="margin:12px 0 4px">Setup &amp; Onboarding (one-time, first invoice only)</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 16px">
+  ${f('pricing_setup_base_inr','Base fee ₹')}
+  ${f('pricing_setup_included_devices','Devices covered by the base fee')}
+  ${f('pricing_setup_per_extra_inr','Per extra device ₹')}</div>
+  <h4 style="margin:12px 0 4px">Cloud storage (hosting)</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('pricing_storage_min_gb','Minimum billable GB')}
+  ${f('pricing_storage_min_inr','Minimum ₹ / month')}</div>
+  <label style="margin-top:8px">Storage slabs — JSON list of [from GB, to GB or null, ₹ per GB/mo]</label>
+  <textarea id="set_pricing_storage_slabs" rows="3" style="font-family:monospace;font-size:12px">${esc(s.pricing_storage_slabs||'')}</textarea>
+  <div class="mini" style="margin-top:4px">Example: [[1,500,3],[501,2048,2.5],[2049,null,2]] — ₹3/GB up to 500 GB, ₹2.5 to 2048 GB, ₹2 beyond. Leave blank to keep the built-in slabs.</div></div>
   <button class="btn btn-p" onclick="saveSettings()">Save Settings</button>`;
 },
 
@@ -458,7 +480,7 @@ function tenantForm(t = {}) {
   <div><label>GST state code (place of supply)</label><input id="f_state" maxlength="2" placeholder="36 = Telangana" value="${esc(t.state_code||'')}"></div>
   <div><label>Currency</label><select id="f_currency"><option ${t.currency==='INR'?'selected':''}>INR</option><option ${t.currency==='USD'?'selected':''}>USD</option></select></div>
   <div><label>Deployment</label><select id="f_deploy"><option value="client_hosted" ${t.deployment!=='cloud'?'selected':''}>Client-Hosted</option><option value="cloud" ${t.deployment==='cloud'?'selected':''}>SmartEPT Cloud</option></select></div>
-  <div><label>Ecosystem customer (SmartDCM/PRS)</label><select id="f_eco"><option value="0" ${!t.ecosystem_customer?'selected':''}>No</option><option value="1" ${t.ecosystem_customer?'selected':''}>Yes — ₹39 intro eligible</option></select></div>
+  <div><label>Ecosystem customer (SmartDCM/PRS)</label><select id="f_eco"><option value="0" ${!t.ecosystem_customer?'selected':''}>No</option><option value="1" ${t.ecosystem_customer?'selected':''}>Yes — 10% ecosystem discount</option></select></div>
   </div><label>Hosted console URL <span style="font-weight:400;color:#7A8B90">(SmartEPT-Cloud clients only — the address of their Ametecs-hosted admin console; the client portal links to it)</span></label>
   <input id="f_console" placeholder="https://client.smartept.cloud/admin" value="${esc(t.console_url||'')}">
   <label>Address</label><textarea id="f_addr" rows="2">${esc(t.address||'')}</textarea>
@@ -740,22 +762,33 @@ async function sendTestEmail() {
   } catch (e) { msg.textContent = 'Error: ' + e; msg.style.color = '#DC2626'; }
 }
 function editPlan(p) {
-  openModal(`<h2>Edit ${esc(p.name)}</h2><div class="row">
-  <div><label>INR annual /device/mo</label><input id="ep_ia" type="number" value="${p.inr_annual}"></div>
-  <div><label>INR monthly</label><input id="ep_im" type="number" value="${p.inr_monthly}"></div>
+  const pr = window.__PRICING || {aD:0.25,hD:0.10,cx:1.5};
+  const q = A => Math.round(A/Math.max(0.1,1-pr.aD)), h = A => Math.round(A/Math.max(0.1,1-pr.aD)*(1-pr.hD));
+  openModal(`<h2>Edit ${esc(p.name)}</h2>
+  <div class="sub">Set the <b>Annual</b> rate — Quarterly &amp; Half-Yearly derive from it automatically (change the discounts in Settings → Pricing &amp; Cloud).</div><div class="row">
+  <div><label>Annual ₹ /device/mo (the base)</label><input id="ep_ia" type="number" value="${p.inr_annual}" oninput="epCycle(this.value)"></div>
+  <div><label>Cloud storage included (GB)</label><input id="ep_sg" type="number" value="${p.storage_gb!=null?p.storage_gb:50}"></div>
   <div><label>USD annual</label><input id="ep_ua" type="number" step="0.01" value="${p.usd_annual}"></div>
   <div><label>USD monthly</label><input id="ep_um" type="number" step="0.01" value="${p.usd_monthly}"></div>
   <div><label>Perpetual / device ₹</label><input id="ep_pd" type="number" value="${p.perpetual_device_inr}"></div>
   <div><label>Server licence ₹</label><input id="ep_ps" type="number" value="${p.perpetual_server_inr}"></div>
-  <div><label>Min devices</label><input id="ep_md" type="number" value="${p.min_devices}"></div></div>
+  <div><label>Min devices</label><input id="ep_md" type="number" value="${p.min_devices}"></div>
+  <div><label>INR monthly (legacy — not offered)</label><input id="ep_im" type="number" value="${p.inr_monthly}"></div></div>
+  <div class="mini" id="ep_cyc" style="margin:6px 2px 2px">Derived: Quarterly ₹${q(p.inr_annual)} · Half-Yearly ₹${h(p.inr_annual)} · Annual ₹${p.inr_annual} /device/mo</div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="savePlan(${p.id})">Save</button></div>`);
+}
+function epCycle(v){
+  const pr = window.__PRICING || {aD:0.25,hD:0.10};
+  const A = +v||0, q = Math.round(A/Math.max(0.1,1-pr.aD)), h = Math.round(A/Math.max(0.1,1-pr.aD)*(1-pr.hD));
+  const el = document.getElementById('ep_cyc');
+  if (el) el.textContent = `Derived: Quarterly ₹${q} · Half-Yearly ₹${h} · Annual ₹${A} /device/mo`;
 }
 async function savePlan(id) {
   try {
     await api('plans/' + id, {method:'PUT', body:{inr_annual:+ep_ia.value, inr_monthly:+ep_im.value,
       usd_annual:+ep_ua.value, usd_monthly:+ep_um.value, perpetual_device_inr:+ep_pd.value,
-      perpetual_server_inr:+ep_ps.value, min_devices:+ep_md.value}});
+      perpetual_server_inr:+ep_ps.value, min_devices:+ep_md.value, storage_gb:+ep_sg.value}});
     closeModal(); toast('Plan updated'); go('plans');
   } catch (e) { toast('Error: ' + e); }
 }
@@ -777,13 +810,13 @@ dashboard: {
 },
 tenants: {
  use: `<h4>What is this screen for?</h4><p>The master register of every SmartEPT customer — client-hosted and cloud.</p>
- <ol><li>Press <b>+ New Client</b> and fill company, contact, GSTIN</li><li>Choose deployment: Client-Hosted or SmartEPT Cloud</li><li>Mark <b>Ecosystem customer</b> if they already use SmartDCM/SmartPRS (₹39 intro rate applies automatically)</li><li>Optionally start a 7-day trial immediately</li><li>Open any client to see licences, devices, orders, invoices in one place</li></ol>
+ <ol><li>Press <b>+ New Client</b> and fill company, contact, GSTIN</li><li>Choose deployment: Client-Hosted or SmartEPT Cloud</li><li>Mark <b>Ecosystem customer</b> if they already use SmartDCM/SmartPRS (a flat 10% discount applies automatically on every plan)</li><li>Optionally start a 7-day trial immediately</li><li>Open any client to see licences, devices, orders, invoices in one place</li></ol>
  <div class="tip"><b>Good to know:</b> the one-time Setup &amp; Onboarding fee (₹5,000 up to 25 devices + ₹100/extra) is charged automatically on the client's FIRST paid order — the system tracks who has paid it.</div>`,
  why: `<h4>Why this exists</h4><p>Every licence, payment and support call hangs off the client record. Clean records here = clean invoices and easy renewals later.</p>
  <div class="scen"><b>Picture this:</b> ABC Recoveries calls about adding 20 devices. You open their record: Professional, 50 devices at ₹49 volume rate, setup fee already paid, renewal in March. You quote 70 devices × ₹49 = ₹3,430/month in ten seconds, no setup fee again.</div>
  <p class="gain">✓ One source of truth ✓ Instant quotes ✓ GSTIN captured for clean invoices</p>`,
  right: `<p>❌ <b>Skipping GSTIN at creation.</b> → Invoice corrections later. → ✅ Capture GSTIN on day one.</p>
- <p>❌ <b>Forgetting the Ecosystem flag.</b> → Customer misses ₹39 intro rate, feels cheated. → ✅ Ask "do you use SmartDCM or SmartPRS?" on every call.</p>
+ <p>❌ <b>Forgetting the Ecosystem flag.</b> → Customer misses the flat 10% ecosystem discount, feels cheated. → ✅ Ask "do you use SmartDCM or SmartPRS?" on every call.</p>
  <p>❌ <b>Deleting clients.</b> → Orphaned invoices. → ✅ Use status churned instead.</p>`,
 },
 trials: {
