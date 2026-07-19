@@ -23,9 +23,22 @@ class LicenseController extends Controller
         $data = $request->validate([
             'key' => ['required', 'string'],
             'fingerprint' => ['nullable', 'string', 'max:190'],
+            'storage_gb' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $result = $this->licences->validate($data['key'], $data['fingerprint'] ?? null);
+
+        // EPT-27: record the installation's reported storage against its tenant, so the
+        // per-tenant storage badges in the console fill automatically on each phone-home.
+        if (($result['ok'] ?? false) && isset($data['storage_gb'])) {
+            $licence = \App\Models\Licence::where('key', $data['key'])->first();
+            if ($licence && $licence->tenant_id) {
+                \App\Models\StorageUsage::updateOrCreate(
+                    ['tenant_id' => $licence->tenant_id, 'date' => now()->toDateString()],
+                    ['gb_used' => round((float) $data['storage_gb'], 3)]
+                );
+            }
+        }
 
         return response()->json($result, $result['ok'] ? 200 : 403);
     }
