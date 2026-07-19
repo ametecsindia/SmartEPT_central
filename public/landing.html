@@ -383,8 +383,9 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
     <p class="sec-sub" style="margin:0 auto">One workstation used by multiple shifts = one licence. Web-only managers are free.</p></div>
     <div class="toggles">
       <div class="toggle" id="tgBill">
-        <button class="on" data-v="annual" onclick="setBill('annual')">Annual billing</button>
-        <button data-v="monthly" onclick="setBill('monthly')">Monthly billing</button>
+        <button data-v="quarterly" onclick="setBill('quarterly')">Quarterly</button>
+        <button data-v="half_yearly" onclick="setBill('half_yearly')">Half-Yearly · 10% off</button>
+        <button class="on" data-v="annual" onclick="setBill('annual')">Annual · save 25%</button>
       </div>
       <div class="toggle" id="tgHost">
         <button class="on" data-v="hosted" onclick="setHost('hosted')">Client-Hosted</button>
@@ -596,7 +597,7 @@ let SETUP = { base:5000, included:25, per:100 };
 let CLOUD_X = 1.5, STOR_RATE = 3;
 let bill='annual', host='hosted';
 function fmt(n){ return '₹' + n.toLocaleString('en-IN'); }
-function planPrice(k){ let r = RATES[k][bill]; if(host==='cloud') r = Math.round(r*CLOUD_X); return r; }
+function planPrice(k){ const A = RATES[k].annual; let r = bill==='quarterly' ? Math.round(A/0.75) : bill==='half_yearly' ? Math.round(A/0.75*0.9) : A; if(host==='cloud') r = Math.round(r*CLOUD_X); return r; }
 function setBill(v){ bill=v; syncToggles(); render(); calc(); }
 function setHost(v){ host=v; syncToggles(); render(); calc(); }
 function syncToggles(){
@@ -608,10 +609,10 @@ function render(){
   document.querySelector('[data-plan=pro]').innerHTML  = fmt(planPrice('pro')) +'<small> /device/mo</small>';
   document.querySelector('[data-plan=ent]').innerHTML  = fmt(planPrice('ent')) +'<small> /device/mo</small>';
   const notes = document.querySelectorAll('.per-note');
-  notes.forEach(n=>n.textContent = host==='cloud' ? '+ storage from ₹3/GB/mo' : (bill==='annual'?'billed annually':'billed monthly'));
+  notes.forEach(n=>n.textContent = host==='cloud' ? '+ storage from ₹3/GB/mo' : ({quarterly:'billed quarterly',half_yearly:'✓ save 10% vs quarterly',annual:'✓ save 25% vs quarterly'}[bill]));
   document.getElementById('cloudNote').textContent = host==='cloud'
     ? 'SmartEPT Cloud = client-hosted rate × 1.5 (managed hosting, monitoring, backup) + storage rental ₹3/GB/month. GST extra.'
-    : 'Prices per active device per month, ' + (bill==='annual'?'billed annually':'billed monthly') + ', GST extra. You host the server — your data stays with you.';
+    : 'Prices per active device per month, ' + ({quarterly:'billed quarterly',half_yearly:'billed half-yearly',annual:'billed annually'}[bill]) + ', GST extra. You host the server — your data stays with you.';
   calc();
 }
 /* ===== calculator (Professional, volume tiers on annual) ===== */
