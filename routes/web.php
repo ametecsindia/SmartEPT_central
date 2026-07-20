@@ -106,6 +106,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::put('tenants/{tenant}', [Admin\TenantApiController::class, 'update']);
             Route::post('licences', [Admin\LicenceApiController::class, 'store']);
             Route::post('licences/{licence}/action', [Admin\LicenceApiController::class, 'action']);
+            Route::post('licences/{licence}/license-file', [Admin\LicenceApiController::class, 'licenseFile']);
             Route::put('licences/{licence}/limit', [Admin\LicenceApiController::class, 'updateLimit']);
             Route::post('licences/{licence}/deactivate-device', [Admin\LicenceApiController::class, 'deactivateDevice']);
             Route::post('orders', [Admin\BillingApiController::class, 'createOrder']);

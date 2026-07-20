@@ -8,6 +8,7 @@ use App\Models\Licence;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Services\LicenceService;
+use App\Services\LicenseSigner;
 use Illuminate\Http\Request;
 
 class LicenceApiController extends Controller
@@ -71,6 +72,36 @@ class LicenceApiController extends Controller
         AuditLog::write("licence.$action", $licence, ['key' => $licence->key]);
 
         return response()->json($licence->fresh());
+    }
+
+    /**
+     * POST /admin/api/licences/{licence}/license-file
+     * Generate a signed, offline node-locked license.lic for this licence (EPT-29).
+     * Returns the token + filename for the browser to download.
+     */
+    public function licenseFile(Request $request, Licence $licence, LicenseSigner $signer)
+    {
+        if (! $signer->available()) {
+            return response()->json([
+                'error' => 'Licence signing key not set up on this server. Run:  php artisan smartept:make-keys',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'fingerprint' => ['nullable', 'string', 'max:190'],
+        ]);
+
+        $token = $signer->sign($licence, $data['fingerprint'] ?? null);
+        AuditLog::write('licence.file_issued', $licence, [
+            'key' => $licence->key,
+            'locked' => ! empty($data['fingerprint']),
+        ]);
+
+        return response()->json([
+            'filename' => $signer->filename($licence),
+            'token' => $token,
+            'locked' => ! empty($data['fingerprint']),
+        ]);
     }
 
     public function updateLimit(Request $request, Licence $licence)

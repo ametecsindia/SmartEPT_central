@@ -1210,12 +1210,33 @@ async function loadLicences() {
   <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}</td><td>${pill(l.status)}</td>
   <td>${CAN_WRITE ? `<button class="link" onclick="licAction(${l.id},'renew')">Renew</button>
   ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
-  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
 }
 async function licAction(id, action) {
   if (action === 'revoke' && !confirm('Revoke this licence permanently?')) return;
   try { await api(`licences/${id}/action`, {method:'POST', body:{action}}); toast('Licence ' + action + ' done'); loadLicences(); }
   catch (e) { toast('Error: ' + e); }
+}
+function licFile(id, key) {
+  openModal(`<h2>Generate licence file (.lic)</h2>
+    <div class="sub">Offline, node-locked licence for <b>${esc(key)}</b>. Paste the client's machine fingerprint (from their console's Licence screen). Leave blank for a file that runs on any machine.</div>
+    <label>Client machine fingerprint</label>
+    <input id="lf_fp" placeholder="40-character fingerprint from the client" style="font-family:ui-monospace,monospace">
+    <div class="mini" id="lf_msg" style="margin-top:6px"></div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="doLicFile(${id})">Generate &amp; download</button></div>`);
+}
+async function doLicFile(id) {
+  const fp = (document.getElementById('lf_fp').value || '').trim();
+  const msg = document.getElementById('lf_msg');
+  msg.textContent = 'Generating…';
+  try {
+    const r = await api(`licences/${id}/license-file`, {method:'POST', body:{fingerprint: fp || null}});
+    const blob = new Blob([r.token + '\n'], {type:'application/octet-stream'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = r.filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    msg.innerHTML = '✓ Downloaded <b>' + esc(r.filename) + '</b> — ' + (r.locked ? 'locked to that machine.' : 'not machine-locked.') + ' Send it to the client to import.';
+  } catch (e) { msg.textContent = '✗ ' + (e.message || e); }
 }
 async function issueLicence() {
   const tenants = await api('tenants?status=');
