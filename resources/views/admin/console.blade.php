@@ -1200,15 +1200,18 @@ async function updateTenant(id) {
 }
 
 // ---------- licences helpers ----------
+let LIC_ROWS = [];
 async function loadLicences() {
   const d = await api(`licences?q=${encodeURIComponent(lq.value)}&status=${lst.value}&kind=${lkind.value}`);
+  LIC_ROWS = d.data;
   document.getElementById('llist').innerHTML = `<div class="card"><table>
   <tr><th>Key</th><th>Client</th><th>Plan</th><th>Kind</th><th>Devices</th><th>Expires</th><th>Status</th><th></th></tr>
   ${d.data.map(l => `<tr><td class="mini"><b>${esc(l.key)}</b></td><td>${esc(l.tenant?.company_name)}</td>
   <td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}${l.kind==='perpetual'?`<div class="mini">AMC: ${l.amc_expires_at?l.amc_expires_at.slice(0,10):'lapsed'}</div>`:''}</td>
   <td>${l.active_devices_count}/${l.device_limit}</td>
   <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}</td><td>${pill(l.status)}</td>
-  <td>${CAN_WRITE ? `<button class="link" onclick="licAction(${l.id},'renew')">Renew</button>
+  <td>${CAN_WRITE ? `<button class="link" onclick="renewLic(${l.id})">Renew</button>
+  <button class="link" onclick="editLic(${l.id})">Edit</button>
   ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
   ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
 }
@@ -1216,6 +1219,61 @@ async function licAction(id, action) {
   if (action === 'revoke' && !confirm('Revoke this licence permanently?')) return;
   try { await api(`licences/${id}/action`, {method:'POST', body:{action}}); toast('Licence ' + action + ' done'); loadLicences(); }
   catch (e) { toast('Error: ' + e); }
+}
+function _licById(id){ return LIC_ROWS.find(x=>x.id===id) || {}; }
+function suggestRenew(l){
+  const months = {monthly:1,quarterly:3,half_yearly:6,annual:12}[l.billing] || 12;
+  let base = new Date();
+  if (l.expires_at) { const e = new Date(l.expires_at.slice(0,10)); if (e > base) base = e; }
+  base.setMonth(base.getMonth()+months);
+  return base.toISOString().slice(0,10);
+}
+function renewLic(id){
+  const l=_licById(id);
+  const to=suggestRenew(l);
+  openModal(`<h2>Renew licence</h2>
+    <div class="sub">Extend <b>${esc(l.key||'')}</b> for <b>${esc(l.tenant?.company_name||'')}</b>. The new expiry is filled in from the billing cycle (${esc(l.billing||'annual')}) — change it if you need a different date.</div>
+    <label>New expiry date</label>
+    <input id="rn_exp" type="date" value="${to}">
+    <div class="mini" style="margin-top:6px">Current expiry: ${l.expires_at? l.expires_at.slice(0,10) : '— (perpetual)'}. A future date re-activates an expired licence.</div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="doRenew(${id})">Confirm renewal</button></div>`);
+}
+async function doRenew(id){
+  const v=(document.getElementById('rn_exp').value||'').trim();
+  if(!v){ toast('Pick an expiry date'); return; }
+  try{ await api(`licences/${id}`,{method:'PUT',body:{expires_at:v}}); toast('Licence renewed to '+v); closeModal(); loadLicences(); }
+  catch(e){ toast('Error: '+e); }
+}
+function editLic(id){
+  const l=_licById(id);
+  const sel=(name,val,opts)=>`<select id="${name}">`+opts.map(o=>`<option value="${o[0]}"${o[0]===val?' selected':''}>${o[1]}</option>`).join('')+`</select>`;
+  openModal(`<h2>Edit licence</h2>
+    <div class="sub">Correct any detail for <b>${esc(l.key||'')}</b> — e.g. a wrong expiry date. Leave the date blank for a perpetual (never-expiring) licence.</div>
+    <label>Expiry date</label>
+    <input id="ed_exp" type="date" value="${l.expires_at? l.expires_at.slice(0,10):''}">
+    <label>Device limit</label>
+    <input id="ed_dev" type="number" min="1" value="${l.device_limit||1}">
+    <label>Kind</label>
+    ${sel('ed_kind', l.kind, [['trial','Trial'],['subscription','Subscription'],['perpetual','Perpetual']])}
+    <label>Billing cycle</label>
+    ${sel('ed_bill', l.billing, [['monthly','Monthly'],['quarterly','Quarterly'],['half_yearly','Half-yearly'],['annual','Annual']])}
+    <label>Deployment</label>
+    ${sel('ed_dep', l.deployment, [['client_hosted','On-premises (client hosted)'],['cloud','Cloud (Ametecs hosted)']])}
+    <div class="mini" id="ed_msg" style="margin-top:6px"></div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="saveLic(${id})">Save changes</button></div>`);
+}
+async function saveLic(id){
+  const body={
+    expires_at:(document.getElementById('ed_exp').value||''),
+    device_limit:parseInt(document.getElementById('ed_dev').value,10)||null,
+    kind:document.getElementById('ed_kind').value,
+    billing:document.getElementById('ed_bill').value,
+    deployment:document.getElementById('ed_dep').value,
+  };
+  try{ await api(`licences/${id}`,{method:'PUT',body}); toast('Licence updated'); closeModal(); loadLicences(); }
+  catch(e){ document.getElementById('ed_msg').textContent='Error: '+e; }
 }
 function licFile(id, key) {
   openModal(`<h2>Generate licence file (.lic)</h2>
