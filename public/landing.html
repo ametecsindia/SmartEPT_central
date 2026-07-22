@@ -254,6 +254,19 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
 .usp p{font-size:15px;color:var(--ink2)}
 .tag-first{background:linear-gradient(135deg,var(--accent),var(--deep));color:#fff;box-shadow:0 4px 12px rgba(14,124,143,.30);padding:5px 12px}
 </style>
+<style id="feat-premium">
+.features{padding:22px 0 52px}
+.feat{background:var(--card);border-radius:18px;padding:22px 24px 24px;position:relative;overflow:hidden;z-index:0;box-shadow:0 1px 2px rgba(11,99,115,.04),0 6px 20px rgba(15,23,42,.05);transition:transform .2s,box-shadow .2s}
+.feat:hover{transform:translateY(-4px);box-shadow:0 16px 42px rgba(11,99,115,.13)}
+/* diagonal teal corner ribbon */
+.feat::before{content:"";position:absolute;top:0;left:0;width:84px;height:84px;background:linear-gradient(135deg,var(--deep),var(--accent));-webkit-clip-path:polygon(0 0,100% 0,0 100%);clip-path:polygon(0 0,100% 0,0 100%);z-index:1}
+/* icon sits ON the ribbon, white */
+.feat h4 .fi,.fi{position:absolute;top:9px;left:9px;width:auto;height:auto;background:none;box-shadow:none;border-radius:0;z-index:2}
+.fi svg,.feat h4 .fi svg{width:30px;height:30px;color:#fff;stroke-width:2.6}
+/* title clears the ribbon */
+.feat h4{padding-left:46px;min-height:56px;display:flex;align-items:center;gap:0;font-size:16.5px;margin-bottom:12px}
+.feat ul{position:relative;z-index:2}
+</style>
 </head>
 <body>
 
