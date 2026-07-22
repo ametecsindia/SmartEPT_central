@@ -10,14 +10,14 @@
 <style>
 :root{
   --accent:#0E7C8F; --accent2:#22B8CF; --accent-weak:#E3F4F7; --deep:#0B6373;
-  --ink:#15171C; --ink2:#565A66; --ink3:#878C99; --canvas:#FFFFFF; --card:#FFFFFF;
+  --ink:#15171C; --ink2:#565A66; --ink3:#878C99; --canvas:#F4F6F9; --card:#FFFFFF;
   --card2:#FAFBFC; --border:#E7E9EF; --border2:#DCDFE7; --hairline:#F0F1F4;
   --ok:#08875D; --ok-w:#E6F5EE; --warn:#B7791F; --warn-w:#FBF3E2; --danger:#D02748;
   --cov1:#04252C; --cov2:#083A44; --cov3:#0B4A56;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth;overflow-x:hidden}
-body{font-family:'Inter','Segoe UI',-apple-system,sans-serif;color:var(--ink);background:#FBFAF6;line-height:1.6;font-size:16px;overflow-x:hidden;width:100%}
+body{font-family:'Inter','Segoe UI',-apple-system,sans-serif;color:var(--ink);background:#fff;line-height:1.6;font-size:16px;overflow-x:hidden;width:100%}
 img{max-width:100%;height:auto}
 a{text-decoration:none;color:inherit}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
@@ -39,7 +39,7 @@ p.sec-sub{color:var(--ink2);font-size:17px;max-width:720px}
 .flow-step .n svg{width:20px;height:20px;color:#fff}
 
 /* ===== NAV ===== */
-nav{position:sticky;top:0;z-index:200;width:100%;background:rgba(251,250,246,.92);backdrop-filter:blur(10px);box-shadow:0 2px 16px rgba(15,23,42,.07)}
+nav{position:sticky;top:0;z-index:200;width:100%;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
 .nav-in{display:flex;align-items:center;gap:26px;height:72px;max-width:1180px;margin:0 auto;padding:0 24px}
 .nav-logo img{height:52px;display:block}
 .nav-links{display:flex;gap:24px;margin-left:8px;flex:1}
@@ -53,7 +53,7 @@ nav{position:sticky;top:0;z-index:200;width:100%;background:rgba(251,250,246,.92
 
 /* ===== HERO ===== */
 .hero{position:relative;color:#fff;overflow:hidden;background:var(--cov1)}
-.hero::before{display:none}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));z-index:5}
 .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center right}
 .hero-veil{position:absolute;inset:0;background:linear-gradient(97deg,#04252C 0%,rgba(4,37,44,.97) 30%,rgba(6,42,49,.86) 52%,rgba(8,58,68,.38) 78%,rgba(8,58,68,.22) 100%)}
 .hero-veil2{position:absolute;inset:0;background:linear-gradient(0deg,rgba(4,37,44,.92) 0%,rgba(4,37,44,.25) 26%,transparent 45%)}
@@ -241,19 +241,6 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
   .ps-item b{font-size:17px}
 }
 </style>
-<style id="paper-theme">:root{--canvas:#FBFAF6;--card2:#FCFBF8;--border:#ECE7DD;--border2:#E3DCD0;--hairline:#F2EDE4}</style>
-<style id="usp-premium">
-.usps{padding:90px 0 24px}
-.usp{padding:34px 30px;border-radius:20px;overflow:hidden;box-shadow:0 1px 2px rgba(11,99,115,.04),0 8px 24px rgba(15,23,42,.05)}
-.usp::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));opacity:0;transition:opacity .25s}
-.usp:hover::before{opacity:1}
-.usp:hover{box-shadow:0 18px 46px rgba(11,99,115,.13)}
-.usp .ic{width:60px;height:60px;border-radius:17px;margin-bottom:22px;background:linear-gradient(140deg,var(--accent),var(--deep));box-shadow:0 8px 20px rgba(14,124,143,.30),inset 0 1px 0 rgba(255,255,255,.28)}
-.usp .ic svg{width:30px;height:30px;color:#fff}
-.usp h3{font-size:21px;letter-spacing:-.02em;margin-bottom:12px}
-.usp p{font-size:15px;color:var(--ink2)}
-.tag-first{background:linear-gradient(135deg,var(--accent),var(--deep));color:#fff;box-shadow:0 4px 12px rgba(14,124,143,.30);padding:5px 12px}
-</style>
 </head>
 <body>
 
@@ -319,18 +306,18 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
     <h2 class="sec">Three reasons teams choose us</h2>
     <div class="usp-grid">
       <div class="usp">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l7.5 3v5.2c0 4.7-3.2 8.4-7.5 9.8-4.3-1.4-7.5-5.1-7.5-9.8V5.5L12 2.5Z"/><path d="M9 12l2.2 2.2L15.5 9.8"/></svg></div>
+        <div class="ic"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="7" rx="2"/><rect x="2" y="14" width="20" height="7" rx="2"/><line x1="6" y1="6.5" x2="6.01" y2="6.5"/><line x1="6" y1="17.5" x2="6.01" y2="17.5"/></svg></div>
         <h3>Client data at client place</h3>
         <p>Screenshots, activity logs, camera events — everything is stored on <b>your server or your cloud</b>. Ametecs never holds your operational data unless you choose our managed cloud. Your infrastructure. Your data. Our intelligence.</p>
       </div>
       <div class="usp">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 8.5h6M9 11h6M9.4 8.5c3.1 0 4.7 1 4.7 2.6s-1.6 2.6-4.2 2.6H9.4l4.5 4.2"/></svg></div>
+        <div class="ic"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></svg></div>
         <h3>Honestly competitive pricing</h3>
         <p>From <b>₹29 per device per month</b> — priced per active device, not per employee. One PC shared by three shifts is still one licence. No hidden storage charges, no surprise invoices. GST invoice on everything.</p>
       </div>
       <div class="usp">
         <span class="tag-first">Industry First</span>
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16"/><path d="M3 21h18"/><path d="M18 21V9h1.5a1 1 0 0 1 1 1v11"/><path d="M11 11.4v2.2"/></svg></div>
+        <div class="ic"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.562Z"/></svg></div>
         <h3>Gate-to-PC unlock</h3>
         <p>The PC allows work <b>only after the employee punches at the gate</b>. No gate punch, no working desktop. Buddy punching, proxy attendance and ghost working end on day one.</p>
       </div>
@@ -371,28 +358,19 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
     <div class="feat-grid">
       <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>Attendance &amp; Shifts</h4><ul>
         <li>Automatic attendance from login / logout</li><li>Shift, late-login &amp; early-logout alerts</li>
-        <li>Biometric device integration &amp; gate sync</li><li>Break tracking with auto-break on punch-out</li><li>Per-device biometric sync — live interval or fixed times</li></ul></div>
+        <li>Biometric device integration &amp; gate sync</li><li>Break tracking with auto-break on punch-out</li></ul></div>
       <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>Activity &amp; Productivity</h4><ul>
         <li>Active vs idle time, hour by hour</li><li>App &amp; website usage classification</li>
         <li>Productivity scoring (0–100) per employee</li><li>Team &amp; department comparisons</li></ul></div>
       <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>Screenshots &amp; Evidence</h4><ul>
         <li>Configurable screenshot schedules</li><li>Live screen view (Professional+)</li>
-        <li>Screen recording (Enterprise / add-on)</li><li>Camera presence verification, where lawful</li><li>Screenshots pause instantly when the screen locks</li></ul></div>
+        <li>Screen recording (Enterprise / add-on)</li><li>Camera presence verification, where lawful</li></ul></div>
       <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Policy &amp; Compliance</h4><ul>
         <li>Website / application restrictions</li><li>USB &amp; file-transfer controls (Enterprise)</li>
-        <li>Consent-first: policy shown before tracking</li><li>Immutable audit log of every sensitive access</li><li>Single active session per employee — force-logout any device</li></ul></div>
+        <li>Consent-first: policy shown before tracking</li><li>Immutable audit log of every sensitive access</li></ul></div>
       <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>Reports &amp; Alerts</h4><ul>
         <li>Daily / weekly / monthly scheduled reports</li><li>Excessive-idle &amp; policy-violation alerts</li>
         <li>CSV / Excel exports for payroll</li><li>Role-based dashboards for every manager</li></ul></div>
-      <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Z"/><path d="M17 9h2.2a2.5 2.5 0 0 1 0 5H17"/><path d="M8 2.5v2M12 2.5v2"/></svg></span>Smart Breaks</h4><ul>
-        <li>Lunch, Tea &amp; Other break categories</li><li>Per-company break-time limits you set</li>
-        <li>Automatic reason capture when a break runs over</li><li>Manager review &amp; break report with excess time</li></ul></div>
-      <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.2"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M15.5 3.6a4 4 0 0 1 0 6.8"/></svg></span>Meetings</h4><ul>
-        <li>Schedule meetings with participants</li><li>Server-authorised join, auto-close at end</li>
-        <li>Meeting time counts as productive — not idle</li><li>Dedicated meeting report</li></ul></div>
-      <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg></span>Live Monitoring</h4><ul>
-        <li>Live team presence — who's working right now</li><li>Instant idle on lock, sleep or display-off</li>
-        <li>Live status refresh every few seconds</li><li>At-a-glance active vs idle board</li></ul></div>
       <div class="feat"><h4><span class="fi"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>Integrations</h4><ul>
         <li>SmartPRS payroll &amp; attendance sync</li><li>SmartDCM agent-productivity link</li>
         <li>Biometric devices (eSSL &amp; more)</li><li>AD / SSO &amp; standard API (plan-based)</li></ul></div>
@@ -749,7 +727,7 @@ function sendWA(e){
         const cta = document.getElementById('contact');
         if (cta) {
           const sec = document.createElement('section');
-          sec.style.cssText = 'padding:64px 0;background:#FFFFFF';
+          sec.style.cssText = 'padding:64px 0;background:#F4F6F9';
           sec.innerHTML = '<div class="wrap"><h2 style="text-align:center;margin-bottom:28px">What our customers say</h2>'
             + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px">'
             + c.landing_testimonials.slice(0,4).map(function(t){
