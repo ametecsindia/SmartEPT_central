@@ -619,20 +619,33 @@ function dlReport(kind) {
 // ---- Support desk ----
 let TK_ROWS = {};
 const TK_PILL = { open: 'p-warn', in_progress: 'p-info', resolved: 'p-ok', closed: 'p-mut' };
-function tkOpen(id) {
+async function tkOpen(id) {
   const t = TK_ROWS[id]; if (!t) return;
-  const opts = ['open', 'in_progress', 'resolved', 'closed'].map(s => '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s.replace('_', ' ') + '</option>').join('');
+  let thread;
+  try { thread = await api('tickets/' + id); } catch (e) { toast('Error: ' + e); return; }
+  const statusOpts = ['open', 'in_progress', 'resolved', 'closed'].map(s => '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s.replace('_', ' ') + '</option>').join('');
+  const items = (thread.timeline || []).map(m => {
+    if (m.event === 'status_change') {
+      return '<div class="mini" style="text-align:center;color:var(--muted);margin:8px 0">— ' + esc(m.author_name || '') + ' changed status ' + esc(String(m.old_status || '').replace('_', ' ')) + ' \u2192 <b>' + esc(String(m.new_status || '').replace('_', ' ')) + '</b> · ' + esc(m.at_h || '') + ' —</div>';
+    }
+    const mine = m.author_type === 'admin';
+    const tag = m.author_type === 'client' ? ' <span style="font-weight:400;color:var(--muted)">(client)</span>' : (mine ? ' <span style="font-weight:400;color:var(--muted)">(Ametecs)</span>' : '');
+    return '<div style="margin:8px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:' + (mine ? '#FEEFE4' : 'var(--card2)') + '">'
+      + '<div class="mini" style="font-weight:700;margin-bottom:3px">' + esc(m.author_name || '') + tag + ' · ' + esc(m.at_h || '') + '</div>'
+      + '<div style="white-space:pre-wrap">' + esc(m.body || '') + '</div></div>';
+  }).join('') || '<div class="mini">No messages yet.</div>';
   openModal('<h2>Ticket #' + t.id + ' — ' + esc(t.subject) + '</h2>'
     + '<div class="sub">' + esc(t.tenant || '') + ' · ' + esc(t.raised_by || '') + ' &lt;' + esc(t.raised_email || '') + '&gt; · ' + esc(t.category || '') + '</div>'
-    + '<div class="mini" style="white-space:pre-wrap;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:10px 0">' + esc(t.message) + '</div>'
-    + '<label>Reply to the client <span class="mini">(emails them)</span></label><textarea id="tk-reply" rows="4" placeholder="Type your reply…">' + esc(t.admin_reply || '') + '</textarea>'
-    + '<label>Status</label><select id="tk-status">' + opts + '</select>'
+    + '<div style="max-height:340px;overflow:auto;margin:10px 0;padding-right:4px">' + items + '</div>'
+    + '<label>Add a reply <span class="mini">(appended to the thread &amp; emailed to the client — earlier replies are never changed)</span></label><textarea id="tk-reply" rows="4" placeholder="Type your reply…"></textarea>'
+    + '<label>Status</label><select id="tk-status">' + statusOpts + '</select>'
     + '<div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>'
     + '<button class="btn btn-p" onclick="tkSave(' + t.id + ')">Save &amp; send</button></div>', true);
 }
 async function tkSave(id) {
-  const body = { status: document.getElementById('tk-status').value, reply: document.getElementById('tk-reply').value };
-  try { await api('tickets/' + id, { method: 'PUT', body }); closeModal(); toast('Ticket updated'); go('support'); }
+  const reply = (document.getElementById('tk-reply').value || '').trim();
+  const body = { status: document.getElementById('tk-status').value, reply: reply };
+  try { await api('tickets/' + id, { method: 'PUT', body }); closeModal(); toast(reply ? 'Reply sent & saved' : 'Ticket updated'); go('support'); }
   catch (e) { toast('Error: ' + e); }
 }
 
@@ -814,11 +827,11 @@ async support() {
   const c = d.counts || {};
   const chip = (s, l) => '<span class="pill ' + (TK_PILL[s] || 'p-mut') + '">' + (l || s) + ' ' + (c[s] || 0) + '</span>';
   const rows = (d.data || []).map(t => '<tr onclick="tkOpen(' + t.id + ')" style="cursor:pointer">'
-    + '<td class="mini">' + esc(t.created_at || '') + '</td>'
+    + '<td class="mini">' + esc(t.created_at_h || t.created_at || '') + '</td>'
     + '<td><b>' + esc(t.tenant || '—') + '</b><div class="mini">' + esc(t.raised_by || '') + '</div></td>'
     + '<td>' + esc(t.subject) + '<div class="mini">' + esc(t.category || '') + '</div></td>'
     + '<td><span class="pill ' + (TK_PILL[t.status] || 'p-mut') + '">' + esc(String(t.status).replace('_', ' ')) + '</span></td>'
-    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at)) : '') + '</td></tr>').join('');
+    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at_h || t.replied_at)) : '') + (t.messages_count ? ' · ' + t.messages_count + ' msg' : '') + '</td></tr>').join('');
   P.innerHTML = '<div class="card"><h3>Support tickets <span class="mini">' + chip('open', 'open') + ' · ' + chip('in_progress', 'in progress') + ' · ' + chip('resolved', 'resolved') + ' · ' + chip('closed', 'closed') + '</span></h3>'
     + '<table><tr><th>Raised</th><th>Client</th><th>Subject</th><th>Status</th><th></th></tr>'
     + (rows || '<tr><td colspan="5" class="mini">No tickets yet.</td></tr>') + '</table></div>';
@@ -1320,9 +1333,9 @@ async function doIssue() {
 async function loadOrders() {
   const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}`);
   document.getElementById('olist').innerHTML = `<div class="card"><table>
-  <tr><th>Order</th><th>Client</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
+  <tr><th>Order</th><th>Client</th><th>Licence</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
   ${d.data.map(o => `<tr><td><b>${esc(o.quote_number || o.number)}</b><div class="mini">${o.quote_number ? esc(o.number) + ' · ' : ''}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}</div></td>
-  <td>${esc(o.tenant?.company_name)}</td><td class="mini">${esc(o.description)}</td>
+  <td>${esc(o.tenant?.company_name)}</td><td class="mini">${o.licence ? '<b>'+esc(o.licence.key)+'</b>'+(o.licence.status&&o.licence.status!=='active'?' <span style="color:var(--muted)">('+esc(o.licence.status)+')</span>':'') : '<span style="color:var(--muted)">—</span>'}</td><td class="mini">${esc(o.description)}</td>
   <td><b>${fmtMoney(o.total, o.currency)}</b><div class="mini">incl. tax ${fmtMoney(o.tax_amount, o.currency)}</div>
   ${o.provisioned_at && o.status!=='paid' && o.balance>0 ? `<div class="mini" style="color:var(--danger);font-weight:700">balance ${fmtMoney(o.balance, o.currency)}${o.credit_due_date?' by '+o.credit_due_date.slice(0,10):''}</div>`:''}</td>
   <td class="mini">${esc(o.gateway)}${o.manual_method?` (${esc(o.manual_method)})`:''}</td>
@@ -1334,7 +1347,7 @@ async function loadOrders() {
     ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
     : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
   <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:''}` :
-  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="7" class="mini">No orders</td></tr>'}</table></div>`;
+  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
 }
 async function approveQuote(id) {
   try { await api(`orders/${id}/approve-quote`, {method:'POST'}); toast('Quotation approved — now payable'); loadOrders(); }

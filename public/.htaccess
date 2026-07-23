@@ -1,3 +1,19 @@
+# SmartEPT Central — allow large installer uploads under mod_php (Central bug #3, 23-Jul-2026).
+# Guarded so it is silently ignored when PHP runs as FastCGI/CGI (Laragon default),
+# where public/.user.ini raises the same limits instead. Never causes a 500.
+<IfModule mod_php.c>
+    php_value upload_max_filesize 256M
+    php_value post_max_size 260M
+    php_value memory_limit 512M
+    php_value max_execution_time 300
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 256M
+    php_value post_max_size 260M
+    php_value memory_limit 512M
+    php_value max_execution_time 300
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

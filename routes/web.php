@@ -92,6 +92,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
         Route::get('leads', [Admin\LeadApiController::class, 'index']);       // R3-7
         Route::get('coupons', [Admin\CouponApiController::class, 'index']);   // R3-7
         Route::get('tickets', [Admin\SupportTicketController::class, 'index']); // support desk
+        Route::get('tickets/{ticket}', [Admin\SupportTicketController::class, 'show']); // full thread + timeline (bug #2)
         Route::post('quote', [Admin\BillingApiController::class, 'quote']);
 
         // Write endpoints — super + sales

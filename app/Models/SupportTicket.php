@@ -16,4 +16,10 @@ class SupportTicket extends Model
     {
         return $this->belongsTo(Tenant::class);
     }
+
+    /** Append-only conversation thread (Central bug #2). Oldest first. */
+    public function messages()
+    {
+        return $this->hasMany(SupportTicketMessage::class, 'ticket_id')->orderBy('id');
+    }
 }

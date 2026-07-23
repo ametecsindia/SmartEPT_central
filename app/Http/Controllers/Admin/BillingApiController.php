@@ -72,7 +72,7 @@ class BillingApiController extends Controller
 
     public function orders(Request $request)
     {
-        $q = Order::with(['tenant:id,company_name', 'invoice:id,order_id,number'])
+        $q = Order::with(['tenant:id,company_name', 'invoice:id,order_id,number', 'licence:id,key,status,kind'])
             ->withSum('payments as received', 'amount');
 
         if ($s = $request->query('status')) {
