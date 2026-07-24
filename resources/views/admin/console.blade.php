@@ -126,7 +126,7 @@ tr:hover td{background:var(--card2)}
 @media(max-width:520px){.stats{grid-template-columns:1fr}}
 </style>
 </head>
-<body data-role="{{ $user->role }}">
+<body data-role="{{ $user->role }}" data-default-console-url="{{ \App\Models\Setting::get('default_console_url','') }}">
 
 <aside>
   <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT Central" style="width:150px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CENTRAL &middot; SUPER ADMIN</small></div>
@@ -197,6 +197,7 @@ tr:hover td{background:var(--card2)}
 <script>
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
 const ROLE = document.body.dataset.role;
+const DEFAULT_CONSOLE_URL = document.body.dataset.defaultConsoleUrl || '';
 const CAN_WRITE = ROLE === 'super' || ROLE === 'sales';
 const fmtMoney = (n, c='INR') => (c==='INR'?'₹':'$') + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2});
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
@@ -1042,6 +1043,9 @@ async settings() {
   ${f('company_name','Company name')}${f('company_gstin','GSTIN')}${f('company_phone','Phone')}${f('company_email','Email')}
   ${f('gst_rate','GST rate %')}${f('whatsapp_number','WhatsApp number')}${f('invoice_prefix','Invoice prefix (EPT → EPT-2026-27-07-0001)')}${f('quote_prefix','Quote prefix (EPT-Q)')}${f('order_prefix','Order number prefix')}</div>
   <label>Registered address</label><textarea id="set_company_address" rows="2">${esc(s.company_address||'')}</textarea></div>
+  <div class="card"><h3>SmartEPT Cloud</h3>
+  <label>Default hosted console URL <span style="font-weight:400;color:#7A8B90">(prefilled into a new Cloud client's "Hosted console URL" — your shared Ametecs-hosted admin address)</span></label>
+  <input id="set_default_console_url" value="${esc(s.default_console_url||'')}" placeholder="https://client.smartept.cloud/admin"></div>
   <div class="card"><h3>Razorpay (INR) — test keys work; paste live keys when ready</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
   ${f('razorpay_key_id','Key ID (rzp_test_… / rzp_live_…)')}${f('razorpay_key_secret','Key Secret','password')}${f('razorpay_webhook_secret','Webhook Secret','password')}</div>
   <div class="mini">Webhook URL for the Razorpay dashboard: <b>${location.origin}/webhooks/razorpay</b> · event: payment.captured</div></div>
@@ -1139,7 +1143,7 @@ async function loadTenants() {
   <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
   <td>${t.deployment === 'cloud' ? '<span class="pill p-info">SmartEPT Cloud</span>' : '<span class="pill p-mut">Client-hosted</span>'}${t.ecosystem_customer?' <span class="pill p-warn">Ecosystem</span>':''}</td>
   <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td><td>${pill(t.status)}</td>
-  <td><button class="link" onclick="showTenant(${t.id})">Open</button></td></tr>`).join('') || '<tr><td colspan="6" class="mini">No clients found</td></tr>'}</table></div>`;
+  <td style="white-space:nowrap"><button class="link" onclick="showTenant(${t.id})">Open</button>${CAN_WRITE ? ` <button class="link" onclick="editTenantById(${t.id})">Edit</button> ${t.status==='suspended' ? `<button class="link" onclick="setTenantStatus(${t.id},'active')">Enable</button>` : `<button class="link" onclick="setTenantStatus(${t.id},'suspended')">Suspend</button>`}` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="mini">No clients found</td></tr>'}</table></div>`;
 }
 
 async function showTenant(id) {
@@ -1186,7 +1190,7 @@ function readTenantForm() {
 }
 function newTenant() {
   openModal(`<h2>New Client</h2><div class="sub">Create the client record — then issue a licence or start a trial.</div>
-  ${tenantForm()}<label>Start 7-day trial immediately?</label>
+  ${tenantForm({console_url: DEFAULT_CONSOLE_URL})}<label>Start 7-day trial immediately?</label>
   <select id="f_trial"><option value="0">No</option><option value="1">Yes — provision trial licence (10 devices)</option></select>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="saveTenant()">Create Client</button></div>`, true);
@@ -1210,6 +1214,15 @@ async function updateTenant(id) {
     await api('tenants/' + id, {method:'PUT', body: {...readTenantForm(), status: f_status.value}});
     closeModal(); toast('Client updated'); loadTenants();
   } catch (e) { toast('Error: ' + e); }
+}
+async function editTenantById(id) {
+  try { editTenant(await api('tenants/' + id)); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function setTenantStatus(id, status) {
+  if (status === 'suspended' && !confirm('Suspend this client? You can re-enable them anytime.')) return;
+  try { await api('tenants/' + id, {method:'PUT', body:{status}}); toast('Client ' + (status === 'suspended' ? 'suspended' : 'enabled')); loadTenants(); }
+  catch (e) { toast('Error: ' + e); }
 }
 
 // ---------- licences helpers ----------

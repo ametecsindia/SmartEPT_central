@@ -47,6 +47,8 @@ class ConfigApiController extends Controller
         'landing_hero_title', 'landing_hero_subtitle', 'landing_announcement',
         'landing_contact_phone', 'landing_contact_email', 'landing_testimonials',
         'sales_email',
+        // SmartEPT Cloud — default hosted console URL prefilled into new Cloud clients.
+        'default_console_url',
         // Pricing, billing cycles & cloud — Central -> Settings -> Pricing & Cloud
         'pricing_annual_discount_pct', 'pricing_half_yearly_discount_pct', 'pricing_cloud_multiplier',
         'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr',
