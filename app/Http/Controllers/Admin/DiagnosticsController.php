@@ -27,11 +27,14 @@ class DiagnosticsController extends Controller
         $checks = [
             $this->checkDatabase(),
             $this->checkMigrations(),
+            $this->checkScheduler(),
             $this->checkStorageWritable(),
             $this->checkOpcache(),
             $this->checkMail(),
             $this->checkWhatsApp(),
             $this->checkPayments(),
+            $this->checkProductLink(),
+            $this->checkLicenceSigning(),
             $this->checkRecentErrors(),
         ];
 
@@ -269,12 +272,93 @@ class DiagnosticsController extends Controller
         return $count === 0
             ? $this->row('errors', 'Recent errors', 'ok', 'No errors logged in the last hour.')
             : $this->row('errors', 'Recent errors', 'warn',
-                "{$count} error(s) were logged in the last hour. Open the Log viewer below and use "
+                "{$count} error(s) were logged in the last hour. Open the Application log tab above and use "
                 . '“Copy for developer” if you need help.',
                 'c-500');
     }
 
     // ---------------------------------------------------------------------
+
+    /** The 1-minute scheduler heartbeat — drives dunning / renewal & trial reminders. */
+    private function checkScheduler(): array
+    {
+        try {
+            $beat = \Illuminate\Support\Facades\Cache::get('smartept:scheduler_heartbeat');
+        } catch (\Throwable $e) {
+            $beat = null;
+        }
+
+        if (! $beat) {
+            return $this->row('scheduler', 'Background scheduler', 'warn',
+                'The 1-minute background scheduler has not checked in yet. If it stays amber for a few '
+                . 'minutes, Windows Task Scheduler (or cron) is not running "php artisan schedule:run" — '
+                . 'renewal & trial reminders (dunning) and lifecycle jobs will not run.');
+        }
+
+        try {
+            $age = (int) now()->diffInMinutes(\Illuminate\Support\Carbon::parse($beat), true);
+        } catch (\Throwable $e) {
+            $age = 999;
+        }
+
+        if ($age > 5) {
+            return $this->row('scheduler', 'Background scheduler', 'down',
+                "The background scheduler last ran {$age} minute(s) ago — it should run every minute. "
+                . 'Start the "php artisan schedule:run" task so reminders and lifecycle jobs run.');
+        }
+
+        return $this->row('scheduler', 'Background scheduler', 'ok',
+            'Ran within the last few minutes — renewal/trial reminders and lifecycle jobs are active.');
+    }
+
+    /** The link to the SmartEPT product app: cloud provisioning, SSO, suspend/enable. */
+    private function checkProductLink(): array
+    {
+        $url    = (string) config('services.product.provision_url');
+        $secret = (string) config('services.product.provision_secret');
+        $sso    = (string) config('services.product.sso_secret');
+
+        if ($url === '' || $secret === '') {
+            return $this->row('product_link', 'Hosted-console link (SmartEPT product)', 'warn',
+                'Not configured, so Central cannot provision cloud consoles, one-click SSO, or suspend/'
+                . 'enable a cloud client. Set PRODUCT_PROVISION_URL and PRODUCT_PROVISION_SECRET (and '
+                . "PRODUCT_SSO_SECRET) in Central's .env to match the product server, then restart PHP.");
+        }
+        if ($sso === '') {
+            return $this->row('product_link', 'Hosted-console link (SmartEPT product)', 'warn',
+                'Provisioning is set, but one-click SSO is not (PRODUCT_SSO_SECRET is blank) — "Open Console" '
+                . 'will ask the client to log in. Provisioning and suspend/enable still work.');
+        }
+
+        return $this->row('product_link', 'Hosted-console link (SmartEPT product)', 'ok',
+            'Configured — Central can provision cloud consoles, SSO, and suspend/enable clients.');
+    }
+
+    /** The RSA key that signs offline .lic files — without it no licence can be issued. */
+    private function checkLicenceSigning(): array
+    {
+        try {
+            $signer = app(\App\Services\LicenseSigner::class);
+            $path   = $signer->privateKeyPath();
+
+            if (! $signer->available()) {
+                return $this->row('licence_signing', 'Licence signing key', 'down',
+                    "The licence signing key is missing or unreadable at {$path}. New .lic files cannot be "
+                    . 'issued or renewed until it is in place — run GENERATE-LICENSE-KEYS.bat once on this server.');
+            }
+            if (@openssl_pkey_get_private((string) @file_get_contents($path)) === false) {
+                return $this->row('licence_signing', 'Licence signing key', 'down',
+                    "The signing key at {$path} is present but not a valid private key. Re-generate it with "
+                    . 'GENERATE-LICENSE-KEYS.bat.');
+            }
+
+            return $this->row('licence_signing', 'Licence signing key', 'ok',
+                'Present and valid — licences can be issued and signed.');
+        } catch (\Throwable $e) {
+            return $this->row('licence_signing', 'Licence signing key', 'warn',
+                'Could not check the licence signing key.');
+        }
+    }
 
     private function row(string $key, string $label, string $status, string $detail, ?string $fix = null): array
     {

@@ -12,3 +12,9 @@ Artisan::command('inspire', function () {
 // reminders (T-3/1/0) + trial→expired flip, lapsed-licence expiry, purge_after
 // close-out. Deduped via mail_logs; safe to run manually any time.
 Schedule::command('smartept:dunning')->dailyAt('08:00');
+
+// Scheduler heartbeat (Ametecs troubleshooting standard): stamps a cache key every minute
+// so Help -> System Health can tell whether "php artisan schedule:run" is actually running.
+Schedule::call(function () {
+    \Illuminate\Support\Facades\Cache::put('smartept:scheduler_heartbeat', now()->toDateTimeString(), 900);
+})->everyMinute()->name('central-scheduler-heartbeat')->withoutOverlapping();
