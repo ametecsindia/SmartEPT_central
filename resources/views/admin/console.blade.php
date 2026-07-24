@@ -487,7 +487,7 @@ async function helpRun() {
     box.innerHTML = '<div class="mini" style="color:var(--danger)">Could not run checks: ' + esc(String(e)) + '</div>';
   }
 }
-function helpTab(name) {
+function helpPanelTab(name) {
   document.querySelectorAll('#page .htab').forEach(b => b.classList.toggle('on', b.dataset.ht === name));
   document.querySelectorAll('#page .htab-panel').forEach(p => p.classList.toggle('on', p.dataset.ht === name));
   // Auto-load the log when the tab opens so it is never a blank panel.
@@ -495,7 +495,7 @@ function helpTab(name) {
 }
 function openHelpKb(id) {
   const el = document.getElementById(id); if (!el) return;
-  helpTab('fix'); // the KB lives on the "Fix a problem" tab — switch to it first
+  helpPanelTab('fix'); // the KB lives on the "Fix a problem" tab — switch to it first
   el.open = true; el.scrollIntoView({ behavior:'smooth', block:'center' });
   el.classList.add('hkb-flash'); setTimeout(() => el.classList.remove('hkb-flash'), 1600);
 }
@@ -845,9 +845,9 @@ async help() {
   ensureHelpCss();
   P.innerHTML =
     '<div class="htabs">'
-    + '<button class="htab on" data-ht="health" onclick="helpTab(\'health\')">System Health</button>'
-    + '<button class="htab" data-ht="fix" onclick="helpTab(\'fix\')">Fix a problem</button>'
-    + '<button class="htab" data-ht="log" onclick="helpTab(\'log\')">Application log</button>'
+    + '<button class="htab on" data-ht="health" onclick="helpPanelTab(\'health\')">System Health</button>'
+    + '<button class="htab" data-ht="fix" onclick="helpPanelTab(\'fix\')">Fix a problem</button>'
+    + '<button class="htab" data-ht="log" onclick="helpPanelTab(\'log\')">Application log</button>'
     + '</div>'
     + '<div class="card htab-panel on" data-ht="health"><h3>System Health <span class="mini">one click checks the database, storage, email, WhatsApp, payments &amp; more</span></h3>'
     + '<div class="row" style="margin-bottom:12px;align-items:center;gap:10px">'
