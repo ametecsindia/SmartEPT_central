@@ -62,6 +62,36 @@ class ProductProvisioner
         }
     }
 
+    /** Push a suspend/enable to the tenant's hosted console (cloud tenants only). */
+    public function setStatus(Tenant $tenant, string $centralStatus): void
+    {
+        if ($tenant->deployment !== 'cloud') {
+            return; // client-hosted servers are not reachable from Central
+        }
+        $base = (string) config('services.product.provision_url');
+        $secret = (string) config('services.product.provision_secret');
+        if ($base === '' || $secret === '') {
+            return;
+        }
+
+        // active/trial keep the console open; anything else blocks it (hard cut-off).
+        $productStatus = in_array($centralStatus, ['active', 'trial'], true) ? 'ACTIVE' : 'SUSPENDED';
+        $url = rtrim($base, '/') . '/status';
+
+        try {
+            Http::timeout(8)
+                ->withHeaders(['X-Provision-Secret' => $secret])
+                ->acceptJson()
+                ->post($url, [
+                    'external_tenant_id' => (string) $tenant->id,
+                    'status'             => $productStatus,
+                ]);
+            Log::info('Tenant status pushed to hosted console', ['tenant' => $tenant->id, 'status' => $productStatus]);
+        } catch (\Throwable $e) {
+            Log::error('Tenant status push failed', ['tenant' => $tenant->id, 'error' => $e->getMessage()]);
+        }
+    }
+
     /**
      * One-click SSO target for a cloud tenant: console_url with a signed,
      * short-lived ticket the product app trades for a session. Null if the

@@ -151,6 +151,12 @@ class TenantApiController extends Controller
         ]);
 
         $tenant->update($data);
+
+        // Hard cut-off: a suspend/enable propagates to the hosted console (cloud tenants).
+        if (array_key_exists('status', $data)) {
+            app(\App\Services\ProductProvisioner::class)->setStatus($tenant->fresh(), $data['status']);
+        }
+
         AuditLog::write('tenant.updated', $tenant, ['fields' => array_keys($data)]);
 
         return response()->json($tenant->fresh());
