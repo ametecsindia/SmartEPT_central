@@ -1162,7 +1162,7 @@ async function showTenant(id) {
   <table><tr><th>Order</th><th>Total</th><th>Status</th></tr>
   ${(t.orders||[]).slice(0,6).map(o => `<tr><td class="mini">${esc(o.number)} — ${esc(o.description)}</td><td>${fmtMoney(o.total,o.currency)}</td><td>${pill(o.status)}</td></tr>`).join('') || '<tr><td colspan="3" class="mini">None</td></tr>'}</table>
   <div class="foot">${CAN_WRITE?`<button class="btn btn-l" onclick='editTenant(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Edit</button>
-  <button class="btn btn-l" onclick="raiseSetup(${t.id}, ${JSON.stringify(t.company_name)})">Raise installation invoice</button>`:''}
+  <button class="btn btn-l" onclick='raiseSetup(${t.id}, ${JSON.stringify(t.company_name).replace(/'/g,"&#39;")})'>Raise installation invoice</button>`:''}
   <button class="btn btn-p" onclick="closeModal()">Close</button></div>`, true);
 }
 
