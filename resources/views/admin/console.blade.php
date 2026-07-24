@@ -490,6 +490,8 @@ async function helpRun() {
 function helpTab(name) {
   document.querySelectorAll('#page .htab').forEach(b => b.classList.toggle('on', b.dataset.ht === name));
   document.querySelectorAll('#page .htab-panel').forEach(p => p.classList.toggle('on', p.dataset.ht === name));
+  // Auto-load the log when the tab opens so it is never a blank panel.
+  if (name === 'log') { try { loadHelpLog(); } catch (e) { /* ignore */ } }
 }
 function openHelpKb(id) {
   const el = document.getElementById(id); if (!el) return;
