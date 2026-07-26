@@ -1376,7 +1376,7 @@ async function newOrder() {
   openModal(`<h2>New Order / Quote</h2><div class="sub">Live quote updates as you type — includes the one-time Setup &amp; Onboarding fee automatically on a client's first paid order.</div>
   <label>Client</label><select id="no_tenant" onchange="refreshQuote()">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
   <div class="row">
-  <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="core">Core</option><option value="professional" selected>Professional</option><option value="enterprise">Enterprise</option></select></div>
+  <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="smartept" selected>SmartEPT — all features</option></select></div>
   <div><label>Kind</label><select id="no_kind" onchange="refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual</option></select></div>
   <div><label>Billing period</label><select id="no_billing" onchange="refreshQuote()"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="no_deploy" onchange="refreshQuote()"><option value="client_hosted">Client-Hosted</option><option value="cloud">SmartEPT Cloud</option></select></div>
