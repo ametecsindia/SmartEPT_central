@@ -67,10 +67,16 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     <div class="plan-name" id="sumPlan">SmartEPT</div>
     <div class="plan-tag" id="sumTag">Every feature included — free for the first 7 days.</div>
 
+    <div class="ctrl"><label>How you buy</label>
+      <div class="seg" id="segKind">
+        <button type="button" data-kind="subscription" class="on" id="kCloud">Rent · Cloud</button>
+        <button type="button" data-kind="perpetual" id="kPerp">Own · Perpetual</button>
+      </div>
+    </div>
     <div class="ctrl"><label>Users</label>
       <div class="dev"><button type="button" id="devMinus">&minus;</button><input id="devCount" type="number" min="1" value="25"><button type="button" id="devPlus">+</button></div>
     </div>
-    <div class="ctrl"><label>Advance payment</label>
+    <div class="ctrl" id="advPayCtrl"><label>Advance payment</label>
       <div class="seg">
         <button type="button" data-cyc="q" id="cQ">Quarterly<span class="off">0% off</span></button>
         <button type="button" data-cyc="h" id="cH">6 Months<span class="off">10% off</span></button>
@@ -163,7 +169,9 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
 let signupStep = 1, forgotStep = 1;
 let PLANS=[], GST=18, SETUP={base:5000,included:30,per:100};
-let SEL='smartept', CYC='y', COUPON=null;
+let SEL='smartept', KIND='subscription', CYC='y', COUPON=null;
+const PERP_BANDS=[{cap:30,price:25000},{cap:100,price:50000},{cap:250,price:85000},{cap:500,price:125000},{cap:1000,price:200000},{cap:2000,price:325000},{cap:5000,price:500000}];
+function perpBandFor(u){for(const b of PERP_BANDS)if(u<=b.cap)return b;return null;}
 const PERIOD = {q:{m:3,d:0,label:'Quarterly (3 months)'}, h:{m:6,d:0.10,label:'6-month advance'}, y:{m:12,d:0.25,label:'12-month advance'}};
 
 const STATES=[['37','Andhra Pradesh'],['12','Arunachal Pradesh'],['18','Assam'],['10','Bihar'],['22','Chhattisgarh'],['30','Goa'],['24','Gujarat'],['06','Haryana'],['02','Himachal Pradesh'],['20','Jharkhand'],['29','Karnataka'],['32','Kerala'],['23','Madhya Pradesh'],['27','Maharashtra'],['14','Manipur'],['17','Meghalaya'],['15','Mizoram'],['13','Nagaland'],['21','Odisha'],['03','Punjab'],['08','Rajasthan'],['11','Sikkim'],['33','Tamil Nadu'],['36','Telangana'],['16','Tripura'],['09','Uttar Pradesh'],['05','Uttarakhand'],['19','West Bengal'],['07','Delhi'],['04','Chandigarh'],['01','Jammu & Kashmir'],['26','Dadra & Nagar Haveli and Daman & Diu'],['31','Lakshadweep'],['35','Andaman & Nicobar'],['38','Ladakh'],['34','Puducherry']];
@@ -183,29 +191,56 @@ function render(){
   const dev=Math.max(1,parseInt(document.getElementById('devCount').value||'1',10));
   document.getElementById('devField').value=dev;
   const {r:aRate,p}=annualRate(SEL,dev); if(!p)return;
-  const baseMonthly=aRate/0.75;                     // 12-mo @25% off == annual rate
-  const per=PERIOD[CYC];
-  const gross=dev*baseMonthly*per.m;                // Cloud rental (no multiplier)
-  const discAmt=gross*per.d;
-  const sub=gross-discAmt;
   const wantSetup=document.getElementById('setupChk').checked;
   const setup=wantSetup?(SETUP.base+Math.max(0,dev-SETUP.included)*SETUP.per):0;
-  let taxable=sub+setup;
-  let coupDisc=0;
   const cr=document.getElementById('ivCoupRow');
+  const dr=document.getElementById('ivDiscRow');
+  document.getElementById('ivSetupRow').style.display=wantSetup?'':'none';
+  document.getElementById('ivSetup').textContent=inr(setup);
+
+  if(KIND==='perpetual'){
+    dr.style.display='none';
+    const band=perpBandFor(dev);
+    if(!band){
+      document.getElementById('ivSubLbl').textContent='Perpetual · 5,000+ users';
+      document.getElementById('ivSub').textContent='Custom';
+      cr.style.display='none';
+      document.getElementById('ivGst').textContent='—';
+      document.getElementById('ivTotLbl').textContent='Custom quotation';
+      document.getElementById('ivTot').textContent='—';
+      document.getElementById('ivEff').textContent='For 5,000+ users we prepare a custom quote.';
+      return;
+    }
+    let taxable=band.price+setup, coupDisc=0;
+    if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
+      cr.style.display='';document.getElementById('ivCoupLbl').textContent='Coupon '+COUPON.code+(COUPON.type==='percent'?' ('+COUPON.value+'% off)':'');
+      document.getElementById('ivCoup').textContent='− '+inr(coupDisc);taxable-=coupDisc;}
+    else cr.style.display='none';
+    const gstAmt=taxable*GST/100, total=taxable+gstAmt;
+    document.getElementById('ivSubLbl').textContent='Perpetual licence · up to '+band.cap+' users';
+    document.getElementById('ivSub').textContent=inr(band.price);
+    document.getElementById('ivGst').textContent=inr(gstAmt);
+    document.getElementById('ivTotLbl').textContent='One-time total';
+    document.getElementById('ivTot').textContent=inr(total);
+    document.getElementById('ivEff').textContent='One-time · you own it · optional AMC 15–20%/yr on prevailing prices';
+    return;
+  }
+
+  const baseMonthly=aRate/0.75;
+  const per=PERIOD[CYC];
+  const gross=dev*baseMonthly*per.m;
+  const discAmt=gross*per.d;
+  const sub=gross-discAmt;
+  let taxable=sub+setup, coupDisc=0;
   if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
     cr.style.display='';document.getElementById('ivCoupLbl').textContent='Coupon '+COUPON.code+(COUPON.type==='percent'?' ('+COUPON.value+'% off)':'');
     document.getElementById('ivCoup').textContent='− '+inr(coupDisc);taxable-=coupDisc;}
   else cr.style.display='none';
-  const gstAmt=taxable*GST/100;
-  const total=taxable+gstAmt;
+  const gstAmt=taxable*GST/100, total=taxable+gstAmt;
   const effPerMo=sub/dev/per.m;
   document.getElementById('ivSubLbl').textContent='Cloud · '+dev+' user'+(dev>1?'s':'')+' × '+per.m+' mo';
   document.getElementById('ivSub').textContent=inr(gross);
-  const dr=document.getElementById('ivDiscRow');
   if(per.d>0){dr.style.display='';document.getElementById('ivDiscLbl').textContent='Advance discount ('+(per.d*100)+'%)';document.getElementById('ivDisc').textContent='− '+inr(discAmt);}else dr.style.display='none';
-  document.getElementById('ivSetupRow').style.display=wantSetup?'':'none';
-  document.getElementById('ivSetup').textContent=inr(setup);
   document.getElementById('ivGst').textContent=inr(gstAmt);
   document.getElementById('ivTotLbl').textContent='Payable now ('+per.m+'-month advance)';
   document.getElementById('ivTot').textContent=inr(total);
@@ -218,6 +253,8 @@ function render(){
   const params=new URLSearchParams(location.search);const plan=(params.get('plan')||'').toLowerCase();
   SEL='smartept';
   document.getElementById('planField').value=SEL;
+  const buyParam=(params.get('buy')||'').toLowerCase();
+  KIND = buyParam==='perpetual' ? 'perpetual' : 'subscription';
   if(plan)mode('signup',document.querySelector('.tabs button[data-mode=signup]'));
   // controls
   const dc=document.getElementById('devCount');
@@ -228,6 +265,9 @@ function render(){
   document.getElementById('cQ').onclick=()=>segCyc('q');
   document.getElementById('cH').onclick=()=>segCyc('h');
   document.getElementById('cY').onclick=()=>segCyc('y');
+  function segKind(v){KIND=v;document.getElementById('kCloud').classList.toggle('on',v==='subscription');document.getElementById('kPerp').classList.toggle('on',v==='perpetual');const ap=document.getElementById('advPayCtrl');if(ap)ap.style.display=(v==='perpetual'?'none':'');document.getElementById('sumTag').textContent=(v==='perpetual'?'Own it forever — a one-time licence for your users.':'Every feature included — free for the first 7 days.');render();upd();}
+  document.getElementById('kCloud').onclick=()=>segKind('subscription');
+  document.getElementById('kPerp').onclick=()=>segKind('perpetual');
   document.getElementById('setupChk').onchange=render;
   // ---- Coupon apply (public coupon-check keeps signup, portal and admin on the same rules) ----
   const cMsg=document.getElementById('couponMsg');
@@ -266,7 +306,8 @@ function render(){
     document.getElementById('sumTag').textContent='Every feature included — free for the first 7 days.';
     render();
   }catch(e){document.getElementById('inv').style.opacity=.5;}
-  function upd(){const dev=document.getElementById('devCount').value;const t='Hi Ametecs, I would like a quotation for SmartEPT Cloud — '+dev+' users, '+PERIOD[CYC].label+'.';document.getElementById('quoteCta').href='https://wa.me/919000098877?text='+encodeURIComponent(t);}
+  function upd(){const dev=document.getElementById('devCount').value;const t=KIND==='perpetual'?('Hi Ametecs, I would like a quotation for SmartEPT Perpetual — '+dev+' users (one-time licence).'):('Hi Ametecs, I would like a quotation for SmartEPT Cloud — '+dev+' users, '+PERIOD[CYC].label+'.');document.getElementById('quoteCta').href='https://wa.me/919000098877?text='+encodeURIComponent(t);}
+  segKind(KIND);
   window.upd=upd; upd();
 })();
 </script>

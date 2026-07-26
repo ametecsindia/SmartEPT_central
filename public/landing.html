@@ -421,7 +421,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
    .npx-chip{border:1.5px solid var(--border2);background:#fff;border-radius:999px;padding:8px 16px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit}
    .npx-chip.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff;border-color:var(--accent)}
    .npx-cards{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:24px}
-   .npx-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:26px;position:relative;display:flex;flex-direction:column}
+   .npx-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:26px;position:relative;display:flex;flex-direction:column;overflow:hidden}
    .npx-card.feat{background:linear-gradient(160deg,#0E7C8F 0%,#0B6373 100%);border:none;color:#fff;box-shadow:0 18px 44px rgba(14,124,143,.30)}
    .npx-card.feat .npx-t,.npx-card.feat .npx-price .amt{color:#fff}
    .npx-card.feat .npx-s,.npx-card.feat .npx-price .per,.npx-card.feat .npx-run,.npx-card.feat .npx-amc{color:rgba(255,255,255,.86)}
@@ -468,7 +468,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
         <div class="npx-run" id="npxCloudRun"></div>
         <div class="npx-setup" id="npxCloudSetup"></div>
         <div class="npx-amc">All features included &middot; billed as you choose.</div>
-        <div class="npx-buy"><a class="btn btn-primary" href="/client/signup">Start on Cloud</a></div>
+        <div class="npx-buy"><a class="btn btn-primary" href="/client/signup?buy=cloud">Start on Cloud</a></div>
       </div>
       <div class="npx-card feat">
         <div class="npx-t">SmartEPT Perpetual</div>
@@ -477,7 +477,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
         <div class="npx-run">Lifetime licence &middot; client-hosted &middot; all features</div>
         <div class="npx-setup" id="npxPerpSetup"></div>
         <div class="npx-amc" id="npxPerpAmc"></div>
-        <div class="npx-buy"><a class="btn btn-light" href="/client/signup">Buy a licence</a></div>
+        <div class="npx-buy"><a class="btn btn-light" href="/client/signup?buy=perpetual">Buy a licence</a></div>
       </div>
     </div>
 
