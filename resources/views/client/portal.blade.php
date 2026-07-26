@@ -307,7 +307,7 @@ async function pgOverview() {
   let banner = '';
   if (t.status === 'trial' && l) {
     banner = `<div class="banner trial"><div><b>Your free trial is live${l.days_left !== null ? ' — ' + Math.max(0, l.days_left) + ' day(s) left' : ''}.</b><br>
-    Professional features, up to ${l.device_limit} devices. Like it? Move to a paid plan in two clicks — your data continues seamlessly.</div>
+    All features, up to ${l.device_limit} users. Like it? Move to a paid plan in two clicks — your data continues seamlessly.</div>
     <div class="sp"></div><button class="btn btn-p" onclick="goBuy()">Choose a plan →</button></div>`;
   } else if (OV.counts.unpaid > 0) {
     banner = `<div class="banner due"><div><b>${OV.counts.unpaid} order(s) awaiting payment.</b> Pay online or by NEFT/UPI — your licence activates the moment payment lands.</div>
@@ -319,7 +319,7 @@ async function pgOverview() {
   el.innerHTML = banner + `
   <div class="stats">
     <div class="stat"><div class="l">Plan</div><div class="v teal">${l ? esc(l.plan) : '—'}</div><div class="m">${l ? esc(l.kind) + ' · ' + esc(l.billing) : 'no active licence'}</div></div>
-    <div class="stat"><div class="l">Devices</div><div class="v">${l ? l.devices_active + ' / ' + l.device_limit : '—'}</div><div class="m">active endpoint devices</div></div>
+    <div class="stat"><div class="l">Users</div><div class="v">${l ? l.devices_active + ' / ' + l.device_limit : '—'}</div><div class="m">active users</div></div>
     <div class="stat"><div class="l">${l && l.kind === 'trial' ? 'Trial ends' : 'Licence expires'}</div>
       <div class="v ${daysClass}">${l && l.days_left !== null ? Math.max(0, l.days_left) + 'd' : '—'}</div>
       <div class="m">${l && l.expires_at ? 'on ' + l.expires_at : ''}</div></div>
@@ -471,7 +471,7 @@ async function pgLicence() {
   <div class="card">
     <h3>${esc(l.plan)} · <span class="keybox">${esc(l.key)}</span> ${statusPill(l.status)}</h3>
     <p class="mini" style="margin-bottom:10px">${esc(l.kind)} · ${esc(l.billing)} · ${esc(l.deployment).replace('_','-')} ·
-      up to <b>${l.device_limit}</b> devices${l.expires_at ? ' · expires ' + l.expires_at : ''}</p>
+      up to <b>${l.device_limit}</b> users${l.expires_at ? ' · expires ' + l.expires_at : ''}</p>
     ${l.devices.length ? `<table><thead><tr><th>Device</th><th>Hostname</th><th>Status</th><th>Activated</th></tr></thead><tbody>
       ${l.devices.map(d => `<tr><td>${esc(d.device_uid)}</td><td>${esc(d.hostname || '—')}</td><td>${statusPill(d.status)}</td><td class="mini">${esc(d.activated_at || '—')}</td></tr>`).join('')}
     </tbody></table>` : '<p class="mini">No devices activated yet. Install the SmartEPT agent on a workstation and it appears here with its licence seat.</p>'}
@@ -480,7 +480,7 @@ async function pgLicence() {
 }
 
 // ---------- Buy & Renew ----------
-let BUY = {plan:'professional', devices:25, billing:'annual', deployment:'client_hosted', plans:[], coupon:''};
+let BUY = {kind:'subscription', devices:25, billing:'annual', plans:[], coupon:''};
 let CALC_SEQ = 0; // guards against a slow older quote overwriting a newer selection
 const PERIOD_LABEL = { annual:'annual', half_yearly:'6-monthly', quarterly:'quarterly', monthly:'monthly' };
 // Per-device headline rate for the selected period (base formula: annual = published,
@@ -499,29 +499,26 @@ async function pgBuy() {
   const el = document.getElementById('page');
   el.innerHTML = '<p class="mini">Loading…</p>';
   if (!OV) OV = await api('overview');
-  BUY.plans = await api('plans');
-  BUY.deployment = OV.tenant.deployment || 'client_hosted';
+  try { BUY.plans = await api('plans'); } catch(e){ BUY.plans = []; }
   const l = OV.licence;
-  if (l && l.plan_code) BUY.plan = l.plan_code;
   if (l && l.device_limit && l.kind !== 'trial') BUY.devices = l.device_limit;
+  if (l && l.kind === 'perpetual') BUY.kind = 'perpetual';
 
   const renewCard = (l && l.kind === 'subscription' && ['active'].includes(l.status)) ? `
   <div class="card">
     <h3>Quick renewal</h3>
-    <p class="mini" style="margin-bottom:10px">Extend your current licence — same plan (<b>${esc(l.plan)}</b>), same ${l.device_limit} devices, one more ${l.billing === 'annual' ? 'year' : 'month'}. The new period starts where the old one ends, so renewing early never wastes days.</p>
+    <p class="mini" style="margin-bottom:10px">Extend your current SmartEPT Cloud subscription — same ${l.device_limit} users, one more ${l.billing === 'annual' ? 'year' : 'period'}. The new period starts where the old one ends, so renewing early never wastes days.</p>
     <button class="btn btn-p" onclick="doRenew(${l.id})">Renew now →</button>
   </div>` : '';
 
   el.innerHTML = renewCard + `
   <div class="card">
     <h3>Price calculator — buy or upgrade</h3>
-    <div class="plan-grid" id="planGrid"></div>
-    <div class="modal-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 14px">
-      <div><label>Number of devices</label><input type="number" id="buyDevices" min="1" value="${BUY.devices}" onchange="BUY.devices=Math.max(1,parseInt(this.value)||1);calcQuote()"></div>
-      <div><label>Advance period</label><div class="seg" id="segBilling">
+    <div class="plan-grid" id="buyTypeGrid"></div>
+    <div class="modal-row" style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+      <div><label>Users</label><input type="number" id="buyDevices" min="1" value="${BUY.devices}" onchange="BUY.devices=Math.max(1,parseInt(this.value)||1);calcQuote()"></div>
+      <div id="billingWrap"><label>Advance period</label><div class="seg" id="segBilling">
         <button data-v="quarterly">Quarterly</button><button data-v="half_yearly">6 mo (10% off)</button><button data-v="annual" class="on">12 mo (25% off)</button></div></div>
-      <div><label>Hosting</label><div class="seg" id="segDeploy">
-        <button data-v="client_hosted" class="on">Your server</button><button data-v="cloud">SmartEPT Cloud</button></div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;max-width:420px">
       <div><label>Coupon code (optional)</label><input id="buyCoupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" value="${esc(BUY.coupon)}"></div>
@@ -537,8 +534,7 @@ async function pgBuy() {
   </div>`;
 
   document.getElementById('segBilling').onclick = e => seg(e, 'segBilling', v => { BUY.billing = v; calcQuote(); });
-  document.getElementById('segDeploy').onclick = e => seg(e, 'segDeploy', v => { BUY.deployment = v; calcQuote(); });
-  drawPlans();
+  drawBuyType();
   calcQuote();
 }
 function seg(e, id, cb) {
@@ -547,50 +543,46 @@ function seg(e, id, cb) {
   document.querySelectorAll('#' + id + ' button').forEach(x => x.classList.toggle('on', x === b));
   cb(b.dataset.v);
 }
-function drawPlans() {
-  const per = PERIOD_LABEL[BUY.billing] || 'annual';
-  document.getElementById('planGrid').innerHTML = BUY.plans.map(p => `
-    <div class="plan-card ${p.code === BUY.plan ? 'on' : ''}" onclick="BUY.plan='${esc(p.code)}';calcQuote()">
-      <b>${esc(p.name)}${p.code === 'professional' ? ' ★' : ''}</b>
-      <div class="pr">₹${periodRate(p)}<small> /device/month · ${per}</small></div>
-      <span class="mini">₹${Number(p.inr_monthly)} monthly · min ${p.min_devices} devices</span>
+function drawBuyType() {
+  const types = [
+    {k:'subscription', name:'SmartEPT Cloud', desc:'Rent per user / month · we host it · all features'},
+    {k:'perpetual', name:'SmartEPT Perpetual', desc:'Own it once · your server · all features'}
+  ];
+  document.getElementById('buyTypeGrid').innerHTML = types.map(t => `
+    <div class="plan-card ${t.k === BUY.kind ? 'on' : ''}" onclick="BUY.kind='${t.k}';calcQuote()">
+      <b>${esc(t.name)}</b>
+      <span class="mini">${esc(t.desc)}</span>
     </div>`).join('');
+  const bw = document.getElementById('billingWrap'); if (bw) bw.style.display = (BUY.kind === 'perpetual' ? 'none' : '');
 }
 async function calcQuote() {
   const box = document.getElementById('quoteBox');
   if (!box) return;
   const seq = ++CALC_SEQ;
-  drawPlans(); // reflect the selected plan + period on the cards immediately
+  drawBuyType();
   try {
-    const q = await api('quote', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment, coupon_code:BUY.coupon || null}});
-    if (seq !== CALC_SEQ) return; // a newer selection superseded this response
-    // Transparency: plain-language config + per-device rate + advance-period savings,
-    // then the itemised lines (showing qty × unit where the backend provides it).
-    const plan = BUY.plans.find(p => p.code === BUY.plan) || {};
-    const rate = periodRate(plan), mo = Number(plan.inr_monthly) || 0;
-    const saveM = Math.round(Math.max(0, mo - rate) * 100) / 100;
-    const savePct = mo ? Math.round((mo - rate) / mo * 100) : 0;
-    const cfg = `${plan.name || BUY.plan} · ${BUY.devices} device${BUY.devices === 1 ? '' : 's'} · ${PERIOD_LABEL[BUY.billing] || 'annual'} in advance · ${BUY.deployment === 'cloud' ? 'SmartEPT Cloud' : 'your server'}`;
-    const explain = `<div class="calc-ex"><div class="calc-cfg">${esc(cfg)}</div>`
-      + `<div class="mini">Rate for this period: <b>₹${rate}</b> per device / month`
-      + (saveM > 0 ? ` — <span class="save">you save ₹${saveM}/device/month vs monthly billing (${savePct}% off)</span>` : '')
-      + `.</div><div class="mini">GST is added on top; “Total payable” below is the final amount.</div></div>`;
+    const q = await api('quote', {method:'POST', body:{kind:BUY.kind, devices:BUY.devices, billing:BUY.billing, coupon_code:BUY.coupon || null}});
+    if (seq !== CALC_SEQ) return;
+    if (q.custom) { box.innerHTML = '<span class="mini">' + esc(q.message || 'For more than 5,000 users, please request a custom quotation.') + '</span>'; return; }
+    const cfg = `${BUY.kind === 'perpetual' ? 'SmartEPT Perpetual (one-time)' : 'SmartEPT Cloud'} · ${BUY.devices} user${BUY.devices === 1 ? '' : 's'}${BUY.kind === 'perpetual' ? '' : ' · ' + (PERIOD_LABEL[BUY.billing] || 'annual') + ' in advance'}`;
+    const explain = `<div class="calc-ex"><div class="calc-cfg">${esc(cfg)}</div><div class="mini">GST is added on top; \u201CTotal payable\u201D below is the final amount.</div></div>`;
     box.innerHTML = explain + q.lines.map(l => {
       const sub = (l.qty && l.unit != null && Math.abs(Number(l.qty)) !== 1)
-        ? `<div class="ln-sub">${l.qty} × ${fmtMoney(l.unit, q.currency)}</div>` : '';
+        ? `<div class="ln-sub">${l.qty} \u00D7 ${fmtMoney(l.unit, q.currency)}</div>` : '';
       return `<div class="ln"><span>${esc(l.description)}${sub}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`;
     }).join('')
       + `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>`
       + `<div class="ln tt"><span>Total payable</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
     const note = document.getElementById('couponNote');
     if (note) note.innerHTML = !BUY.coupon ? '' : (q.coupon?.ok
-      ? '<span style="color:var(--ok);font-weight:700">✓ Coupon ' + esc(q.coupon.code) + ' applied — you save ' + fmtMoney(q.coupon.discount, q.currency) + '</span>'
-      : '<span style="color:#D02748;font-weight:700">✗ Coupon not applied (' + esc(q.coupon?.reason || 'not valid') + ')</span>');
+      ? '<span style="color:var(--ok);font-weight:700">\u2713 Coupon ' + esc(q.coupon.code) + ' applied — you save ' + fmtMoney(q.coupon.discount, q.currency) + '</span>'
+      : '<span style="color:#D02748;font-weight:700">\u2717 Coupon not applied (' + esc(q.coupon?.reason || 'not valid') + ')</span>');
   } catch (err) { if (seq === CALC_SEQ) box.innerHTML = '<span class="mini">' + esc(err.message) + '</span>'; }
 }
 async function doBuy(asQuote) {
   try {
-    const out = await api('orders', {method:'POST', body:{plan_code:BUY.plan, devices:BUY.devices, billing:BUY.billing, deployment:BUY.deployment, as_quote:asQuote, coupon_code:BUY.coupon || null}});
+    if (BUY.kind === 'perpetual' && BUY.devices > 5000) { toast('For more than 5,000 users, please request a custom quotation.'); return; }
+    const out = await api('orders', {method:'POST', body:{kind:BUY.kind, devices:BUY.devices, billing:BUY.billing, as_quote:asQuote, coupon_code:BUY.coupon || null}});
     if (asQuote) {
       modal(`<h2 style="font-size:17px;font-weight:800;margin-bottom:4px">Quotation ${esc(out.order.quote_number)} raised</h2>
       <p class="mini" style="margin-bottom:14px">Print it or send the pay link to your management — the moment they pay, your licence activates automatically.</p>

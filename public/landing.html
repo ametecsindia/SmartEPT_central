@@ -422,8 +422,11 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
    .npx-chip.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff;border-color:var(--accent)}
    .npx-cards{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:24px}
    .npx-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:26px;position:relative;display:flex;flex-direction:column}
-   .npx-card.feat{border:2px solid var(--accent);box-shadow:0 18px 44px rgba(14,124,143,.16)}
-   .npx-tag{position:absolute;top:-13px;left:26px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:5px 14px;border-radius:999px}
+   .npx-card.feat{background:linear-gradient(160deg,#0E7C8F 0%,#0B6373 100%);border:none;color:#fff;box-shadow:0 18px 44px rgba(14,124,143,.30)}
+   .npx-card.feat .npx-t,.npx-card.feat .npx-price .amt{color:#fff}
+   .npx-card.feat .npx-s,.npx-card.feat .npx-price .per,.npx-card.feat .npx-run,.npx-card.feat .npx-amc{color:rgba(255,255,255,.86)}
+   .npx-card.feat .npx-setup{color:#fff;border-top-color:rgba(255,255,255,.3)}
+   .npx-card.feat .npx-buy .btn{background:#fff;color:var(--deep);border-color:#fff}
    .npx-t{font-size:20px;font-weight:800;color:var(--deep)}
    .npx-s{color:var(--ink3);font-size:13px;margin-top:3px;min-height:38px}
    .npx-cyc{display:inline-flex;background:var(--accent-weak);border-radius:999px;padding:4px;margin:14px 0 8px;gap:2px}
@@ -468,10 +471,8 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
         <div class="npx-buy"><a class="btn btn-primary" href="/client/signup">Start on Cloud</a></div>
       </div>
       <div class="npx-card feat">
-        <div class="npx-tag">OWN IT FOREVER</div>
         <div class="npx-t">SmartEPT Perpetual</div>
         <div class="npx-s">Buy once, host it yourself. A lifetime licence for your user capacity &mdash; the software is yours.</div>
-        <div style="height:44px"></div>
         <div class="npx-price"><span class="amt">&#8377;<span id="npxPerpAmt">25,000</span></span><span class="per" id="npxPerpPer">one-time &middot; up to 30 users</span></div>
         <div class="npx-run">Lifetime licence &middot; client-hosted &middot; all features</div>
         <div class="npx-setup" id="npxPerpSetup"></div>
@@ -515,9 +516,9 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
     <div>
       <span class="kicker">The Ametecs Ecosystem</span>
       <h3>Already using SmartDCM or SmartPRS?</h3>
-      <p>SmartEPT plugs straight into your existing Ametecs products — attendance flows to SmartPRS payroll, productivity flows to SmartDCM incentives. And you get a standard 10% ecosystem discount on every plan and billing cycle.</p>
+      <p>SmartEPT plugs straight into your existing Ametecs products — attendance flows to SmartPRS payroll, productivity flows to SmartDCM incentives. And you get a standard 10% ecosystem discount on both SmartEPT Cloud and Perpetual.</p>
     </div>
-    <div class="offer"><span>Existing SmartDCM / SmartPRS customers</span><b>10%<span style="font-size:14px;color:var(--ink3)"> off everything</span></b><span>every plan &amp; billing cycle · client-hosted or cloud</span></div>
+    <div class="offer"><span>Existing SmartDCM / SmartPRS customers</span><b>10%<span style="font-size:14px;color:var(--ink3)"> off everything</span></b><span>on Cloud rentals &amp; Perpetual licences</span></div>
   </div>
 </section>
 
@@ -527,21 +528,21 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
     <div style="text-align:center"><span class="kicker">Questions, Answered</span>
     <h2 class="sec">Frequently asked questions</h2></div>
     <div class="faq-item"><button class="faq-q" onclick="fq(this)">Where exactly is my employees' data stored?</button>
-      <div class="faq-a"><p>Under client-hosted deployment, the SmartEPT server runs on <b>your premises or your own cloud account</b> — every screenshot, activity log and camera event stays in your environment. Ametecs only keeps licence metadata (plan, device count, activation) needed to keep your product activated and updated. If you choose SmartEPT-managed cloud, we host the platform for you under contractual access, retention and deletion controls — and the data is still legally yours.</p></div></div>
+      <div class="faq-a"><p>With <b>SmartEPT Perpetual</b> you host the server on your own premises or cloud account — every screenshot, activity log and camera event stays entirely in your environment, and Ametecs keeps only the licence metadata needed to keep your product activated. With <b>SmartEPT Cloud</b> we host the platform for you under contractual access, retention and deletion controls — and the data is still legally yours.</p></div></div>
     <div class="faq-item"><button class="faq-q" onclick="fq(this)">How does the Gate-to-PC feature actually work?</button>
       <div class="faq-a"><p>Your biometric gate device (eSSL and similar) pushes punches to SmartEPT. The SmartEPT agent on each PC checks: has this employee punched in at the gate today? If yes, the desktop session is allowed. If they punch out mid-day, the PC locks and an automatic break starts. If the biometric device ever goes down, an admin override opens work instantly — it is designed to never block your business.</p></div></div>
-    <div class="faq-item"><button class="faq-q" onclick="fq(this)">What counts as one licence — a device or an employee?</button>
-      <div class="faq-a"><p>An <b>active endpoint device</b>. One workstation used by three employees across shifts consumes just one licence — much better value for call centres and BPOs. Managers and admins who only use the web dashboard are free. Licences can be moved to a replacement device through controlled deactivation.</p></div></div>
-    <div class="faq-item"><button class="faq-q" onclick="fq(this)">How is SmartEPT Cloud storage billed?</button>
-      <div class="faq-a"><p>Separately and transparently: ₹3 per GB per month for the first 500 GB (₹2.50 to 2 TB, ₹2 above), minimum 50 GB. We measure your average daily usage and round up to the next GB. You control retention — data you delete stops being billed. Your licence and your storage always appear as two clear lines on the invoice.</p></div></div>
+    <div class="faq-item"><button class="faq-q" onclick="fq(this)">Is SmartEPT priced per device or per user?</button>
+      <div class="faq-a"><p>By <b>users</b>. You choose your user capacity (say, up to 100 users) and pay for that scale — the more users, the lower the per-user price. Managers and admins who only use the web dashboard are included. Whether you rent it (Cloud) or own it (Perpetual), the price is set purely by your user count.</p></div></div>
+    <div class="faq-item"><button class="faq-q" onclick="fq(this)">Do I pay extra for cloud storage?</button>
+      <div class="faq-a"><p>No — with <b>SmartEPT Cloud</b>, hosting, storage, backups and automatic updates are all <b>included</b> in your per-user rental. There is nothing separate to meter or manage. (With <b>Perpetual</b> you host on your own server, so storage is simply your own disk — free to you.)</p></div></div>
     <div class="faq-item"><button class="faq-q" onclick="fq(this)">Is there a permanent free plan?</button>
-      <div class="faq-a"><p>No — and that's deliberate. You get a <b>7-day full-featured trial</b> for up to 10 devices (with an optional 5 GB cloud sandbox) to genuinely evaluate everything. After that, plans start at just ₹29 per device per month, so the entry price stays honest instead of hiding costs elsewhere.</p></div></div>
+      <div class="faq-a"><p>No — and that is deliberate. You get a <b>7-day full-featured trial</b> for up to 10 users to genuinely evaluate everything. After that, choose <b>SmartEPT Cloud</b> (rent per user / month, from ₹6/user at scale) or <b>SmartEPT Perpetual</b> (own it once, from ₹25,000). Every feature is included either way.</p></div></div>
     <div class="faq-item"><button class="faq-q" onclick="fq(this)">Is this legal? Do employees know they are tracked?</button>
       <div class="faq-a"><p>SmartEPT is transparent by design — there is <b>no stealth mode</b>. The agent shows a visible tracking status and the active policy. Consent screens are shown where policy requires, and every access to sensitive data is written to an immutable audit log. You remain responsible for lawful deployment and employee communication, and we give you the tools to do it right.</p></div></div>
     <div class="faq-item"><button class="faq-q" onclick="fq(this)">Can I buy it once instead of subscribing?</button>
-      <div class="faq-a"><p>Yes — perpetual licensing is available (per-device licence + central server licence, including the first 12 months of updates; AMC at 18% per year afterwards keeps updates and support active). Talk to sales for a perpetual quotation.</p></div></div>
+      <div class="faq-a"><p>Yes — <b>SmartEPT Perpetual</b> is a one-time, all-features licence for your user capacity, hosted on your own servers (from ₹25,000 for up to 30 users, scaling up by capacity). The first 12 months of updates are included; after that an <b>optional AMC of 15–20% per year</b> — charged on prevailing prices — keeps updates and support active. Above 5,000 users we quote custom.</p></div></div>
     <div class="faq-item"><button class="faq-q" onclick="fq(this)">What do setup, implementation and integrations cost?</button>
-      <div class="faq-a"><p>A one-time <b>Setup &amp; Onboarding fee of ₹5,000</b> covers your first 25 devices (₹100 per additional device) — it includes installation assistance, configuration and go-live handholding, and appears only on your first invoice. Optional services are quoted separately: biometric integration from ₹15,000, HRMS/payroll or custom API integration from ₹25,000, white labelling from ₹1,00,000.</p></div></div>
+      <div class="faq-a"><p>A one-time <b>Setup &amp; Onboarding fee of ₹5,000</b> covers your first 30 users (₹100 per additional user) — self-service installation with configuration and go-live handholding, on your first invoice only. Optional services are quoted separately: biometric integration from ₹15,000, HRMS/payroll or custom API integration from ₹25,000, white labelling from ₹1,00,000.</p></div></div>
   </div>
 </section>
 

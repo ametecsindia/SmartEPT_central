@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEPT — Pricing v2 Delivery</title>
+<style>
+  :root{--teal:#0E7C8F;--teal-dk:#0a5c6a;--teal-lt:#e6f2f4;--ink:#1f2a2e;--muted:#5b6a70;--line:#dde6e8;--bg:#f6f9fa;--ok:#2e7d32;--okbg:#e9f5ea;--warn:#b9770e;--warnbg:#fcf3e3;--rose:#c0392b;--rosebg:#fbeae8}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px 80px}
+  header{background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#fff;padding:38px 22px 30px}
+  header .inner{max-width:960px;margin:0 auto}
+  .brand{font-size:13px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;font-weight:600}
+  h1{margin:.35em 0 .15em;font-size:26px}h2{font-size:20px;margin:36px 0 8px;padding-bottom:8px;border-bottom:2px solid var(--teal);color:var(--teal-dk)}
+  h3{font-size:15px;margin:20px 0 4px}.sub{opacity:.92}.meta{margin-top:12px;font-size:13px;opacity:.85}
+  p{margin:.5em 0}
+  .lead{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:8px;padding:16px 18px;margin:22px 0}
+  .steps{background:var(--warnbg);border:1px solid #eaddbd;border-left:4px solid var(--warn);border-radius:8px;padding:8px 20px 16px;margin:16px 0}
+  .steps b{color:var(--warn)}
+  .danger{background:var(--rosebg);border:1px solid #ecc7c2;border-left:4px solid var(--rose);border-radius:8px;padding:12px 16px;margin:16px 0;font-size:14px}
+  .danger b{color:var(--rose)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--teal-lt);color:var(--teal-dk);font-weight:600;font-size:11.5px;text-transform:uppercase}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}tr:last-child td{border-bottom:none}
+  code{background:#eef3f4;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  ul li,ol li{margin:6px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div class="inner">
+  <div class="brand">Ametecs · SmartEPT</div>
+  <h1>Pricing v2 — Built &amp; Committed</h1>
+  <div class="sub">One all-features product, priced by user scale · Cloud rental + Perpetual own-it</div>
+  <div class="meta">26 Jul 2026 · Central <code>main</code> backend <code>3c9b067</code> · landing <code>442acbf</code> · <b>needs migrate + seed + your runtime test</b></div>
+</div></header>
+<div class="wrap">
+
+  <div class="lead"><b>Done.</b> The old Core/Professional/Enterprise, per-device, client-hosted-vs-cloud model is replaced by a single all-features SmartEPT sold two ways — <b>Cloud</b> (rental, per user/month, scale bands, advance-payment cycles) and <b>Perpetual</b> (one-time, client-hosted, by user capacity). Built end-to-end: pricing engine, quote/order/invoice endpoints, and the public landing page. Non-destructive — old plans are deactivated, not deleted; existing orders/licences/invoices are untouched.</div>
+
+  <div class="danger"><b>⚠ Before go-live — this is the money path and I could not run it here.</b> The cloud sandbox has no live DB, so everything below passed <code>php -l</code> + JS syntax checks and careful review, but <b>you must run the migration + seeder and test one Cloud quote and one Perpetual quote (and a full order → pay → invoice) on the live system before announcing.</b> Rollback is easy (old plans preserved).</div>
+
+  <h2>The model, as shipped</h2>
+  <div class="grid2">
+    <div class="card"><h3 style="margin-top:0">SmartEPT Cloud — rental (₹/user/month)</h3>
+      <table style="margin:6px 0"><thead><tr><th>Users</th><th class="num">Annual</th><th class="num">½-yearly</th><th class="num">Quarterly</th></tr></thead><tbody>
+      <tr><td>Up to 30</td><td class="num">45</td><td class="num">54</td><td class="num">60</td></tr>
+      <tr><td>Up to 100</td><td class="num">28</td><td class="num">33.6</td><td class="num">37.3</td></tr>
+      <tr><td>Up to 250</td><td class="num">20</td><td class="num">24</td><td class="num">26.7</td></tr>
+      <tr><td>Up to 500</td><td class="num">15</td><td class="num">18</td><td class="num">20</td></tr>
+      <tr><td>Up to 1,000</td><td class="num">12</td><td class="num">14.4</td><td class="num">16</td></tr>
+      <tr><td>Up to 2,000</td><td class="num">9</td><td class="num">10.8</td><td class="num">12</td></tr>
+      <tr><td>Up to 5,000</td><td class="num">6</td><td class="num">7.2</td><td class="num">8</td></tr>
+      </tbody></table>
+      <p style="font-size:12px;color:var(--muted);margin:2px 0 0">Hosting + storage included. Above 5,000 → custom.</p>
+    </div>
+    <div class="card"><h3 style="margin-top:0">SmartEPT Perpetual — one-time (lifetime)</h3>
+      <table style="margin:6px 0"><thead><tr><th>Capacity</th><th class="num">Licence</th></tr></thead><tbody>
+      <tr><td>Up to 30</td><td class="num">₹25,000</td></tr>
+      <tr><td>Up to 100</td><td class="num">₹50,000</td></tr>
+      <tr><td>Up to 250</td><td class="num">₹85,000</td></tr>
+      <tr><td>Up to 500</td><td class="num">₹1,25,000</td></tr>
+      <tr><td>Up to 1,000</td><td class="num">₹2,00,000</td></tr>
+      <tr><td>Up to 2,000</td><td class="num">₹3,25,000</td></tr>
+      <tr><td>Up to 5,000</td><td class="num">₹5,00,000</td></tr>
+      <tr><td>Above 5,000</td><td class="num">Custom</td></tr>
+      </tbody></table>
+      <p style="font-size:12px;color:var(--muted);margin:2px 0 0">Client-hosted, all features. Optional AMC.</p>
+    </div>
+  </div>
+  <p><b>Setup &amp; Onboarding (always extra, both models):</b> ₹5,000 covering 30 users + ₹100 per extra user, self-service. <b>AMC (perpetual, optional):</b> 15–20% of the <i>prevailing</i> band price per year (stored at 18% mid, editable) — year 1 is included on purchase. <b>GST 18%</b> unchanged (CGST/SGST/IGST split as before).</p>
+
+  <h2>What changed in the backend</h2>
+  <table>
+    <thead><tr><th>Area</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td>Data model</td><td>New <code>plan_perpetual_bands</code> table + <code>PlanPerpetualBand</code> model; cloud user-bands stored as the single product's volume tiers; <code>PricingV2Seeder</code> creates the all-features <code>smartept</code> plan, seeds both band sets, deactivates old plans, sets setup-included 30 + AMC 18%.</td></tr>
+      <tr><td>Pricing engine</td><td><code>PricingService</code>: cloud rate = user band × cycle discount (client-hosted subscription &amp; ×1.5 multiplier removed); perpetual = one-time band price; setup 30-incl; new <code>amcQuote()</code>; &gt;5,000 users returns a "custom" flag.</td></tr>
+      <tr><td>Orders/quotes</td><td>Admin + client-portal quote/order endpoints accept the single product, derive deployment from kind (subscription=Cloud, perpetual=client-hosted), make billing/deployment optional, and return a friendly "custom quotation" response above 5,000 users. Order/invoice/payment/GST plumbing untouched.</td></tr>
+      <tr><td>Landing page</td><td><code>public/landing.html</code>: pricing section rebuilt to the two-product scale UI (interactive scale picker + Cloud cycle toggle + Perpetual ladder + all-features grid); compare table rewritten to Cloud-vs-Perpetual; hero/meta copy updated; old plan cards, calculator and live-rate JS removed.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="steps">
+    <h3 style="color:var(--warn);margin-top:14px">⚙ Owner run-steps (Central)</h3>
+    <ol>
+      <li><b>Migrate</b> — <code>migrate.bat</code> (or <code>php artisan migrate</code>): creates <code>plan_perpetual_bands</code>.</li>
+      <li><b>Seed the v2 pricing</b> — <code>php artisan db:seed --class=Database\Seeders\PricingV2Seeder</code>. Idempotent; creates the single product + both band sets and deactivates the old plans.</li>
+      <li><b>Clear caches</b> — <code>php artisan cache:clear</code> (public plans are cached 5 min), restart PHP / clear OPcache, hard-refresh.</li>
+      <li><b>Runtime test (do before go-live):</b> Admin → raise a <b>Cloud</b> quote at a couple of scales (e.g. 100 &amp; 500 users, annual) and a <b>Perpetual</b> quote — confirm totals match the tables above; then take one order through pay link → invoice and confirm the GST document. Open the public <b>/pricing</b> and click through the scale picker + cycle toggle.</li>
+    </ol>
+  </div>
+
+  <h2>Decisions baked in (change any of these easily)</h2>
+  <ul>
+    <li><b>Cloud numbers</b> are the prototype figures you approved (₹45→₹6 annual). Editable per band in Central → Plans (or the seeder).</li>
+    <li><b>AMC %</b> stored at <b>18%</b> (mid of 15–20). Editable via the <code>pricing_amc_pct</code> setting.</li>
+    <li><b>Year-1 AMC is included</b> on a perpetual purchase (licence sets AMC expiry +1 year); optional thereafter. Tell me if you'd rather AMC be paid from day one.</li>
+    <li><b>Setup at ₹100/user above 30</b> grows large at big scale (at 5,000 users it computes ~₹5 lakh). Still live as specified — say the word and I'll add a cap or a lower rate above a threshold.</li>
+    <li><b>Existing customers:</b> old client-hosted subscriptions no longer have a matching product; their renewals would now price on the Cloud bands. We should agree a migration/grandfather rule for any live ones.</li>
+  </ul>
+
+  <h2>Rollback</h2>
+  <p>Fully reversible: re-activate the old plans (<code>core/professional/enterprise</code> rows still exist) and revert the two commits. No data was deleted; no order, invoice, payment or licence was modified.</p>
+
+  <div class="foot">SmartEPT — Ametecs · Pricing v2 delivery · Central main 3c9b067 (backend) + 442acbf (landing) · 26 Jul 2026 · Verified by php -l + JS syntax check; live runtime test pending owner</div>
+</div>
+</body>
+</html>

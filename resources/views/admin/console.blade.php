@@ -1328,11 +1328,11 @@ async function issueLicence() {
   const tenants = await api('tenants?status=');
   openModal(`<h2>Issue Licence</h2><div class="sub">Direct issue without an order — use Orders for the full payment flow.</div>
   <label>Client</label><select id="il_tenant">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
-  <div class="row"><div><label>Plan</label><select id="il_plan"><option value="core">Core</option><option value="professional" selected>Professional</option><option value="enterprise">Enterprise</option></select></div>
+  <div class="row"><div><label>Plan</label><select id="il_plan"><option value="smartept" selected>SmartEPT (all features)</option></select></div>
   <div><label>Kind</label><select id="il_kind"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
   <div><label>Billing period</label><select id="il_billing"><option value="annual">Annual — 12 months (best price, 25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="il_deploy"><option value="client_hosted">Client-Hosted</option><option value="cloud">Cloud</option></select></div>
-  <div><label>Device limit</label><input id="il_devices" type="number" value="10" min="1"></div></div>
+  <div><label>User limit</label><input id="il_devices" type="number" value="10" min="1"></div></div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="doIssue()">Issue Licence</button></div>`);
 }

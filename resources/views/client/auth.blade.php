@@ -64,14 +64,11 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
 <div class="wrap">
   <aside class="summary">
     <div class="brand" style="flex-direction:column;align-items:flex-start;gap:8px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT" style="width:210px;max-width:84%;height:auto;display:block"></div>
-    <div class="plan-name" id="sumPlan">SmartEPT Professional</div>
-    <div class="plan-tag" id="sumTag">Estimate your subscription — free for the first 7 days.</div>
+    <div class="plan-name" id="sumPlan">SmartEPT</div>
+    <div class="plan-tag" id="sumTag">Every feature included — free for the first 7 days.</div>
 
-    <div class="ctrl"><label>Devices to track</label>
-      <div class="dev"><button type="button" id="devMinus">−</button><input id="devCount" type="number" min="1" value="25"><button type="button" id="devPlus">+</button></div>
-    </div>
-    <div class="ctrl"><label>Deployment</label>
-      <div class="seg"><button type="button" class="on" data-host="hosted" id="hHosted">Client-Hosted</button><button type="button" data-host="cloud" id="hCloud">SmartEPT Cloud</button></div>
+    <div class="ctrl"><label>Users</label>
+      <div class="dev"><button type="button" id="devMinus">&minus;</button><input id="devCount" type="number" min="1" value="25"><button type="button" id="devPlus">+</button></div>
     </div>
     <div class="ctrl"><label>Advance payment</label>
       <div class="seg">
@@ -93,16 +90,15 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     </div>
 
     <div class="inv" id="inv">
-      <div class="ln"><span id="ivSubLbl">Subscription</span><b id="ivSub">—</b></div>
+      <div class="ln"><span id="ivSubLbl">Cloud subscription</span><b id="ivSub">—</b></div>
       <div class="ln disc" id="ivDiscRow" style="display:none"><span id="ivDiscLbl">Advance discount</span><b id="ivDisc">—</b></div>
       <div class="ln" id="ivSetupRow" style="display:none"><span>Setup &amp; onboarding (one-time)</span><b id="ivSetup">—</b></div>
-      <div class="ln" id="ivHostRow" style="display:none"><span id="ivHostLbl">Cloud hosting &amp; storage</span><b id="ivHost">—</b></div>
       <div class="ln disc" id="ivCoupRow" style="display:none"><span id="ivCoupLbl">Coupon</span><b id="ivCoup">—</b></div>
       <div class="ln sub"><span>GST 18%</span><b id="ivGst">—</b></div>
       <div class="ln tot"><span id="ivTotLbl">Payable now</span><b id="ivTot">—</b></div>
       <div class="eff" id="ivEff"></div>
     </div>
-    <div class="trust">First invoice includes one-time setup; renewals bill the subscription only. Cloud adds ×1.5 rate + storage rental. Your data stays in your infrastructure — Ametecs manages only your licence.</div>
+    <div class="trust">SmartEPT Cloud — we host it, storage &amp; hosting included, every feature on. First invoice includes one-time setup (if selected); renewals bill the subscription only. Prefer to own it? <b>Perpetual licences from &#8377;25,000</b> — just ask.</div>
   </aside>
 
   <div class="card">
@@ -142,7 +138,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     </div>
     <button class="go" type="submit" id="signupBtn">Email me a verification code →</button>
     <a class="quote" id="quoteCta" href="#" target="_blank">Prefer a formal quotation? Request one →</a>
-    <div class="trial-note"><b>7-day free trial · Professional features · up to 10 devices.</b><br>No card needed. Your data auto-deletes if you don't continue.</div>
+    <div class="trial-note"><b>7-day free trial · all features · up to 10 users.</b><br>No card needed. Your data auto-deletes if you don't continue.</div>
   </form>
   <form id="f-forgot" style="display:none" onsubmit="return doForgot(event)">
     <label>Account email</label><input type="email" name="email" required>
@@ -166,8 +162,8 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
 <script>
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
 let signupStep = 1, forgotStep = 1;
-let PLANS=[], GST=18, CLOUDX=1.5, SETUP={base:5000,included:25,per:100}, STOR={slabs:[[1,500,3],[501,2048,2.5],[2049,null,2]],min_gb:50,min_inr:150};
-let SEL='professional', HOST='hosted', CYC='y', COUPON=null;
+let PLANS=[], GST=18, SETUP={base:5000,included:30,per:100};
+let SEL='smartept', CYC='y', COUPON=null;
 const PERIOD = {q:{m:3,d:0,label:'Quarterly (3 months)'}, h:{m:6,d:0.10,label:'6-month advance'}, y:{m:12,d:0.25,label:'12-month advance'}};
 
 const STATES=[['37','Andhra Pradesh'],['12','Arunachal Pradesh'],['18','Assam'],['10','Bihar'],['22','Chhattisgarh'],['30','Goa'],['24','Gujarat'],['06','Haryana'],['02','Himachal Pradesh'],['20','Jharkhand'],['29','Karnataka'],['32','Kerala'],['23','Madhya Pradesh'],['27','Maharashtra'],['14','Manipur'],['17','Meghalaya'],['15','Mizoram'],['13','Nagaland'],['21','Odisha'],['03','Punjab'],['08','Rajasthan'],['11','Sikkim'],['33','Tamil Nadu'],['36','Telangana'],['16','Tripura'],['09','Uttar Pradesh'],['05','Uttarakhand'],['19','West Bengal'],['07','Delhi'],['04','Chandigarh'],['01','Jammu & Kashmir'],['26','Dadra & Nagar Haveli and Daman & Diu'],['31','Lakshadweep'],['35','Andaman & Nicobar'],['38','Ladakh'],['34','Puducherry']];
@@ -182,24 +178,19 @@ async function doSignup(e){e.preventDefault();const f=e.target,data=formData(f),
 async function doForgot(e){e.preventDefault();const f=e.target,data=formData(f),btn=document.getElementById('forgotBtn');btn.disabled=true;try{if(forgotStep===1){const out=await post('/client/forgot/request-otp',{email:data.email});forgotStep=2;document.getElementById('forgotOtp').style.display='block';btn.textContent='Set new password →';show('ok',out.message);demo(out.demo_otp);}else{if(!/^[0-9]{6}$/.test(data.otp||''))throw new Error('Please enter the 6-digit code.');if(!data.password||data.password.length<8)throw new Error('New password needs at least 8 characters.');const out=await post('/client/forgot/reset',data);show('ok',out.message+' Use the Sign in tab above.');forgotStep=1;document.getElementById('forgotOtp').style.display='none';btn.textContent='Email me a reset code →';}}catch(err){show('err',err.message);}btn.disabled=false;return false;}
 
 const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
-function annualRate(plan,dev){const p=PLANS.find(x=>(x.code||'').toLowerCase()===plan)||PLANS.find(x=>(x.code||'').toLowerCase()==='professional');if(!p)return{r:0,p:null};let r=p.inr_annual;(p.volume_tiers||[]).forEach(t=>{if(dev>=t.min&&(t.max===null||dev<=t.max))r=t.rate;});return{r,p};}
-function storagePerMonth(dev){let gb=Math.max(STOR.min_gb,Math.ceil(dev*2));let cost=0,rem=gb;for(const[lo,hi,rate] of STOR.slabs){const cap=hi===null?Infinity:hi;const inSlab=Math.max(0,Math.min(rem+ (lo-1), cap)-(lo-1));if(gb> (lo-1)){const units=Math.min(gb,cap)-(lo-1);if(units>0)cost+=units*rate;}}return{gb,cost:Math.max(STOR.min_inr,Math.round(cost))};}
+function annualRate(plan,dev){const p=PLANS[0]||null;if(!p)return{r:0,p:null};let r=p.inr_annual;(p.volume_tiers||[]).forEach(t=>{if(dev>=t.min&&(t.max===null||dev<=t.max))r=t.rate;});return{r,p};}
 function render(){
   const dev=Math.max(1,parseInt(document.getElementById('devCount').value||'1',10));
   document.getElementById('devField').value=dev;
   const {r:aRate,p}=annualRate(SEL,dev); if(!p)return;
   const baseMonthly=aRate/0.75;                     // 12-mo @25% off == annual rate
-  const perDevMonth=HOST==='cloud'?baseMonthly*CLOUDX:baseMonthly;
   const per=PERIOD[CYC];
-  const gross=dev*perDevMonth*per.m;                // before advance discount
+  const gross=dev*baseMonthly*per.m;                // Cloud rental (no multiplier)
   const discAmt=gross*per.d;
-  const sub=gross-discAmt;                          // subscription after advance discount
+  const sub=gross-discAmt;
   const wantSetup=document.getElementById('setupChk').checked;
   const setup=wantSetup?(SETUP.base+Math.max(0,dev-SETUP.included)*SETUP.per):0;
-  let host=0,gb=0;
-  if(HOST==='cloud'){const st=storagePerMonth(dev);host=st.cost*per.m;gb=st.gb;}
-  let taxable=sub+setup+host;
-  // Coupon applies AFTER the advance discount, BEFORE GST (server does the same maths).
+  let taxable=sub+setup;
   let coupDisc=0;
   const cr=document.getElementById('ivCoupRow');
   if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
@@ -209,27 +200,23 @@ function render(){
   const gstAmt=taxable*GST/100;
   const total=taxable+gstAmt;
   const effPerMo=sub/dev/per.m;
-  const nm=(p.name||'').replace(/smartept\s*/i,'')||'Professional';
-  document.getElementById('ivSubLbl').textContent=nm+' · '+dev+' device'+(dev>1?'s':'')+' × '+per.m+' mo'+(HOST==='cloud'?' (cloud)':'');
+  document.getElementById('ivSubLbl').textContent='Cloud · '+dev+' user'+(dev>1?'s':'')+' × '+per.m+' mo';
   document.getElementById('ivSub').textContent=inr(gross);
   const dr=document.getElementById('ivDiscRow');
   if(per.d>0){dr.style.display='';document.getElementById('ivDiscLbl').textContent='Advance discount ('+(per.d*100)+'%)';document.getElementById('ivDisc').textContent='− '+inr(discAmt);}else dr.style.display='none';
   document.getElementById('ivSetupRow').style.display=wantSetup?'':'none';
   document.getElementById('ivSetup').textContent=inr(setup);
-  const hr=document.getElementById('ivHostRow');
-  if(HOST==='cloud'){hr.style.display='';document.getElementById('ivHostLbl').textContent='Cloud hosting & storage (~'+gb+' GB × '+per.m+' mo)';document.getElementById('ivHost').textContent=inr(host);}else hr.style.display='none';
   document.getElementById('ivGst').textContent=inr(gstAmt);
   document.getElementById('ivTotLbl').textContent='Payable now ('+per.m+'-month advance)';
   document.getElementById('ivTot').textContent=inr(total);
-  document.getElementById('ivEff').textContent='≈ '+inr(effPerMo)+' /device/month'+(HOST==='cloud'?' + storage':'')+' · GST extra shown above';
+  document.getElementById('ivEff').textContent='≈ '+inr(effPerMo)+' /user/month · GST extra shown above';
 }
 
 (async function init(){
   const sel=document.getElementById('stateSel');
   STATES.slice().sort((a,b)=>a[1].localeCompare(b[1])).forEach(([c,n])=>{const o=document.createElement('option');o.value=c;o.textContent=n+' ('+c+')';sel.appendChild(o);});
   const params=new URLSearchParams(location.search);const plan=(params.get('plan')||'').toLowerCase();
-  const KNOWN=['core','professional','enterprise'];
-  SEL=KNOWN.includes(plan)?plan:'professional';
+  SEL='smartept';
   document.getElementById('planField').value=SEL;
   if(plan)mode('signup',document.querySelector('.tabs button[data-mode=signup]'));
   // controls
@@ -237,9 +224,6 @@ function render(){
   document.getElementById('devMinus').onclick=()=>{dc.value=Math.max(1,(parseInt(dc.value||'1',10)-5));render();upd();};
   document.getElementById('devPlus').onclick=()=>{dc.value=(parseInt(dc.value||'1',10)+5);render();upd();};
   dc.oninput=()=>{render();upd();};
-  function segHost(v){HOST=v;document.getElementById('hHosted').classList.toggle('on',v==='hosted');document.getElementById('hCloud').classList.toggle('on',v==='cloud');render();}
-  document.getElementById('hHosted').onclick=()=>segHost('hosted');
-  document.getElementById('hCloud').onclick=()=>segHost('cloud');
   function segCyc(v){CYC=v;['q','h','y'].forEach(k=>document.getElementById('c'+k.toUpperCase()).classList.toggle('on',k===v));render();}
   document.getElementById('cQ').onclick=()=>segCyc('q');
   document.getElementById('cH').onclick=()=>segCyc('h');
@@ -276,14 +260,13 @@ function render(){
   });
   try{
     const r=await fetch('/api/v1/public/plans',{headers:{Accept:'application/json'},cache:'no-store'});const j=await r.json();
-    PLANS=j.plans||j.data||[];GST=j.gst_rate||18;CLOUDX=j.cloud_multiplier||1.5;
+    PLANS=(j.plans||j.data||[]);GST=j.gst_rate||18;
     if(j.setup)SETUP={base:j.setup.base,included:j.setup.included,per:j.setup.per_extra};
-    if(j.storage)STOR={slabs:j.storage.slabs,min_gb:j.storage.min_gb,min_inr:j.storage.min_inr};
-    const p=PLANS.find(x=>(x.code||'').toLowerCase()===SEL);
-    if(p){const nm=/smartept/i.test(p.name)?p.name:('SmartEPT '+p.name);document.getElementById('sumPlan').textContent=nm;document.getElementById('sumTag').textContent='Estimate your '+p.name.replace(/smartept\s*/i,'')+' subscription — free for 7 days.';}
+    document.getElementById('sumPlan').textContent='SmartEPT';
+    document.getElementById('sumTag').textContent='Every feature included — free for the first 7 days.';
     render();
   }catch(e){document.getElementById('inv').style.opacity=.5;}
-  function upd(){const dev=document.getElementById('devCount').value;const t='Hi Ametecs, I would like a quotation for SmartEPT '+SEL+' — '+dev+' devices, '+(HOST==='cloud'?'SmartEPT Cloud':'client-hosted')+', '+PERIOD[CYC].label+'.';document.getElementById('quoteCta').href='https://wa.me/919000098877?text='+encodeURIComponent(t);}
+  function upd(){const dev=document.getElementById('devCount').value;const t='Hi Ametecs, I would like a quotation for SmartEPT Cloud — '+dev+' users, '+PERIOD[CYC].label+'.';document.getElementById('quoteCta').href='https://wa.me/919000098877?text='+encodeURIComponent(t);}
   window.upd=upd; upd();
 })();
 </script>
