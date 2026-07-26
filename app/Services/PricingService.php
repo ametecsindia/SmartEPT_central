@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Plan;
+use App\Models\PlanPerpetualBand;
+use App\Models\Setting;
 use App\Models\Tenant;
 
 /**
@@ -16,7 +18,7 @@ class PricingService
 
     // One-time Setup & Onboarding: ₹5,000 covers up to 25 devices, +₹100/device beyond.
     public const SETUP_FEE_BASE_INR = 5000;
-    public const SETUP_FEE_INCLUDED_DEVICES = 25;
+    public const SETUP_FEE_INCLUDED_DEVICES = 30;
     public const SETUP_FEE_PER_EXTRA_DEVICE_INR = 100;
 
     // Cloud storage slabs (₹ per GB per month) + minimum commitment.
@@ -136,9 +138,9 @@ class PricingService
             default => (float) $plan->inr_monthly, // legacy monthly
         };
 
-        if ($deployment === 'cloud') {
-            $rate = round($rate * $cfg['cloud_multiplier']);
-        }
+        // Pricing v2: subscription is Cloud-only, so the band rate IS the cloud price —
+        // no client-hosted base + ×1.5 multiplier any more. (cloud_multiplier retained in
+        // config only for backward compatibility with historical quotes.)
 
         // Existing-customer discount (locked 19-Jul): flat 10% off for SmartDCM /
         // SmartPRS customers — every plan, cycle and deployment.
@@ -207,15 +209,15 @@ class PricingService
     public function subscriptionQuote(Tenant $tenant, Plan $plan, int $devices,
                                       string $billing = 'annual', ?string $deployment = null, bool $includeSetup = true): array
     {
-        $deployment = $deployment ?: ($tenant->deployment ?: 'client_hosted');
+        $deployment = 'cloud'; // v2: subscription = SmartEPT Cloud only
         $rate = $this->deviceRate($plan, $devices, $billing, $deployment, (bool) $tenant->ecosystem_customer);
         $months = LicenceService::billingMonths($billing);
 
         $lines = [[
             'type' => 'licence',
-            'description' => sprintf('%s plan — %d devices × ₹%s/device/month × %d months (%s, %s)',
-                $plan->name, $devices, number_format($rate, $rate == (int) $rate ? 0 : 2),
-                $months, str_replace('_', '-', $deployment), str_replace('_', '-', $billing)),
+            'description' => sprintf('SmartEPT Cloud — %d users × ₹%s/user/month × %d months (%s)',
+                $devices, number_format($rate, $rate == (int) $rate ? 0 : 2),
+                $months, str_replace('_', '-', $billing)),
             'qty' => $devices,
             'unit' => $rate * $months,
             'amount' => round($devices * $rate * $months, 2),
@@ -237,34 +239,45 @@ class PricingService
         return ['lines' => $lines, 'subtotal' => $subtotal];
     }
 
+    /** The perpetual band a given user count falls into, or null when above the top band (custom quote). */
+    public function perpetualBandFor(Plan $plan, int $users): ?PlanPerpetualBand
+    {
+        foreach ($plan->perpetualBands as $band) {
+            if ($users >= $band->min_users && ($band->max_users === null || $users <= $band->max_users)) {
+                return $band;
+            }
+        }
+
+        return null;
+    }
+
     /**
-     * Build the line items for a perpetual licence order.
+     * Build the line items for a PERPETUAL (own-it) order — pricing v2.
+     * One-time lifetime licence priced by licensed-user capacity band, all features,
+     * client-hosted. Setup is always extra. Above the top band → custom quote.
      */
     public function perpetualQuote(Tenant $tenant, Plan $plan, int $devices): array
     {
-        $lines = [
-            [
-                'type' => 'perpetual_devices',
-                'description' => sprintf('%s perpetual — %d device licences × ₹%s',
-                    $plan->name, $devices, number_format($plan->perpetual_device_inr)),
-                'qty' => $devices,
-                'unit' => (float) $plan->perpetual_device_inr,
-                'amount' => round($devices * $plan->perpetual_device_inr, 2),
-            ],
-            [
-                'type' => 'perpetual_server',
-                'description' => sprintf('%s central server licence', $plan->name),
-                'qty' => 1,
-                'unit' => (float) $plan->perpetual_server_inr,
-                'amount' => (float) $plan->perpetual_server_inr,
-            ],
-        ];
+        $users = max(1, $devices);
+        $band = $this->perpetualBandFor($plan, $users);
+        if (! $band) {
+            return ['lines' => [], 'subtotal' => 0.0, 'custom' => true];
+        }
+
+        $capLabel = $band->max_users === null ? ($band->min_users . '+') : ('up to ' . $band->max_users);
+        $lines = [[
+            'type' => 'perpetual_licence',
+            'description' => sprintf('SmartEPT Perpetual — lifetime licence (%s users, all features)', $capLabel),
+            'qty' => 1,
+            'unit' => (float) $band->price_inr,
+            'amount' => (float) $band->price_inr,
+        ]];
 
         if (! $tenant->setup_fee_paid) {
-            $fee = $this->setupFee($devices);
+            $fee = $this->setupFee($users);
             $lines[] = [
                 'type' => 'setup_fee',
-                'description' => 'One-time Setup & Onboarding',
+                'description' => 'One-time Setup & Onboarding (' . $this->setupCoverLabel($users) . ')',
                 'qty' => 1,
                 'unit' => $fee,
                 'amount' => (float) $fee,
@@ -274,5 +287,31 @@ class PricingService
         $subtotal = round(array_sum(array_column($lines, 'amount')), 2);
 
         return ['lines' => $lines, 'subtotal' => $subtotal];
+    }
+
+    /**
+     * Optional Annual Maintenance & Support for a perpetual client — pricing v2.
+     * Priced at pricing_amc_pct (default 18%, the mid of the 15–20% band) of the
+     * PREVAILING perpetual band price, not the originally-paid price.
+     */
+    public function amcQuote(Tenant $tenant, Plan $plan, int $users, ?float $pct = null): array
+    {
+        $band = $this->perpetualBandFor($plan, max(1, $users));
+        if (! $band) {
+            return ['lines' => [], 'subtotal' => 0.0, 'custom' => true];
+        }
+
+        $pct = $pct ?? (float) Setting::get('pricing_amc_pct', 18);
+        $amc = round($band->price_inr * $pct / 100, 2);
+        $capLabel = $band->max_users === null ? ($band->min_users . '+') : ('up to ' . $band->max_users);
+
+        return ['lines' => [[
+            'type' => 'amc',
+            'description' => sprintf('Annual Maintenance & Support — %s%% of prevailing licence (%s users)',
+                rtrim(rtrim(number_format($pct, 2), '0'), '.'), $capLabel),
+            'qty' => 1,
+            'unit' => $amc,
+            'amount' => $amc,
+        ]], 'subtotal' => $amc];
     }
 }

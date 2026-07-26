@@ -157,7 +157,9 @@ class BillingService
             'quote_number' => $asQuote ? $this->nextQuoteNumber() : null,
             'requested_by' => $opts['requested_by'] ?? null,
             'tenant_id' => $tenant->id,
-            'description' => sprintf('%s %s — %d devices (%s)', $plan->name, $kind, $devices, $billing),
+            'description' => $kind === 'perpetual'
+                ? sprintf('%s Perpetual — %d users (lifetime)', $plan->name, $devices)
+                : sprintf('%s Cloud — %d users (%s)', $plan->name, $devices, $billing),
             'line_items' => $quote['lines'],
             'subtotal' => $quote['subtotal'],
             'tax_amount' => $tax,
@@ -168,7 +170,8 @@ class BillingService
             'meta' => array_merge([
                 'plan_id' => $plan->id, 'devices' => $devices,
                 'kind' => $kind, 'billing' => $billing,
-                'deployment' => ($opts['deployment'] ?? null) ?: ($tenant->deployment ?: 'client_hosted'),
+                // v2: deployment is implied by kind — subscription = Cloud, perpetual = client-hosted.
+                'deployment' => $kind === 'perpetual' ? 'client_hosted' : 'cloud',
             ], $couponMeta),
         ]);
     }

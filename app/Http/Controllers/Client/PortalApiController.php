@@ -131,13 +131,17 @@ class PortalApiController extends Controller
 
     public function plans()
     {
-        $plans = Plan::with('volumeTiers')->orderBy('inr_annual')->get()
+        $plans = Plan::with(['volumeTiers', 'perpetualBands'])->where('active', true)->orderBy('sort')->get()
             ->map(fn ($p) => [
                 'code' => $p->code, 'name' => $p->name,
                 'inr_annual' => $p->inr_annual, 'inr_monthly' => $p->inr_monthly,
                 'min_devices' => $p->min_devices, 'features' => $p->features,
+                'amc_pct' => (float) Setting::get('pricing_amc_pct', 18),
                 'volume_tiers' => $p->volumeTiers->map(fn ($t) => [
                     'min' => $t->min_devices, 'max' => $t->max_devices, 'rate' => $t->rate_inr_annual,
+                ]),
+                'perpetual_bands' => $p->perpetualBands->map(fn ($b) => [
+                    'min' => $b->min_users, 'max' => $b->max_users, 'price' => $b->price_inr,
                 ]),
             ]);
 
@@ -246,16 +250,25 @@ class PortalApiController extends Controller
     public function quote(Request $request)
     {
         $data = $request->validate([
-            'plan_code' => ['required', 'exists:plans,code'],
+            'plan_code' => ['nullable', 'exists:plans,code'],
             'devices' => ['required', 'integer', 'min:1', 'max:100000'],
-            'billing' => ['required', 'in:annual,half_yearly,quarterly,monthly'],
-            'deployment' => ['required', 'in:client_hosted,cloud'],
+            'kind' => ['nullable', 'in:subscription,perpetual'],
+            'billing' => ['nullable', 'in:annual,half_yearly,quarterly,monthly'],
+            'deployment' => ['nullable', 'in:client_hosted,cloud'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
         ]);
 
         $tenant = $this->tenant();
-        $plan = Plan::where('code', $data['plan_code'])->firstOrFail();
-        $quote = $this->pricing->subscriptionQuote($tenant, $plan, $data['devices'], $data['billing'], $data['deployment']);
+        $plan = Plan::where('code', $data['plan_code'] ?? 'smartept')->firstOrFail();
+        $kind = $data['kind'] ?? 'subscription';
+        $quote = $kind === 'perpetual'
+            ? $this->pricing->perpetualQuote($tenant, $plan, $data['devices'])
+            : $this->pricing->subscriptionQuote($tenant, $plan, $data['devices'], $data['billing'] ?? 'annual', null);
+
+        if (! empty($quote['custom'])) {
+            return response()->json(['custom' => true,
+                'message' => 'For more than 5,000 users, please request a custom quotation.'], 200);
+        }
 
         // R3-7: apply a valid coupon as a negative line before GST.
         $couponInfo = null;
@@ -290,24 +303,27 @@ class PortalApiController extends Controller
     public function createOrder(Request $request)
     {
         $data = $request->validate([
-            'plan_code' => ['required', 'exists:plans,code'],
+            'plan_code' => ['nullable', 'exists:plans,code'],
             'devices' => ['required', 'integer', 'min:1', 'max:100000'],
-            'billing' => ['required', 'in:annual,half_yearly,quarterly,monthly'],
-            'deployment' => ['required', 'in:client_hosted,cloud'],
+            'kind' => ['nullable', 'in:subscription,perpetual'],
+            'billing' => ['nullable', 'in:annual,half_yearly,quarterly,monthly'],
+            'deployment' => ['nullable', 'in:client_hosted,cloud'],
             'as_quote' => ['boolean'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
         ]);
 
         $tenant = $this->tenant();
-        $plan = Plan::where('code', $data['plan_code'])->firstOrFail();
-        if ($data['devices'] < $plan->min_devices) {
-            return response()->json(['error' => 'The ' . $plan->name . ' plan needs at least ' . $plan->min_devices . ' devices.'], 422);
+        $plan = Plan::where('code', $data['plan_code'] ?? 'smartept')->firstOrFail();
+        $kind = $data['kind'] ?? 'subscription';
+        if ($kind === 'perpetual'
+            && $this->pricing->perpetualBandFor($plan, (int) $data['devices']) === null) {
+            return response()->json(['error' => 'For more than 5,000 users, please request a custom quotation.'], 422);
         }
 
         $order = $this->billing->createOrder($tenant, $plan, $data['devices'], [
-            'kind' => 'subscription',
-            'billing' => $data['billing'],
-            'deployment' => $data['deployment'],
+            'kind' => $kind,
+            'billing' => $data['billing'] ?? 'annual',
+            'deployment' => $kind === 'perpetual' ? 'client_hosted' : 'cloud',
             'as_quote' => (bool) ($data['as_quote'] ?? false),
             'requested_by' => ($data['as_quote'] ?? false) ? auth('client')->user()->name : null,
             'coupon_code' => $data['coupon_code'] ?? null,

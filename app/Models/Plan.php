@@ -11,5 +11,6 @@ class Plan extends Model
     protected $casts = ['features'=>'array','active'=>'boolean','storage_gb'=>'integer'];
 
     public function volumeTiers() { return $this->hasMany(PlanVolumeTier::class)->orderBy('min_devices'); }
+    public function perpetualBands() { return $this->hasMany(PlanPerpetualBand::class)->orderBy('min_users'); }
     public function licences() { return $this->hasMany(Licence::class); }
 }

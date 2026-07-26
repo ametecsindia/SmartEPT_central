@@ -12,7 +12,7 @@ class ConfigApiController extends Controller
 {
     public function plans()
     {
-        return response()->json(Plan::with('volumeTiers')->orderBy('sort')->get());
+        return response()->json(Plan::with(['volumeTiers', 'perpetualBands'])->orderBy('sort')->get());
     }
 
     public function updatePlan(Request $request, Plan $plan)
