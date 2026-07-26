@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEPT — Phase Plan &amp; Session Handoff</title>
+<style>
+  :root{--teal:#0E7C8F;--teal-dk:#0a5c6a;--teal-lt:#e6f2f4;--ink:#1f2a2e;--muted:#5b6a70;--line:#dde6e8;--bg:#f6f9fa;
+    --ok:#2e7d32;--okbg:#e9f5ea;--warn:#b9770e;--warnbg:#fcf3e3;--p1:#c0392b;--p1bg:#fbeae8;--purple:#6c4bb6;--purplebg:#efeafb}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px 90px}
+  header{background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#fff;padding:40px 22px 32px}
+  header .inner{max-width:1000px;margin:0 auto}
+  .brand{font-size:13px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;font-weight:600}
+  h1{margin:.35em 0 .15em;font-size:27px}h2{font-size:21px;margin:38px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--teal);color:var(--teal-dk)}
+  h3{font-size:16px;margin:22px 0 6px}.sub{opacity:.92;max-width:74ch}.meta{margin-top:14px;font-size:13px;opacity:.85}
+  p{margin:.55em 0}
+  .lead{background:#fff;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:8px;padding:16px 18px;margin:20px 0}
+  .warn{background:var(--warnbg);border:1px solid #eaddbd;border-left:4px solid var(--warn);border-radius:8px;padding:12px 16px;margin:16px 0;font-size:14px}
+  .warn b{color:var(--warn)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--teal-lt);color:var(--teal-dk);font-weight:600;font-size:11.5px;text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  code{background:#eef3f4;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .phase{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0;box-shadow:0 1px 2px rgba(20,50,60,.04)}
+  .phase .h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .pn{font-weight:800;color:#fff;background:var(--teal);border-radius:8px;padding:3px 10px;font-size:13px}
+  .pt{font-weight:700;font-size:16px;flex:1;min-width:200px}
+  .chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+  .c-own{background:var(--warnbg);color:var(--warn)}.c-dev{background:var(--teal-lt);color:var(--teal-dk)}.c-p1{background:var(--p1bg);color:var(--p1)}
+  ul li{margin:5px 0}
+  .kv{font-size:13.5px;margin:3px 0}.kv b{color:var(--muted);font-weight:600;display:inline-block;min-width:150px;vertical-align:top}
+  .foot{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+  .box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:12px 0}
+  .hand{background:var(--purplebg);border:1px solid #d9cef2;border-left:4px solid var(--purple);border-radius:8px;padding:8px 18px 16px;margin:16px 0}
+  .hand h3{color:var(--purple)}
+</style></head>
+<body>
+<header><div class="inner">
+  <div class="brand">Ametecs · SmartEPT</div>
+  <h1>Phase-wise Development Plan &amp; Session Handoff</h1>
+  <div class="sub">Where everything stands, the sequenced plan to finish it, and a complete handoff so the next session picks up without losing context.</div>
+  <div class="meta">27 Jul 2026 · Covers Product (smartept) + Central (smartept-central)</div>
+</div></header>
+<div class="wrap">
+
+  <h2>1 · Where we are today</h2>
+  <table>
+    <thead><tr><th>Workstream</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><b>Product 25-Jul bug round</b> (12 items)</td><td>✅ Built + committed to live <code>smartept</code>. ⏳ Owner run-steps pending (migrate 000900/001000, rebuild agent, verify <code>schedule:run</code>, PHP zip ext, assign attendance policy/shift for late).</td></tr>
+      <tr><td><b>Pricing v2</b> (one product, priced by users)</td><td>✅ Backend + landing + signup + portal + admin all built &amp; committed to <code>smartept-central</code>. ⏳ Owner: <code>migrate</code> + <code>PricingV2Seeder</code> + <code>cache:clear</code> + runtime test. <b>Not live until seeded.</b></td></tr>
+      <tr><td><b>Central deep scan</b></td><td>✅ Done — report delivered. Mature platform; 5 bugs, 5 security items, 10 improvements identified (this plan sequences them).</td></tr>
+    </tbody>
+  </table>
+
+  <div class="warn"><b>Two things gate "done" and need you, not code:</b> (1) run the pricing-v2 <b>migrate + seeder + a quick quote test</b> before announcing new pricing; (2) run the 25-Jul product owner-steps. Both are in the earlier delivery reports.</div>
+
+  <h2>2 · Phase plan at a glance</h2>
+  <table>
+    <thead><tr><th>Phase</th><th>Theme</th><th>Items</th><th>Owner/Dev</th></tr></thead>
+    <tbody>
+      <tr><td><b>0</b></td><td>Go-live pricing v2 + product bugfixes</td><td>migrate + seed + runtime test (both apps)</td><td>Owner</td></tr>
+      <tr><td><b>1</b></td><td>Security hardening + quick-win bugs</td><td>S1, S2, B1, B5, S3</td><td>Dev (+ owner migrate)</td></tr>
+      <tr><td><b>2</b></td><td>Revenue protection</td><td>B2, B3, M4</td><td>Dev</td></tr>
+      <tr><td><b>3</b></td><td>Payment consistency &amp; robustness</td><td>B4, S4</td><td>Dev</td></tr>
+      <tr><td><b>4</b></td><td>Client self-serve depth</td><td>M7, M8, M9</td><td>Dev</td></tr>
+      <tr><td><b>5</b></td><td>Admin &amp; compliance</td><td>M1, M5, M6, M3</td><td>Dev (+ compliance)</td></tr>
+      <tr><td><b>6</b></td><td>Engineering hardening</td><td>M10, M2</td><td>Dev</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3 · The phases in detail</h2>
+
+  <div class="phase"><div class="h"><span class="pn">Phase 0</span><span class="pt">Go-live what's already built</span><span class="chip c-own">Owner</span></div>
+    <ul>
+      <li><b>Central pricing v2:</b> <code>migrate.bat</code> → <code>php artisan db:seed --class=Database\Seeders\PricingV2Seeder</code> → <code>php artisan cache:clear</code>. Then test a Cloud quote + a Perpetual quote at 2 scales, and one order → pay link → GST invoice.</li>
+      <li><b>Product 25-Jul:</b> <code>migrate.bat</code> (000900 + 001000), rebuild agent (<code>npm run dist</code>), hard-refresh console, confirm Task Scheduler runs <code>schedule:run</code> every minute, PHP <code>zip</code> ext on, and assign an Attendance policy + shift start (for late minutes).</li>
+      <li><b>Decisions to close (blocking pricing polish):</b> setup-at-scale cap? · perpetual year-1 AMC included vs from day 1? · confirm Cloud per-user numbers (₹45→₹6).</li>
+    </ul>
+  </div>
+
+  <div class="phase"><div class="h"><span class="pn">Phase 1</span><span class="pt">Security hardening + quick-win bugs</span><span class="chip c-dev">Dev</span><span class="chip c-p1">has P1</span></div>
+    <ul>
+      <li><b>S1 (P1) · Encrypt secret settings at rest</b> — encrypted cast on <code>razorpay_key_secret</code>, <code>stripe_secret_key</code>, both webhook secrets, <code>mail_password</code>, <code>interakt_api_key</code>; one-time migration to re-encrypt existing values. (Highest-value fix.)</li>
+      <li><b>S2 (P1) · Admin 2FA (TOTP)</b> — authenticator-app 2FA on the admin login, super role first.</li>
+      <li><b>B1 · <code>.lic</code> grace_days</b> — use <code>$licence-&gt;grace_days</code> in <code>LicenseSigner</code> (not hardcoded 7).</li>
+      <li><b>B5 · webhook unique index</b> — unique <code>(gateway, event_id)</code> migration.</li>
+      <li><b>S3 · admin session</b> — shorten idle lifetime + expire-on-close in <code>config/session.php</code>.</li>
+    </ul>
+    <div class="kv"><b>Owner after:</b> run <code>migrate</code> (B5 + re-encrypt). One focused dev session.</div>
+  </div>
+
+  <div class="phase"><div class="h"><span class="pn">Phase 2</span><span class="pt">Revenue protection</span><span class="chip c-dev">Dev</span></div>
+    <ul>
+      <li><b>B2 · AMC expiry dunning</b> — add AMC reminders (T-30/7/1/0 on <code>amc_expires_at</code>) to <code>RunDunning</code>, mirroring renewals. Protects perpetual (v2) recurring revenue.</li>
+      <li><b>B3 + M4 · Failed-payment handling</b> — handle <code>payment.failed</code>/<code>charge.failed</code> webhooks: record the attempt, flag the order in admin, email the client, and add a short retry-reminder.</li>
+    </ul>
+  </div>
+
+  <div class="phase"><div class="h"><span class="pn">Phase 3</span><span class="pt">Payment consistency &amp; robustness</span><span class="chip c-dev">Dev</span></div>
+    <ul>
+      <li><b>B4 · Unify Stripe on the ledger</b> — Stripe path uses <code>recordPayment($order, $order-&gt;balance())</code> like Razorpay (one ledger door).</li>
+      <li><b>S4 · Pay page throttle + fingerprint reset</b> — throttle <code>/pay/{number}/{token}</code>; confirm/expose an admin "reset server fingerprint" for legitimate server moves.</li>
+    </ul>
+    <div class="kv"><b>Note:</b> small — can fold into the tail of Phase 2.</div>
+  </div>
+
+  <div class="phase"><div class="h"><span class="pn">Phase 4</span><span class="pt">Client self-serve depth</span><span class="chip c-dev">Dev</span></div>
+    <ul>
+      <li><b>M7 · Storage top-up</b> — a "buy more storage" purchase in the portal (screenshots pause at 100% today; make it self-serve).</li>
+      <li><b>M8 · Auto-renewal / card-on-file</b> — optional; Razorpay/Stripe subscriptions for Cloud to cut churn. Larger effort.</li>
+      <li><b>M9 · Data-subject request path</b> — explicit client data-export / deletion-request flow (purge already keeps billing correctly).</li>
+    </ul>
+  </div>
+
+  <div class="phase"><div class="h"><span class="pn">Phase 5</span><span class="pt">Admin &amp; compliance</span><span class="chip c-dev">Dev</span></div>
+    <ul>
+      <li><b>M1 · Webhook failure panel + alert</b> — surface <code>webhook_events.error</code> so a silent gateway issue is noticed.</li>
+      <li><b>M5 · Support SLA</b> — SLA timers on tickets + notify the support desk on every new client ticket.</li>
+      <li><b>M6 · Export-of-services (USD)</b> — LUT / zero-rated handling + foreign-remittance (FIRC) notes for clean compliance.</li>
+      <li><b>M3 · GST e-invoicing (IRN + signed QR)</b> — required above the turnover threshold; do when revenue approaches it. Larger.</li>
+    </ul>
+  </div>
+
+  <div class="phase"><div class="h"><span class="pn">Phase 6</span><span class="pt">Engineering hardening</span><span class="chip c-dev">Dev</span></div>
+    <ul>
+      <li><b>M10 · Security tests</b> — webhook signature verification, licence node-lock &amp; seat-cap, admin role enforcement, cross-tenant IDOR.</li>
+      <li><b>M2 · Audit export/retention</b> — periodic export + retention policy for <code>audit_logs</code>.</li>
+    </ul>
+  </div>
+
+  <div class="lead">Suggested cadence: <b>Phase 0 now (you)</b> → <b>Phase 1 next dev session</b> (biggest security wins, mostly small) → Phase 2 → then 3–6 as time allows. Phases 1–3 are each roughly a single focused session.</div>
+
+  <h2>4 · Session handoff (for the next session)</h2>
+
+  <div class="hand"><h3>State &amp; key commits</h3>
+    <div class="kv"><b>Product (smartept)</b> live <code>main</code>: 25-Jul bug round <code>a56c993 · 302fec8 · 2ec0087 · c05242d</code> (report <code>928204f</code>). Migration <code>2026_07_26_000100</code>.</div>
+    <div class="kv"><b>Central (smartept-central)</b> live <code>main</code>: pricing-v2 backend <code>3c9b067</code>; landing/UI <code>442acbf · b483f2c · 33441a2 · b443993 · 27595bb</code>; deep-scan report <code>a37ecf0</code>. Migration <code>2026_07_26_000100</code> + <code>PricingV2Seeder</code>.</div>
+    <div class="kv"><b>Artifacts</b></div>: pricing plan, pricing as-is, pricing-v2 delivery, bugfix-25jul, central deep-scan, this handoff.
+  </div>
+
+  <div class="box"><h3 style="margin-top:0">Environment &amp; workflow rules (critical — read before editing)</h3>
+    <ul>
+      <li><b>Edit LIVE trees only:</b> <code>C:\laragon\www\smartept</code> (product) and <code>C:\laragon\www\smartept-central</code> (Central). No copy/overlay deploy bats. If a tree isn't connected, ASK to add it.</li>
+      <li><b>Git on the mount:</b> the mount forbids delete, so before/after each commit <code>mv .git/index.lock</code> (and <code>.git/HEAD.lock</code>) into <code>_to_delete/</code>. <code>tmp_obj</code> unlink warnings are benign. Commit author <code>SmartEPT Dev &lt;dev@ametecsindia.com&gt;</code>.</li>
+      <li><b>Linting:</b> no PHP on the device VM → stage files to the cloud and run <code>php -l</code> there. Node is on the device for <code>node --check</code> and extracting a blade's single <code>&lt;script&gt;</code>.</li>
+      <li><b>⚠ Staging can be STALE:</b> <code>device_stage_files</code> sometimes returns an old cached copy. Verify against the live file with <code>device_bash</code> greps. To render/screenshot a page reliably, copy the live file to a <b>new filename</b>, stage that, then screenshot with cloud Chromium (<code>/opt/pw-browsers/chromium</code>).</li>
+      <li><b>Landing:</b> served via a route with a <b>no-cache header</b> now (edits show without a hard refresh). It's static <code>public/landing.html</code>.</li>
+      <li><b>CSS gotcha (learned the hard way):</b> the landing has generic component classes (e.g. <code>.feat</code> with a <code>::before</code> corner triangle). Prefix any new classes (<code>npx-*</code>) to avoid collisions — a <code>feat</code> collision caused a phantom "ribbon" on the pricing card.</li>
+      <li>Blade edits live-serve on refresh (Laragon). Central is Laravel 13 / PHP 8.3.</li>
+    </ul>
+  </div>
+
+  <div class="box"><h3 style="margin-top:0">Open decisions (need Ejaz)</h3>
+    <ul>
+      <li>Setup fee at scale — cap the ₹100/user beyond some threshold? (At 5,000 users setup ≈ ₹5L.)</li>
+      <li>Perpetual AMC — keep year-1 included (current) or charge from day 1?</li>
+      <li>Confirm the Cloud per-user numbers (strawman ₹45→₹6) — or set final figures in admin.</li>
+      <li>Existing client-hosted subscription customers — grandfather / migrate / convert rule.</li>
+    </ul>
+    <div class="kv" style="color:var(--muted)"><b>Already decided:</b> Cancelled = manual-before-start; zero-join = No-show. Long-stop +4h Auto-closed. End rights = organizer + co/branch/super/HR.</div>
+  </div>
+
+  <div class="box"><h3 style="margin-top:0">Where the next session should start</h3>
+    <ol>
+      <li>Confirm Phase 0 is done (pricing v2 seeded + tested; 25-Jul product steps run). If not, help the owner through it.</li>
+      <li>Then start <b>Phase 1, S1 (encrypt secret settings)</b> — highest-value, mostly a cast + one migration.</li>
+      <li>Read project memory first: <code>reference_deployment_policy</code>, <code>feedback_audit_surface</code>, <code>smartept-pricing-v2</code>, <code>smartept-central-deepscan</code> (this plan), and the git-lock recovery note.</li>
+    </ol>
+  </div>
+
+  <div class="foot">SmartEPT — Phase plan &amp; session handoff · Ametecs · 27 Jul 2026 · Full detail in the pricing-v2 &amp; deep-scan reports</div>
+</div>
+</body>
+</html>
