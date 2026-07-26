@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEPT Central — Deep Scan &amp; Code Review</title>
+<style>
+  :root{--teal:#0E7C8F;--teal-dk:#0a5c6a;--teal-lt:#e6f2f4;--ink:#1f2a2e;--muted:#5b6a70;--line:#dde6e8;--bg:#f6f9fa;
+    --ok:#2e7d32;--okbg:#e9f5ea;--p1:#c0392b;--p1bg:#fbeae8;--p2:#b9770e;--p2bg:#fcf3e3;--p3:#2e7d32;--p3bg:#eef6ef;--info:#0E7C8F}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px 90px}
+  header{background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#fff;padding:40px 22px 32px}
+  header .inner{max-width:1000px;margin:0 auto}
+  .brand{font-size:13px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;font-weight:600}
+  h1{margin:.35em 0 .15em;font-size:28px}h2{font-size:21px;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--teal);color:var(--teal-dk)}
+  h3{font-size:16px;margin:24px 0 6px;color:var(--ink)}.sub{opacity:.92;max-width:74ch}.meta{margin-top:14px;font-size:13px;opacity:.85}
+  p{margin:.55em 0}
+  .lead{background:#fff;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:8px;padding:16px 18px;margin:22px 0}
+  .verdict{background:var(--okbg);border:1px solid #cfe8d4;border-left:4px solid var(--ok);border-radius:8px;padding:14px 18px;margin:18px 0}
+  .verdict b{color:var(--ok)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+  .stat .n{font-size:24px;font-weight:700;color:var(--teal-dk);line-height:1}.stat .l{font-size:11px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.04em}
+  .find{background:#fff;border:1px solid var(--line);border-radius:10px;padding:15px 17px;margin:12px 0;box-shadow:0 1px 2px rgba(20,50,60,.04)}
+  .find .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .id{font-weight:700;color:var(--teal-dk);font-size:13.5px}.ttl{font-weight:600;flex:1;min-width:200px}
+  .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .t-p1{background:var(--p1bg);color:var(--p1)}.t-p2{background:var(--p2bg);color:var(--p2)}.t-p3{background:var(--p3bg);color:var(--p3)}
+  .t-sec{background:#efeafb;color:#6c4bb6}.t-bug{background:var(--p1bg);color:var(--p1)}.t-feat{background:var(--teal-lt);color:var(--teal-dk)}.t-area{background:#eef3f4;color:var(--muted)}
+  .find .r{font-size:13.5px;margin:4px 0}.find .r b{color:var(--muted);font-weight:600;display:inline-block;min-width:64px;vertical-align:top}
+  code{background:#eef3f4;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--teal-lt);color:var(--teal-dk);font-weight:600;font-size:11.5px;text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  ul li{margin:5px 0}
+  .foot{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+  @media(max-width:700px){.grid{grid-template-columns:1fr 1fr}}
+</style></head>
+<body>
+<header><div class="inner">
+  <div class="brand">Ametecs · SmartEPT Central</div>
+  <h1>Deep Scan &amp; Code Review</h1>
+  <div class="sub">Full review of the Central licensing &amp; billing platform — Super Admin, Admin and Client — covering features, bugs, security and what to improve.</div>
+  <div class="meta">27 Jul 2026 · Laravel 13 / PHP 8.3 · 24 models · 24 controllers · 10 services · 33 migrations · 6 test files</div>
+</div></header>
+<div class="wrap">
+
+  <div class="verdict"><b>Bottom line:</b> Central is a <b>mature, well-architected</b> B2B licensing + billing platform. Multi-tenant isolation, an idempotent locked payment ledger, RSA-signed node-locked licences, and GST-compliant FY-series invoicing are all correctly built. There are <b>few real bugs</b> — the findings below are mostly <b>security hardening</b> and <b>feature completeness</b>, not broken foundations. Nothing here blocks running the business today; the P1 items are worth doing before you scale client numbers.</div>
+
+  <div class="grid">
+    <div class="stat"><div class="n">5</div><div class="l">Bugs / edge cases</div></div>
+    <div class="stat"><div class="n">5</div><div class="l">Security items</div></div>
+    <div class="stat"><div class="n">10</div><div class="l">Improvements</div></div>
+    <div class="stat"><div class="n">2</div><div class="l">P1 (do first)</div></div>
+  </div>
+
+  <h2>1 · What's solid (the foundation)</h2>
+  <p>So the findings sit in context — these are genuinely well-implemented and I verified them in code:</p>
+  <table>
+    <thead><tr><th>Area</th><th>What's right</th></tr></thead>
+    <tbody>
+      <tr><td>Tenant isolation</td><td>Client portal scopes every query through <code>-&gt;tenant()</code>; invoice/quote print routes check <code>tenant_id</code> against the logged-in user — <b>no IDOR</b> (a client cannot open another company's document).</td></tr>
+      <tr><td>Payments ledger</td><td><code>recordPayment()</code> is idempotent per <code>payment_id</code>, runs in a DB transaction with <code>lockForUpdate</code>, provisions on the first money/credit event, and settles when the balance is covered. Partial/credit instalments supported.</td></tr>
+      <tr><td>Gateway webhooks</td><td>Razorpay &amp; Stripe signatures verified with <code>hash_equals</code>, <b>fail-closed</b> when the secret is unset, and de-duplicated via <code>webhook_events</code>.</td></tr>
+      <tr><td>Licence security</td><td>Offline <code>.lic</code> tokens RSA-signed (SHA-256); the private key stays on Central and never ships. Node-locked by server fingerprint; seat cap enforced on device activation; HMAC check digit in the key.</td></tr>
+      <tr><td>GST invoicing</td><td>FY-series numbering issued as <code>MAX+1</code> under a row lock (deletions can't duplicate); CGST/SGST/IGST split by seller-vs-buyer state; SAC + place-of-supply snapshotted; credit notes for refunds.</td></tr>
+      <tr><td>Lifecycle</td><td>Daily dunning: renewal reminders (T-30/7/1/0), trial reminders (T-3/1/0 → expired), lapsed-licence expiry, and purge windows that <b>keep billing/GST records</b>. Storage governance warns at 90% and pauses screenshots at 100%.</td></tr>
+      <tr><td>Access &amp; auth</td><td>Admin roles (super/sales/support) enforced per-route; client wall for temp passwords; passwords stored <b>hashed</b> (<code>'password' =&gt; 'hashed'</code>); auth &amp; public endpoints rate-limited.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2 · Bugs &amp; edge cases found</h2>
+
+  <div class="find"><div class="top"><span class="id">B1</span><span class="ttl">Licence <code>.lic</code> hardcodes 7-day grace, ignoring the licence's real grace</span><span class="tag t-p2">P2</span><span class="tag t-bug">Bug</span><span class="tag t-area">Licence engine</span></div>
+    <div class="r"><b>Where</b> <code>LicenseSigner::sign()</code> — the signed payload sets <code>'grace_days' =&gt; 7</code> literally, but the <code>licences</code> row has its own <code>grace_days</code> (trial = 0).</div>
+    <div class="r"><b>Effect</b> A trial (or any non-7-day) licence issued as a <code>.lic</code> would grant 7 grace days on the product side. Low blast radius (trials rarely get <code>.lic</code>), but it's a correctness bug.</div>
+    <div class="r"><b>Fix</b> Use <code>$licence-&gt;grace_days</code> in the payload. ~2-minute change.</div></div>
+
+  <div class="find"><div class="top"><span class="id">B2</span><span class="ttl">AMC (perpetual) expiry has no renewal reminder</span><span class="tag t-p2">P2</span><span class="tag t-bug">Bug / gap</span><span class="tag t-area">Client + Admin</span></div>
+    <div class="r"><b>Where</b> <code>RunDunning</code> reminds on subscription &amp; trial expiry only. The AMC machinery exists (<code>renewAmc()</code>, <code>amc_expires_at</code>, <code>amcActive()</code>) but nothing emails a perpetual client before their AMC lapses.</div>
+    <div class="r"><b>Effect</b> With the new v2 Perpetual model this matters more: perpetual clients silently drop out of updates/support when AMC expires, with no nudge to renew — lost recurring revenue.</div>
+    <div class="r"><b>Fix</b> Add AMC reminders (T-30/7/1/0 on <code>amc_expires_at</code>) to the dunning command, mirroring the renewal path.</div></div>
+
+  <div class="find"><div class="top"><span class="id">B3</span><span class="ttl">Failed-payment webhooks are not handled</span><span class="tag t-p3">P3</span><span class="tag t-bug">Gap</span><span class="tag t-area">Payments</span></div>
+    <div class="r"><b>Where</b> <code>WebhookController</code> handles only <code>payment.captured</code> (Razorpay) and <code>checkout.session.completed</code> (Stripe). <code>payment.failed</code>/<code>charge.failed</code> are ignored.</div>
+    <div class="r"><b>Effect</b> A failed payment leaves the order silently unpaid with no signal to admin or client — no retry nudge, no "your payment didn't go through" email.</div>
+    <div class="r"><b>Fix</b> Record failed attempts + notify (admin panel flag + optional client email). Pairs with a small failed-payment dunning step.</div></div>
+
+  <div class="find"><div class="top"><span class="id">B4</span><span class="ttl">Stripe path uses full <code>markPaid</code> vs Razorpay's ledger <code>recordPayment</code></span><span class="tag t-p3">P3</span><span class="tag t-bug">Consistency</span><span class="tag t-area">Payments</span></div>
+    <div class="r"><b>Where</b> Stripe webhook &amp; redirect call <code>markPaid()</code> (settles the whole order); Razorpay uses <code>recordPayment()</code> (ledger). Today Stripe checkout always equals the full balance, so it's correct — but the two paths are inconsistent.</div>
+    <div class="r"><b>Effect</b> If a Stripe payment ever represents a balance/partial on a credit order, <code>markPaid</code> would over-settle. Latent, not currently triggered.</div>
+    <div class="r"><b>Fix</b> Unify on <code>recordPayment($order, $order-&gt;balance(), …)</code> so both gateways share one ledger door.</div></div>
+
+  <div class="find"><div class="top"><span class="id">B5</span><span class="ttl">No unique index on <code>webhook_events(gateway, event_id)</code></span><span class="tag t-p3">P3</span><span class="tag t-bug">Robustness</span><span class="tag t-area">Payments</span></div>
+    <div class="r"><b>Effect</b> Concurrent redeliveries of the same event can create duplicate rows (the payment ledger's <code>payment_id</code> idempotency still prevents double-charging, so it's harmless today).</div>
+    <div class="r"><b>Fix</b> Add a unique constraint so duplicates are rejected at the DB, tightening the idempotency guarantee.</div></div>
+
+  <h2>3 · Security &amp; hardening</h2>
+
+  <div class="find"><div class="top"><span class="id">S1</span><span class="ttl">Payment &amp; mail secrets stored in plaintext at rest</span><span class="tag t-p1">P1</span><span class="tag t-sec">Security</span><span class="tag t-area">Super Admin</span></div>
+    <div class="r"><b>Where</b> <code>settings</code> table holds <code>razorpay_key_secret</code>, <code>stripe_secret_key</code>, both webhook secrets, <code>mail_password</code>, <code>interakt_api_key</code> as plain values (the UI masks them with <code>••••</code>, but the DB stores plaintext).</div>
+    <div class="r"><b>Effect</b> A database dump, backup leak, or read-only DB access exposes <b>live payment keys</b> — enough to create charges/refunds on your gateway accounts.</div>
+    <div class="r"><b>Fix</b> Encrypt secret settings at rest (Laravel <code>Crypt</code> / an encrypted cast on those keys), or move them to <code>.env</code>/a secrets manager. One-time migrate to re-encrypt existing values.</div></div>
+
+  <div class="find"><div class="top"><span class="id">S2</span><span class="ttl">No 2FA / MFA on the admin console</span><span class="tag t-p1">P1</span><span class="tag t-sec">Security</span><span class="tag t-area">Super Admin</span></div>
+    <div class="r"><b>Where</b> <code>Admin\AuthController</code> — password-only login for super/sales/support.</div>
+    <div class="r"><b>Effect</b> A single leaked admin password exposes all tenant billing, licences, gateway secrets and settings. For a money-handling console this is the highest-value hardening.</div>
+    <div class="r"><b>Fix</b> Add TOTP 2FA (authenticator app) at least for the super role; ideally all admin staff.</div></div>
+
+  <div class="find"><div class="top"><span class="id">S3</span><span class="ttl">Long admin session window</span><span class="tag t-p2">P2</span><span class="tag t-sec">Security</span><span class="tag t-area">Super Admin</span></div>
+    <div class="r"><b>Where</b> <code>config/session.php</code> — <code>lifetime 120</code> min, <code>expire_on_close=false</code>.</div>
+    <div class="r"><b>Fix</b> Shorten the admin idle lifetime (e.g. 30–45 min) and expire on browser close; optionally an IP allowlist for the super role.</div></div>
+
+  <div class="find"><div class="top"><span class="id">S4</span><span class="ttl">Public pay page unthrottled; fingerprint auto-binds to first caller</span><span class="tag t-p3">P3</span><span class="tag t-sec">Security</span><span class="tag t-area">Client / Licence</span></div>
+    <div class="r"><b>Pay page</b> <code>/pay/{number}/{token}</code> is protected by the 20-char HMAC token but has no rate limit — add a throttle to blunt enumeration.</div>
+    <div class="r"><b>Fingerprint</b> A licence binds its <code>server_fingerprint</code> to the first server that phones home. That's the intended node-lock, but make sure an admin "reset server fingerprint" action is available (via <code>licences/{id}</code> update) and documented for legitimate server moves.</div></div>
+
+  <h2>4 · Missing / improvements (by area)</h2>
+
+  <h3>Super Admin</h3>
+  <ul>
+    <li><b>M1 · Webhook failure visibility</b> — <code>webhook_events.error</code> is stored but never surfaced. Add a "failed webhooks" panel + alert so a silent gateway issue is noticed.</li>
+    <li><b>M2 · Audit export/retention</b> — <code>audit_logs</code> is append-only (good). Add a periodic export + retention policy for compliance.</li>
+    <li><b>M3 · GST e-invoicing (IRN + signed QR)</b> — mandatory above the turnover threshold in India; not implemented. Roadmap item as revenue scales.</li>
+  </ul>
+  <h3>Admin (sales / support)</h3>
+  <ul>
+    <li><b>M4 · Failed-payment dunning</b> — retry reminders for failed/abandoned checkouts (pairs with B3).</li>
+    <li><b>M5 · Support SLA</b> — tickets are threaded (<code>support_ticket_messages</code>); add SLA timers + a notification to the support desk on every new client ticket (confirm it's wired).</li>
+    <li><b>M6 · Export-of-services (USD)</b> — USD invoices carry 0% GST; ensure LUT / zero-rated export handling + foreign-remittance (FIRC) notes for clean compliance.</li>
+  </ul>
+  <h3>Client portal</h3>
+  <ul>
+    <li><b>M7 · Self-serve storage top-up</b> — at 100% screenshots pause; today the client must contact you. Add a "buy more storage" purchase in the portal.</li>
+    <li><b>M8 · Auto-renewal / card-on-file</b> — renewals are manual (reminder → click). Optional for India B2B, but Razorpay/Stripe subscriptions would cut churn on Cloud.</li>
+    <li><b>M9 · Data-subject request path</b> — the purge flow correctly keeps billing; add an explicit client data-export / deletion-request path for privacy asks.</li>
+  </ul>
+  <h3>Engineering</h3>
+  <ul>
+    <li><b>M10 · Security tests</b> — the 6 tests cover the money/GST path well, but add tests for webhook signature verification, licence node-lock &amp; seat-cap, admin role enforcement, and cross-tenant IDOR.</li>
+  </ul>
+
+  <h2>5 · Recommended order (quick wins first)</h2>
+  <table>
+    <thead><tr><th>#</th><th>Item</th><th>Effort</th><th>Why now</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><b>S1</b> Encrypt secret settings at rest</td><td>S–M</td><td>Highest-value security fix; protects live payment keys.</td></tr>
+      <tr><td>2</td><td><b>B2</b> AMC expiry dunning</td><td>S</td><td>Directly protects perpetual (v2) recurring revenue.</td></tr>
+      <tr><td>3</td><td><b>S2</b> Admin 2FA (super)</td><td>M</td><td>Locks down the money console.</td></tr>
+      <tr><td>4</td><td><b>B1</b> <code>.lic</code> grace_days + <b>B5</b> webhook unique index + <b>S3</b> session</td><td>S</td><td>Small, safe correctness/hardening fixes.</td></tr>
+      <tr><td>5</td><td><b>B3/M4</b> Failed-payment handling + dunning</td><td>M</td><td>Recovers otherwise-lost sales silently failing today.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="lead"><b>How to read this:</b> none of the above means Central is unsafe to run — it's already handling licensing, GST billing and the full order-to-cash flow correctly. The P1s (encrypt secrets, admin 2FA) are the kind of hardening you want in place before the client base grows; the bugs (B1–B5) are small and contained; the rest is product depth. Say the word and I'll implement any subset — I'd suggest the "quick wins" block first.</div>
+
+  <div class="foot">SmartEPT Central — deep scan &amp; code review · Ametecs · 27 Jul 2026 · Review by reading live source in <code>C:\laragon\www\smartept-central</code></div>
+</div>
+</body>
+</html>
