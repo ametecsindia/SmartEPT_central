@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEPT Central — Pricing v2 Finalise · Delivery Report</title>
+<style>
+  :root{--teal:#0E7C8F;--teal-dk:#0a5c6a;--teal-lt:#e6f2f4;--ink:#1f2a2e;--muted:#5b6a70;--line:#dde6e8;--bg:#f6f9fa;
+    --ok:#2e7d32;--okbg:#e9f5ea;--amber:#b9770e;--amberbg:#fcf3e3;--red:#c0392b;--redbg:#fbeae8}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 'Segoe UI',-apple-system,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px 90px}
+  header{background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#fff;padding:38px 22px 30px}
+  header .inner{max-width:1000px;margin:0 auto}
+  .brand{font-size:13px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;font-weight:600}
+  h1{margin:.32em 0 .12em;font-size:27px}h2{font-size:20px;margin:38px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--teal);color:var(--teal-dk)}
+  h3{font-size:15.5px;margin:20px 0 6px;color:var(--ink)}.sub{opacity:.92;max-width:76ch}.meta{margin-top:13px;font-size:13px;opacity:.9}
+  code{background:#eef3f4;padding:1px 6px;border-radius:4px;font-size:12.5px}
+  .lead{background:#fff;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:8px;padding:15px 18px;margin:20px 0}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+  .stat .n{font-size:22px;font-weight:700;color:var(--teal-dk);line-height:1}.stat .l{font-size:11px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.03em}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:15px 18px;margin:12px 0;box-shadow:0 1px 2px rgba(20,50,60,.04)}
+  .card h3{margin-top:0}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;margin-left:6px;vertical-align:middle}
+  .t-done{background:var(--okbg);color:var(--ok)} .t-note{background:var(--amberbg);color:var(--amber)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--teal-lt);color:var(--teal-dk);font-weight:600;font-size:11.5px;text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  ul{margin:6px 0}li{margin:5px 0}
+  .files{font-size:12.5px;color:var(--muted);margin-top:8px}.files code{background:#f4f7f8}
+  ol.run{counter-reset:s;list-style:none;padding-left:0}
+  ol.run li{position:relative;padding:8px 8px 8px 38px;border-bottom:1px solid var(--line)}
+  ol.run li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:8px;width:25px;height:25px;background:var(--teal);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .amberbox{background:var(--amberbg);border:1px solid #f0dcae;border-radius:9px;padding:12px 16px;margin:14px 0;font-size:13.5px}
+  .foot{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+  @media(max-width:700px){.grid{grid-template-columns:1fr 1fr}}
+  @media print{header{-webkit-print-color-adjust:exact;print-color-adjust:exact}.card,.stat{break-inside:avoid}}
+</style></head>
+<body>
+<header><div class="inner">
+  <div class="brand">Ametecs · SmartEPT Central</div>
+  <h1>Pricing v2 Finalise — Delivery Report</h1>
+  <div class="sub">Grandfather-at-renewal price cap, client PO numbers, quotation / pay-link expiry, and the legacy-Plans cleanup — built, syntax-checked and committed to the live Central tree.</div>
+  <div class="meta">27 Jul 2026 · Commit <code style="background:rgba(255,255,255,.16);color:#fff">d91dbb1</code> on <code style="background:rgba(255,255,255,.16);color:#fff">main</code> · Live tree <code style="background:rgba(255,255,255,.16);color:#fff">C:\laragon\www\smartept-central</code></div>
+</div></header>
+<div class="wrap">
+
+  <div class="lead"><b>What you decided (27-Jul), and what it meant:</b> migrate existing customers onto the new user-based model <b>at renewal with a price cap</b>; <b>7-day</b> quotation / pay-link validity; keep the setup fee <b>uncapped</b>; keep AMC <b>year-1-included</b>. The last two were already how the code worked, so they needed no change — the build focused on the three that did, plus the Plans-table cleanup.</div>
+
+  <div class="grid">
+    <div class="stat"><div class="n">4</div><div class="l">Items shipped</div></div>
+    <div class="stat"><div class="n">10</div><div class="l">Files changed</div></div>
+    <div class="stat"><div class="n">1</div><div class="l">New migration</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">Rebuilds of existing features</div></div>
+  </div>
+
+  <h2>Honest scope note — what was already built</h2>
+  <p>The original roadmap listed a long "sales-ops gaps" line. A read of the live code (and the 27-Jul deep-scan) showed most of it already exists and was <b>deliberately not rebuilt</b>: partial payments (the locked payment ledger), refunds (GST credit notes), per-deal discounts (the Coupon system, applied on signup / portal / admin quotes), renewal &amp; trial dunning, and quotations. So this delivery is tightly scoped to the genuine gaps.</p>
+
+  <h2>What was built</h2>
+
+  <div class="card"><h3>1 · Grandfather rule — migrate at renewal, with a price cap <span class="tag t-done">DONE</span></h3>
+    <p>Every existing (pre-v2) non-trial licence is flagged <code>pricing_model = legacy</code> and its ex-GST last-paid subtotal is snapshotted as <code>legacy_baseline_inr</code>. On its <b>first renewal</b> the quote is computed on the new user-based model but <b>capped</b> so the bill can't rise more than <code>pricing_grandfather_cap_pct</code> (default <b>20%</b>) above that baseline — shown as a visible "Loyalty price protection" line before GST. After that renewal the licence flips to <code>v2</code> and renews at full rate thereafter.</p>
+    <p class="files">Files: <code>BillingService::createRenewalOrder</code> (cap) + <code>provisionIfNeeded</code> (flip) · <code>Licence</code> model · migration.</p>
+  </div>
+
+  <div class="card"><h3>2 · Client PO number <span class="tag t-done">DONE</span></h3>
+    <p>An optional purchase-order number is captured on the admin <b>New Order / Quote</b> screen and the client-portal <b>Buy</b> flow, stored on the order, and printed on the quotation / proforma.</p>
+    <p class="files">Files: <code>orders.po_number</code> (migration) · <code>Order</code> model · <code>BillingService</code> (createOrder / setup) · <code>BillingApiController</code> + <code>PortalApiController</code> validation · <code>console.blade</code> New-Order form · <code>quote-print.blade</code>.</p>
+  </div>
+
+  <div class="card"><h3>3 · Quotation / pay-link expiry <span class="tag t-done">DONE</span></h3>
+    <p>Every new order / quote gets <code>valid_until = today + quote_validity_days</code> (default <b>7</b>). An expired pay page shows a friendly "quotation has expired — contact sales" message, and both the Razorpay and Stripe payment starts refuse with HTTP 410. A live credit order (already part-paid / provisioned) always stays payable. The quotation is relabelled <b>"Quotation / Proforma Invoice"</b> and prints its validity date + PO.</p>
+    <p class="files">Files: <code>orders.valid_until</code> (migration) · <code>Order::isExpired()</code> · <code>CheckoutController</code> (show + Razorpay + Stripe) · <code>checkout.blade</code> · <code>quote-print.blade</code>.</p>
+  </div>
+
+  <div class="card"><h3>4 · Legacy Plans-table cleanup <span class="tag t-done">DONE</span></h3>
+    <p>The admin console Plans table and editor dropped the obsolete <b>Perpetual ₹/device</b> and <b>Server-licence ₹</b> columns (pre-v2) and now show the v2 <b>by-user perpetual bands</b> instead. The save payload no longer sends the legacy fields (the update endpoint already treated them as optional, so nothing breaks).</p>
+    <p class="files">Files: <code>console.blade</code> (Plans table, edit-plan form, savePlan).</p>
+  </div>
+
+  <h2>New admin-editable settings</h2>
+  <table>
+    <tr><th>Setting key</th><th>Default</th><th>Controls</th></tr>
+    <tr><td><code>pricing_grandfather_cap_pct</code></td><td>20</td><td>Max % a grandfathered renewal can rise over the customer's previous rate.</td></tr>
+    <tr><td><code>quote_validity_days</code></td><td>7</td><td>How long a quotation / pay-link stays valid before it expires.</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--muted)">Both are seeded by the migration with <code>insertOrIgnore</code>, so a value you later change in Settings is never overwritten.</p>
+
+  <h2>★ What you need to run (owner-run — cloud can't touch PHP/DB)</h2>
+  <ol class="run">
+    <li><b>Migrate:</b> <code>migrate.bat</code> in <code>C:\laragon\www\smartept-central</code> — applies <code>2026_07_27_000200</code> (adds the columns + grandfathers existing licences + seeds the two settings).</li>
+    <li><b>Clear + restart:</b> <code>php artisan cache:clear</code>, restart PHP, hard-refresh the console (Ctrl+Shift+R) so the new Plans layout + PO field load.</li>
+    <li><b>Test PO + expiry:</b> raise a New Quote with a PO number → open its <b>Quotation / Proforma Invoice</b> print; confirm the PO and "valid until" date show. Confirm an expired link (or set <code>quote_validity_days</code> to 0 briefly) shows the expired page.</li>
+    <li><b>Test grandfather:</b> on a legacy licence (any that existed before the migration), raise a renewal → confirm the "Loyalty price protection" line caps the total, and that the licence flips to v2 after payment.</li>
+    <li><b>Test Plans:</b> open Plans → confirm the Perpetual column now lists by-user bands, and the edit modal no longer shows per-device / server inputs.</li>
+  </ol>
+
+  <div class="amberbox"><b>Not runtime-verified here:</b> the cloud build box has no PHP or database, so this was checked with <code>php -l</code> (all controllers/services/models/migration clean) and <code>node --check</code> (console JS clean) only. The click-through above is yours to run on the live tree.</div>
+
+  <h2>Notes &amp; deliberately out of scope</h2>
+  <ul>
+    <li><b>Proforma</b> is the relabeled quotation, not a separate document (as agreed). If you want a distinct proforma later, it's a small addition.</li>
+    <li>The grandfather cap applies to <b>subscription (Cloud) renewals</b>. Perpetual customers renew via <b>AMC</b>, which is unchanged — a perpetual-AMC grandfather rule can follow if you want one.</li>
+    <li>The admin New-Order form still lists legacy <b>Core / Professional / Enterprise</b> plan options (a pre-v2 leftover, separate from this pricing-finalise scope). Flagged as a small follow-up cleanup.</li>
+    <li>The 27-Jul deep-scan also flagged two P1 hardening items (encrypt payment secrets at rest, admin 2FA) and B2 (AMC-expiry dunning) — tracked separately, not part of this pricing task.</li>
+  </ul>
+
+  <div class="foot">SmartEPT Central — Pricing v2 Finalise delivery · Ametecs India Private Limited · 27 Jul 2026 · Commit d91dbb1 · GST 36AAHCT0971F1ZB · WhatsApp 90000 98877</div>
+</div>
+</body>
+</html>
