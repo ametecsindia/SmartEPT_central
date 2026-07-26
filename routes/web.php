@@ -7,7 +7,7 @@ use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 // ---------- Public: landing ----------
-Route::get('/', fn () => response()->file(public_path('landing.html')));
+Route::get('/', fn () => response()->file(public_path('landing.html'), ['Cache-Control' => 'no-cache, no-store, must-revalidate']));
 
 // ---------- Public: legal & contact (linked from landing + portal footers) ----------
 Route::view('/privacy', 'legal.privacy')->name('legal.privacy');
