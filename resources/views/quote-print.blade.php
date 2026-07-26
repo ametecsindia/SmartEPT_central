@@ -35,8 +35,8 @@ td{padding:8px 10px;border-bottom:1px solid #F0F1F4}
 <body>
 <div class="noprint"><button onclick="window.print()">Print / Save PDF</button></div>
 <div class="top">
-  <div><img src="/img/smartept-logo-h-light.png" alt="SmartEPT by Ametecs" style="height:42px;width:auto;display:block;margin-bottom:8px"><h1>QUOTATION</h1>
-    <div style="font-size:12px;color:#565A66">{{ $order->quote_number }} · {{ $order->created_at->format('d M Y') }} · valid 15 days</div></div>
+  <div><img src="/img/smartept-logo-h-light.png" alt="SmartEPT by Ametecs" style="height:42px;width:auto;display:block;margin-bottom:8px"><h1>QUOTATION / PROFORMA INVOICE</h1>
+    <div style="font-size:12px;color:#565A66">{{ $order->quote_number }} · {{ $order->created_at->format('d M Y') }} · {{ $order->valid_until ? 'valid until ' . $order->valid_until->format('d M Y') : 'valid 7 days' }}</div></div>
   <div class="co"><b style="color:#15171C;font-size:13px">{{ $company['name'] }}</b><br>
     {{ $company['address'] }}<br>GSTIN: {{ $company['gstin'] }}<br>{{ $company['phone'] }} · {{ $company['email'] }}</div>
 </div>
@@ -47,6 +47,7 @@ td{padding:8px 10px;border-bottom:1px solid #F0F1F4}
     {{ $order->tenant->email }} · {{ $order->tenant->phone }}</div>
   <div class="box"><b>Quotation Details</b>Reference order: {{ $order->number }}<br>
     @if($order->requested_by) Requested by: {{ $order->requested_by }}<br>@endif
+    @if($order->po_number) PO number: {{ $order->po_number }}<br>@endif
     Status: {{ $order->status === 'quote' ? 'AWAITING MANAGEMENT APPROVAL' : strtoupper($order->status) }}</div>
 </div>
 @php
@@ -75,7 +76,7 @@ td{padding:8px 10px;border-bottom:1px solid #F0F1F4}
 @endif
 <div class="payline"><b>For Management — approve &amp; pay online:</b>
   {{ $payUrl }}<br>UPI · Cards · NetBanking (Razorpay) or international card (Stripe). Payment activates the licence instantly and the GST tax invoice is issued automatically. Bank transfer (NEFT/UPI) is equally welcome — share the UTR on WhatsApp 90000 98877.</div>
-<div class="terms">Terms: Prices exclude GST unless shown. Quotation valid 15 days from date above. Licence per active endpoint device; web-only managers free. One-time Setup &amp; Onboarding fee applies on first order only. Subject to SmartEPT standard commercial terms.</div>
+<div class="terms">Terms: Prices exclude GST unless shown. @if($order->valid_until)Quotation valid until {{ $order->valid_until->format('d M Y') }}.@else Quotation valid 7 days from date above.@endif Licence per active endpoint device; web-only managers free. One-time Setup &amp; Onboarding fee applies on first order only. Subject to SmartEPT standard commercial terms.</div>
 <div class="foot">
   <span>SmartEPT — Employee Productivity Tracking & Intelligence · by {{ $company['name'] }}</span>
   <span>This is a computer-generated quotation.</span>

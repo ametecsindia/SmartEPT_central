@@ -36,6 +36,7 @@ class CheckoutController extends Controller
 
         return view('checkout', [
             'order' => $order,
+            'expired' => $order->isExpired(),
             'received' => $order->received(),
             'balance' => $order->balance(),
             'token' => $token,
@@ -48,6 +49,10 @@ class CheckoutController extends Controller
     public function createRazorpayOrder(string $number, string $token, RazorpayService $razorpay)
     {
         $order = $this->findOrder($number, $token);
+
+        if ($order->isExpired()) {
+            return response()->json(['error' => 'This quotation has expired. Please contact sales on WhatsApp 90000 98877 for a fresh quote.'], 410);
+        }
 
         if ($order->status === 'paid' || $order->balance() <= 0.01) {
             return response()->json(['error' => 'Order already paid'], 422);
@@ -94,6 +99,10 @@ class CheckoutController extends Controller
 
         if ($order->status === 'paid') {
             return redirect("/pay/$number/$token?paid=1");
+        }
+
+        if ($order->isExpired()) {
+            abort(410, 'This quotation has expired. Please contact sales on WhatsApp 90000 98877 for a fresh quote.');
         }
 
         $base = url("/pay/$number/$token");

@@ -309,6 +309,7 @@ class PortalApiController extends Controller
             'billing' => ['nullable', 'in:annual,half_yearly,quarterly,monthly'],
             'deployment' => ['nullable', 'in:client_hosted,cloud'],
             'as_quote' => ['boolean'],
+            'po_number' => ['nullable', 'string', 'max:60'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
         ]);
 
@@ -326,6 +327,7 @@ class PortalApiController extends Controller
             'deployment' => $kind === 'perpetual' ? 'client_hosted' : 'cloud',
             'as_quote' => (bool) ($data['as_quote'] ?? false),
             'requested_by' => ($data['as_quote'] ?? false) ? auth('client')->user()->name : null,
+            'po_number' => $data['po_number'] ?? null,
             'coupon_code' => $data['coupon_code'] ?? null,
         ]);
 
@@ -345,7 +347,7 @@ class PortalApiController extends Controller
                 . "{$order->description}\n"
                 . 'Total payable (incl. GST): ' . $symbol . number_format((float) $order->total, 2) . "\n\n"
                 . "Management can approve and pay it directly at:\n" . $this->payUrl($order) . "\n\n"
-                . 'The quotation is valid for 15 days. Payment activates the licence instantly '
+                . 'The quotation is valid for ' . (int) \App\Models\Setting::get('quote_validity_days', 7) . ' days. Payment activates the licence instantly '
                 . 'and the GST tax invoice is issued automatically.'
                 . MailService::signature()
             );

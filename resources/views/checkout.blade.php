@@ -46,7 +46,9 @@ font-size:14px;color:#0B6373;background:#fff;cursor:pointer;text-align:center;te
       <div class="tot" style="font-size:16px"><span>Balance payable{{ $order->credit_due_date ? ' by ' . $order->credit_due_date->format('d M Y') : '' }}</span><span>{{ $order->currency === 'INR' ? '₹' : '$' }}{{ number_format($balance, 2) }}</span></div>
     @endif
 
-    @if ($order->status === 'paid' || $balance <= 0.01 || request('paid'))
+    @if ($expired ?? false)
+      <div class="paid" style="background:#FDEEEC;color:#C0392B">This quotation has expired.<br>Please contact sales on WhatsApp 90000 98877 for a fresh quote.</div>
+    @elseif ($order->status === 'paid' || $balance <= 0.01 || request('paid'))
       <div class="paid">✓ Payment received — your licence is active.<br>The GST invoice has been emailed by our team.</div>
     @else
       @if ($razorpayEnabled)
@@ -63,7 +65,7 @@ font-size:14px;color:#0B6373;background:#fff;cursor:pointer;text-align:center;te
   </div>
 </div>
 
-@if ($razorpayEnabled && $order->status !== 'paid')
+@if ($razorpayEnabled && $order->status !== 'paid' && ! ($expired ?? false))
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 document.getElementById('rzpBtn').onclick = async function () {

@@ -147,6 +147,7 @@ class BillingApiController extends Controller
             'deployment' => ['nullable', 'in:client_hosted,cloud'],
             'as_quote' => ['boolean'],
             'requested_by' => ['nullable', 'string', 'max:190'],
+            'po_number' => ['nullable', 'string', 'max:60'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
         ]);
 
@@ -183,6 +184,7 @@ class BillingApiController extends Controller
             'devices' => ['required', 'integer', 'min:1', 'max:100000'],
             'as_quote' => ['boolean'],
             'requested_by' => ['nullable', 'string', 'max:190'],
+            'po_number' => ['nullable', 'string', 'max:60'],
         ]);
 
         $order = $this->billing->createSetupOrder(

@@ -156,6 +156,8 @@ class BillingService
             'number' => $this->nextOrderNumber(),
             'quote_number' => $asQuote ? $this->nextQuoteNumber() : null,
             'requested_by' => $opts['requested_by'] ?? null,
+            'po_number' => $opts['po_number'] ?? null,
+            'valid_until' => now()->addDays((int) Setting::get('quote_validity_days', 7))->toDateString(),
             'tenant_id' => $tenant->id,
             'description' => $kind === 'perpetual'
                 ? sprintf('%s Perpetual — %d users (lifetime)', $plan->name, $devices)
@@ -196,6 +198,8 @@ class BillingService
             'number' => $this->nextOrderNumber(),
             'quote_number' => $asQuote ? $this->nextQuoteNumber() : null,
             'requested_by' => $opts['requested_by'] ?? null,
+            'po_number' => $opts['po_number'] ?? null,
+            'valid_until' => now()->addDays((int) Setting::get('quote_validity_days', 7))->toDateString(),
             'tenant_id' => $tenant->id,
             'description' => sprintf('Installation & Onboarding — %d devices', $devices),
             'line_items' => $quote['lines'],
@@ -223,6 +227,28 @@ class BillingService
             $tenant, $plan, $licence->device_limit, $licence->billing, $licence->deployment
         );
 
+        // GRANDFATHER (Pricing v2 finalise): a pre-v2 'legacy' licence renews onto the
+        // user-based model, but its FIRST renewal is CAPPED so the bill cannot jump more
+        // than pricing_grandfather_cap_pct above the ex-GST price it last paid. The cap is
+        // a visible negative line before GST; after this renewal it becomes a normal v2
+        // licence (the flip happens on provisioning).
+        $grandfather = false;
+        if ($licence->pricing_model === 'legacy' && $licence->legacy_baseline_inr) {
+            $grandfather = true;
+            $capPct = (float) Setting::get('pricing_grandfather_cap_pct', 20);
+            $cap = round((float) $licence->legacy_baseline_inr * (1 + $capPct / 100), 2);
+            if ($quote['subtotal'] > $cap + 0.01) {
+                $protection = round($quote['subtotal'] - $cap, 2);
+                $quote['lines'][] = [
+                    'type' => 'grandfather',
+                    'description' => 'Loyalty price protection (renewal capped at '
+                        . rtrim(rtrim(number_format($capPct, 2), '0'), '.') . '% over your previous rate)',
+                    'qty' => 1, 'unit' => -$protection, 'amount' => -$protection,
+                ];
+                $quote['subtotal'] = $cap;
+            }
+        }
+
         // A freshly-created Tenant model may not have hydrated its DB default —
         // treat missing currency as INR so GST is never silently skipped.
         $currency = $tenant->currency ?: 'INR';
@@ -233,6 +259,7 @@ class BillingService
             'number' => $this->nextOrderNumber(),
             'tenant_id' => $tenant->id,
             'licence_id' => $licence->id,
+            'valid_until' => now()->addDays((int) Setting::get('quote_validity_days', 7))->toDateString(),
             'description' => sprintf('Renewal — %s plan, %d devices (%s)',
                 $plan->name, $licence->device_limit, $licence->billing),
             'line_items' => $quote['lines'],
@@ -243,7 +270,7 @@ class BillingService
             'gateway' => 'manual',
             'status' => 'created',
             'meta' => [
-                'renewal' => true, 'plan_id' => $plan->id,
+                'renewal' => true, 'plan_id' => $plan->id, 'grandfather_migrated' => $grandfather,
                 'devices' => $licence->device_limit, 'kind' => $licence->kind,
                 'billing' => $licence->billing, 'deployment' => $licence->deployment,
             ],
@@ -482,6 +509,9 @@ class BillingService
             ($meta['renew_amc'] ?? false)
                 ? $this->licences->renewAmc($licence)
                 : $this->licences->renew($licence);
+            if (($meta['grandfather_migrated'] ?? false) && $licence->pricing_model === 'legacy') {
+                $licence->update(['pricing_model' => 'v2', 'legacy_baseline_inr' => null]);
+            }
         } elseif (isset($meta['plan_id'])) {
             $licence = $this->licences->issue($tenant, Plan::findOrFail($meta['plan_id']), [
                 'kind' => $meta['kind'] ?? 'subscription',

@@ -955,8 +955,8 @@ async plans() {
   window.__PRICING = {aD, hD, cx};
   const q = A => Math.round(A/Math.max(0.1,1-aD)), h = A => Math.round(A/Math.max(0.1,1-aD)*(1-hD));
   P.innerHTML = `<div class="mini" style="margin-bottom:10px">Billing cycles: <b>Quarterly / Half-Yearly / Annual</b>. You edit the <b>Annual</b> rate; Quarterly &amp; Half-Yearly derive from it using the discounts in <b>Settings → Pricing &amp; Cloud</b> (now ${Math.round(aD*100)}% off annual, ${Math.round(hD*100)}% off half-yearly · Cloud × ${cx}). The public landing &amp; calculator follow within 5 minutes.</div>` + plans.map(p => `<div class="card"><h3>${esc(p.name)} <span class="mini">(${esc(p.code)})</span> ${p.active?'':pill('suspended')}</h3>
-  <table><tr><th>Quarterly</th><th>Half-Yearly</th><th>Annual</th><th>Cloud storage</th><th>Perpetual/Device</th><th>Server Licence</th><th>Min Devices</th><th></th></tr>
-  <tr><td>₹${q(p.inr_annual)}</td><td>₹${h(p.inr_annual)}</td><td><b>₹${p.inr_annual}</b></td><td>${p.storage_gb!=null?p.storage_gb+' GB':'—'}</td><td>₹${Number(p.perpetual_device_inr).toLocaleString('en-IN')}</td><td>₹${Number(p.perpetual_server_inr).toLocaleString('en-IN')}</td><td>${p.min_devices}</td>
+  <table><tr><th>Quarterly</th><th>Half-Yearly</th><th>Annual</th><th>Cloud storage</th><th>Perpetual (by users)</th><th>Min Devices</th><th></th></tr>
+  <tr><td>₹${q(p.inr_annual)}</td><td>₹${h(p.inr_annual)}</td><td><b>₹${p.inr_annual}</b></td><td>${p.storage_gb!=null?p.storage_gb+' GB':'—'}</td><td>${p.perpetual_bands?.length ? p.perpetual_bands.map(b=>`${b.min_users}${b.max_users?'–'+b.max_users:'+'}: ₹${Number(b.price_inr).toLocaleString('en-IN')}`).join(' · ') : '—'}</td><td>${p.min_devices}</td>
   <td>${ROLE==='super' ? `<button class="link" onclick='editPlan(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>`:''}</td></tr></table>
   <div class="mini" style="margin-top:4px">Per active device / month, GST extra. USD annual $${p.usd_annual}. (Monthly ₹${p.inr_monthly} — legacy, not offered on new plans.)</div>
   ${p.volume_tiers?.length ? `<div class="mini" style="margin-top:8px"><b>Volume tiers (annual):</b> ${p.volume_tiers.map(t=>`${t.min_devices}–${t.max_devices??'∞'}: ₹${t.rate_inr_annual}`).join(' · ')}</div>`:''}
@@ -1383,6 +1383,7 @@ async function newOrder() {
   <div><label>Devices</label><input id="no_devices" type="number" value="25" min="1" oninput="refreshQuote()"></div>
   <div><label>Create as</label><select id="no_asquote"><option value="0">Order — payable now</option><option value="1">Quotation — management pays later</option></select></div>
   <div><label>Requested by (manager/employee)</label><input id="no_reqby" placeholder="e.g. Rajesh Kumar, Ops Manager"></div>
+  <div><label>Client PO number (optional)</label><input id="no_po" placeholder="e.g. PO-2026-0042"></div>
   <div><label>Coupon code (optional)</label><input id="no_coupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" onchange="refreshQuote()"></div></div>
   <div class="quote-box" id="quoteBox">…</div>
   <div class="mini" id="couponNote" style="margin-top:6px"></div>
@@ -1410,7 +1411,7 @@ async function createOrder() {
   try {
     const o = await api('orders', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
       devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
-      as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null,
+      as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null, po_number:(document.getElementById('no_po')?.value||null),
       coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null}});
     closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
   } catch (e) { toast('Error: ' + e); }
@@ -1554,8 +1555,7 @@ function editPlan(p) {
   <div><label>Cloud storage included (GB)</label><input id="ep_sg" type="number" value="${p.storage_gb!=null?p.storage_gb:50}"></div>
   <div><label>USD annual</label><input id="ep_ua" type="number" step="0.01" value="${p.usd_annual}"></div>
   <div><label>USD monthly</label><input id="ep_um" type="number" step="0.01" value="${p.usd_monthly}"></div>
-  <div><label>Perpetual / device ₹</label><input id="ep_pd" type="number" value="${p.perpetual_device_inr}"></div>
-  <div><label>Server licence ₹</label><input id="ep_ps" type="number" value="${p.perpetual_server_inr}"></div>
+  <div style="grid-column:1/-1"><label>Perpetual pricing (by user band)</label><div class="mini">${(p.perpetual_bands||[]).length ? p.perpetual_bands.map(b=>`${b.min_users}${b.max_users?'–'+b.max_users:'+'} users: ₹${Number(b.price_inr).toLocaleString('en-IN')}`).join(' · ') : 'Set via the Pricing v2 seeder / perpetual bands'}</div></div>
   <div><label>Min devices</label><input id="ep_md" type="number" value="${p.min_devices}"></div>
   <div><label>INR monthly (legacy — not offered)</label><input id="ep_im" type="number" value="${p.inr_monthly}"></div></div>
   <div class="mini" id="ep_cyc" style="margin:6px 2px 2px">Derived: Quarterly ₹${q(p.inr_annual)} · Half-Yearly ₹${h(p.inr_annual)} · Annual ₹${p.inr_annual} /device/mo</div>
@@ -1571,8 +1571,7 @@ function epCycle(v){
 async function savePlan(id) {
   try {
     await api('plans/' + id, {method:'PUT', body:{inr_annual:+ep_ia.value, inr_monthly:+ep_im.value,
-      usd_annual:+ep_ua.value, usd_monthly:+ep_um.value, perpetual_device_inr:+ep_pd.value,
-      perpetual_server_inr:+ep_ps.value, min_devices:+ep_md.value, storage_gb:+ep_sg.value}});
+      usd_annual:+ep_ua.value, usd_monthly:+ep_um.value, min_devices:+ep_md.value, storage_gb:+ep_sg.value}});
     closeModal(); toast('Plan updated'); go('plans');
   } catch (e) { toast('Error: ' + e); }
 }
