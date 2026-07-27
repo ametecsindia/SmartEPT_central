@@ -951,16 +951,45 @@ async licences() {
 async plans() {
   const [resp, s] = await Promise.all([api('plans'), api('settings').catch(()=>({}))]);
   const plans = Array.isArray(resp) ? resp : (resp.data || []);
-  const aD = (+s.pricing_annual_discount_pct||25)/100, hD = (+s.pricing_half_yearly_discount_pct||10)/100, cx = (+s.pricing_cloud_multiplier||1.5);
-  window.__PRICING = {aD, hD, cx};
-  const q = A => Math.round(A/Math.max(0.1,1-aD)), h = A => Math.round(A/Math.max(0.1,1-aD)*(1-hD));
-  P.innerHTML = `<div class="mini" style="margin-bottom:10px">Billing cycles: <b>Quarterly / Half-Yearly / Annual</b>. You edit the <b>Annual</b> rate; Quarterly &amp; Half-Yearly derive from it using the discounts in <b>Settings → Pricing &amp; Cloud</b> (now ${Math.round(aD*100)}% off annual, ${Math.round(hD*100)}% off half-yearly · Cloud × ${cx}). The public landing &amp; calculator follow within 5 minutes.</div>` + plans.map(p => `<div class="card"><h3>${esc(p.name)} <span class="mini">(${esc(p.code)})</span> ${p.active?'':pill('suspended')}</h3>
-  <table><tr><th>Quarterly</th><th>Half-Yearly</th><th>Annual</th><th>Cloud storage</th><th>Perpetual (by users)</th><th>Min Devices</th><th></th></tr>
-  <tr><td>₹${q(p.inr_annual)}</td><td>₹${h(p.inr_annual)}</td><td><b>₹${p.inr_annual}</b></td><td>${p.storage_gb!=null?p.storage_gb+' GB':'—'}</td><td>${p.perpetual_bands?.length ? p.perpetual_bands.map(b=>`${b.min_users}${b.max_users?'–'+b.max_users:'+'}: ₹${Number(b.price_inr).toLocaleString('en-IN')}`).join(' · ') : '—'}</td><td>${p.min_devices}</td>
-  <td>${ROLE==='super' ? `<button class="link" onclick='editPlan(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>`:''}</td></tr></table>
-  <div class="mini" style="margin-top:4px">Per active device / month, GST extra. USD annual $${p.usd_annual}. (Monthly ₹${p.inr_monthly} — legacy, not offered on new plans.)</div>
-  ${p.volume_tiers?.length ? `<div class="mini" style="margin-top:8px"><b>Volume tiers (annual):</b> ${p.volume_tiers.map(t=>`${t.min_devices}–${t.max_devices??'∞'}: ₹${t.rate_inr_annual}`).join(' · ')}</div>`:''}
-  <div class="mini" style="margin-top:6px"><b>Features:</b> ${Object.entries(p.features||{}).map(([k,v])=>`${k}=${v}`).join(', ')}</div></div>`).join('');
+  const p = plans.find(x=>x.code==='smartept') || plans.find(x=>x.active) || plans[0];
+  if (!p) { P.innerHTML = '<div class="mini">No pricing plan found — run the pricing seeder.</div>'; return; }
+  const legacy = plans.filter(x=>x!==p);
+  window.__PLAN = p;
+  const canW = ROLE==='super';
+  const ro = canW ? '' : 'readonly';
+  const aD = (+s.pricing_annual_discount_pct||25), hD = (+s.pricing_half_yearly_discount_pct||10);
+  const cloudRows = ((p.volume_tiers||[]).length ? p.volume_tiers : [{min_devices:'',max_devices:'',rate_inr_annual:''}]).map(t=>pcCloudRow(t.min_devices,t.max_devices,t.rate_inr_annual,canW)).join('');
+  const perpRows = ((p.perpetual_bands||[]).length ? p.perpetual_bands : [{min_users:'',max_users:'',price_inr:''}]).map(b=>pcPerpRow(b.min_users,b.max_users,b.price_inr,canW)).join('');
+  P.innerHTML = `
+  <div class="mini" style="margin-bottom:12px">Full pricing control for <b>${esc(p.name)}</b> — the single SmartEPT product. Edit the <b>Cloud rental</b> and <b>On-Premise Lifetime</b> bands below and Save; the public landing &amp; calculator follow within ~5 minutes.${canW?'':' <b>(read-only — super admin can edit)</b>'}</div>
+
+  <div class="card"><h3>SmartEPT Cloud — monthly rental (by users)</h3>
+    <div class="sub">Price is <b>₹ per user / month</b> at the Annual rate for each user band. Quarterly = base, Half-Yearly = &minus;${hD}%, Annual = published (&minus;${aD}% off base). Leave <b>Max users</b> blank for the open-ended top band.</div>
+    <div class="row" style="max-width:560px;margin-top:6px"><div><label>Default Annual ₹/user/mo (fallback)</label><input id="pc_base" type="number" value="${p.inr_annual}" ${ro}></div>
+    <div><label>Cloud storage note (GB, 0 = per-user policy)</label><input id="pc_sg" type="number" value="${p.storage_gb!=null?p.storage_gb:0}" ${ro}></div></div>
+    <table id="cloudBands" style="margin-top:10px"><tr><th style="width:22%">Min users</th><th style="width:30%">Max users (blank = &infin;)</th><th style="width:34%">₹ / user / month (annual)</th><th></th></tr>${cloudRows}</table>
+    ${canW?`<div style="margin-top:8px"><button class="btn btn-l" onclick="pcAddCloud()">+ Add band</button> <button class="btn btn-p" onclick="pcSaveCloud()">Save Cloud pricing</button></div>`:''}
+  </div>
+
+  <div class="card"><h3>On-Premise — Buy Once, use for a Lifetime (by users)</h3>
+    <div class="sub">One-time perpetual licence price for each user-capacity band. Leave <b>Max users</b> blank for the top band (above it = custom quotation).</div>
+    <table id="perpBands"><tr><th style="width:22%">Min users</th><th style="width:30%">Max users (blank = &infin;)</th><th style="width:34%">₹ one-time (lifetime)</th><th></th></tr>${perpRows}</table>
+    ${canW?`<div style="margin-top:8px"><button class="btn btn-l" onclick="pcAddPerp()">+ Add band</button> <button class="btn btn-p" onclick="pcSavePerp()">Save Lifetime pricing</button></div>`:''}
+  </div>
+
+  <div class="card"><h3>Fees &amp; rules</h3>
+    <div class="row">
+      <div><label>Setup fee base ₹</label><input id="pc_setb" type="number" value="${s.pricing_setup_base_inr||5000}" ${ro}></div>
+      <div><label>Setup covers (users)</label><input id="pc_seti" type="number" value="${s.pricing_setup_included_devices||30}" ${ro}></div>
+      <div><label>Setup ₹ per extra user</label><input id="pc_setx" type="number" value="${s.pricing_setup_per_extra_inr||100}" ${ro}></div>
+      <div><label>AMC % per year (perpetual)</label><input id="pc_amc" type="number" step="0.1" value="${s.pricing_amc_pct||18}" ${ro}></div>
+      <div><label>Annual discount %</label><input id="pc_ad" type="number" value="${aD}" ${ro}></div>
+      <div><label>Half-yearly discount %</label><input id="pc_hd" type="number" value="${hD}" ${ro}></div>
+    </div>
+    ${canW?`<div style="margin-top:8px"><button class="btn btn-p" onclick="pcSaveFees()">Save fees &amp; rules</button></div>`:''}
+  </div>
+  ${legacy.length?`<div class="mini" style="margin-top:6px">${legacy.length} legacy plan(s) hidden (${legacy.map(x=>esc(x.code)).join(', ')}) — kept for existing licences, not sold on the new model.</div>`:''}
+  `;
 },
 
 // ============ ORDERS ============
@@ -1574,6 +1603,50 @@ async function savePlan(id) {
       usd_annual:+ep_ua.value, usd_monthly:+ep_um.value, min_devices:+ep_md.value, storage_gb:+ep_sg.value}});
     closeModal(); toast('Plan updated'); go('plans');
   } catch (e) { toast('Error: ' + e); }
+}
+
+// ---- Full pricing control (Cloud rental + On-Premise Lifetime bands) ----
+function pcCloudRow(min,max,rate,canW){const ro=canW?'':'readonly';return `<tr><td><input type="number" class="cb-min" value="${min??''}" ${ro}></td><td><input type="number" class="cb-max" value="${max??''}" placeholder="∞" ${ro}></td><td><input type="number" step="0.01" class="cb-rate" value="${rate??''}" ${ro}></td><td>${canW?`<button class="link" onclick="this.closest('tr').remove()">✕</button>`:''}</td></tr>`;}
+function pcPerpRow(min,max,price,canW){const ro=canW?'':'readonly';return `<tr><td><input type="number" class="pb-min" value="${min??''}" ${ro}></td><td><input type="number" class="pb-max" value="${max??''}" placeholder="∞" ${ro}></td><td><input type="number" class="pb-price" value="${price??''}" ${ro}></td><td>${canW?`<button class="link" onclick="this.closest('tr').remove()">✕</button>`:''}</td></tr>`;}
+function pcAddCloud(){document.getElementById('cloudBands').insertAdjacentHTML('beforeend', pcCloudRow('','','',true));}
+function pcAddPerp(){document.getElementById('perpBands').insertAdjacentHTML('beforeend', pcPerpRow('','','',true));}
+async function pcSaveCloud(){
+  const p=window.__PLAN;
+  const tiers=[...document.querySelectorAll('#cloudBands tr')].slice(1).map(r=>({
+    min_devices:+r.querySelector('.cb-min').value||0,
+    max_devices:r.querySelector('.cb-max').value===''?null:(+r.querySelector('.cb-max').value),
+    rate_inr_annual:+r.querySelector('.cb-rate').value||0,
+  })).filter(t=>t.min_devices>0);
+  try{
+    await api('plans/'+p.id,{method:'PUT',body:{inr_annual:+document.getElementById('pc_base').value,storage_gb:+document.getElementById('pc_sg').value}});
+    await api('plans/'+p.id+'/volume-tiers',{method:'PUT',body:{tiers}});
+    toast('Cloud pricing saved — landing follows in ~5 min'); go('plans');
+  }catch(e){toast('Error: '+e);}
+}
+async function pcSavePerp(){
+  const p=window.__PLAN;
+  const bands=[...document.querySelectorAll('#perpBands tr')].slice(1).map(r=>({
+    min_users:+r.querySelector('.pb-min').value||0,
+    max_users:r.querySelector('.pb-max').value===''?null:(+r.querySelector('.pb-max').value),
+    price_inr:+r.querySelector('.pb-price').value||0,
+  })).filter(b=>b.min_users>0);
+  try{
+    await api('plans/'+p.id+'/perpetual-bands',{method:'PUT',body:{bands}});
+    toast('Lifetime pricing saved — landing follows in ~5 min'); go('plans');
+  }catch(e){toast('Error: '+e);}
+}
+async function pcSaveFees(){
+  try{
+    await api('settings',{method:'PUT',body:{
+      pricing_setup_base_inr:+document.getElementById('pc_setb').value,
+      pricing_setup_included_devices:+document.getElementById('pc_seti').value,
+      pricing_setup_per_extra_inr:+document.getElementById('pc_setx').value,
+      pricing_amc_pct:+document.getElementById('pc_amc').value,
+      pricing_annual_discount_pct:+document.getElementById('pc_ad').value,
+      pricing_half_yearly_discount_pct:+document.getElementById('pc_hd').value,
+    }});
+    toast('Fees & rules saved'); go('plans');
+  }catch(e){toast('Error: '+e);}
 }
 
 // ---------- ⓘ HELP (3-tab, per screen) ----------

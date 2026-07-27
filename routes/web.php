@@ -128,6 +128,8 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
         // Super only
         Route::middleware('admin.role:super')->group(function () {
             Route::put('plans/{plan}', [Admin\ConfigApiController::class, 'updatePlan']);
+            Route::put('plans/{plan}/volume-tiers', [Admin\ConfigApiController::class, 'saveVolumeTiers']);
+            Route::put('plans/{plan}/perpetual-bands', [Admin\ConfigApiController::class, 'savePerpetualBands']);
             Route::get('settings', [Admin\ConfigApiController::class, 'settings']);
             Route::put('settings', [Admin\ConfigApiController::class, 'updateSettings']);
         Route::post('config/test-email', [Admin\ConfigApiController::class, 'testEmail']);

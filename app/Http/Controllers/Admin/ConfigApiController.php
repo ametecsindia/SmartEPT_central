@@ -36,6 +36,70 @@ class ConfigApiController extends Controller
         return response()->json($plan->fresh('volumeTiers'));
     }
 
+    /** Full-control Cloud rental bands (PlanVolumeTier): replace-all editor. Super only. */
+    public function saveVolumeTiers(Request $request, Plan $plan)
+    {
+        $data = $request->validate([
+            'tiers' => ['present', 'array'],
+            'tiers.*.min_devices' => ['required', 'integer', 'min:1'],
+            'tiers.*.max_devices' => ['nullable', 'integer', 'min:1'],
+            'tiers.*.rate_inr_annual' => ['required', 'numeric', 'min:0'],
+        ]);
+        foreach ($data['tiers'] as $t) {
+            if ($t['max_devices'] !== null && (int) $t['max_devices'] < (int) $t['min_devices']) {
+                return response()->json(['message' => 'Max users of each band must be greater than or equal to its Min users, or left blank for the open-ended top band.'], 422);
+            }
+        }
+        $tiers = collect($data['tiers'])->sortBy('min_devices')->values();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($plan, $tiers) {
+            $plan->volumeTiers()->delete();
+            foreach ($tiers as $t) {
+                $plan->volumeTiers()->create([
+                    'min_devices' => (int) $t['min_devices'],
+                    'max_devices' => ($t['max_devices'] === null || $t['max_devices'] === '') ? null : (int) $t['max_devices'],
+                    'rate_inr_annual' => (float) $t['rate_inr_annual'],
+                ]);
+            }
+        });
+        AuditLog::write('plan.cloud_bands.updated', $plan, ['count' => $tiers->count()]);
+        \Illuminate\Support\Facades\Cache::forget('public_plans_v2');
+
+        return response()->json($plan->fresh('volumeTiers'));
+    }
+
+    /** Full-control On-Premise Lifetime bands (PlanPerpetualBand): replace-all editor. Super only. */
+    public function savePerpetualBands(Request $request, Plan $plan)
+    {
+        $data = $request->validate([
+            'bands' => ['present', 'array'],
+            'bands.*.min_users' => ['required', 'integer', 'min:1'],
+            'bands.*.max_users' => ['nullable', 'integer', 'min:1'],
+            'bands.*.price_inr' => ['required', 'numeric', 'min:0'],
+        ]);
+        foreach ($data['bands'] as $b) {
+            if ($b['max_users'] !== null && (int) $b['max_users'] < (int) $b['min_users']) {
+                return response()->json(['message' => 'Max users of each band must be greater than or equal to its Min users, or left blank for the open-ended top band.'], 422);
+            }
+        }
+        $bands = collect($data['bands'])->sortBy('min_users')->values();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($plan, $bands) {
+            $plan->perpetualBands()->delete();
+            $i = 0;
+            foreach ($bands as $b) {
+                $plan->perpetualBands()->create([
+                    'min_users' => (int) $b['min_users'],
+                    'max_users' => ($b['max_users'] === null || $b['max_users'] === '') ? null : (int) $b['max_users'],
+                    'price_inr' => (int) round((float) $b['price_inr']),
+                    'sort' => $i++,
+                ]);
+            }
+        });
+        AuditLog::write('plan.lifetime_bands.updated', $plan, ['count' => $bands->count()]);
+        \Illuminate\Support\Facades\Cache::forget('public_plans_v2');
+
+        return response()->json($plan->fresh('perpetualBands'));
+    }
+
     private const EDITABLE_SETTINGS = [
         'gst_rate', 'invoice_prefix', 'quote_prefix', 'order_prefix', 'company_name', 'company_address',
         'company_gstin', 'company_phone', 'company_email', 'whatsapp_number',
@@ -51,7 +115,7 @@ class ConfigApiController extends Controller
         'default_console_url',
         // Pricing, billing cycles & cloud — Central -> Settings -> Pricing & Cloud
         'pricing_annual_discount_pct', 'pricing_half_yearly_discount_pct', 'pricing_cloud_multiplier',
-        'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr',
+        'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr', 'pricing_amc_pct',
         'pricing_storage_min_gb', 'pricing_storage_min_inr', 'pricing_storage_slabs',
     ];
 
@@ -68,6 +132,7 @@ class ConfigApiController extends Controller
         'pricing_setup_base_inr' => 5000,
         'pricing_setup_included_devices' => 25,
         'pricing_setup_per_extra_inr' => 100,
+        'pricing_amc_pct' => 18,
         'pricing_storage_min_gb' => 50,
         'pricing_storage_min_inr' => 150,
         'pricing_storage_slabs' => '[[1,500,3],[501,2048,2.5],[2049,null,2]]',
