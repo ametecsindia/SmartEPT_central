@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+<title>SmartEPT Central — Ametecs Super Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#0E7C8F;--accent2:#22B8CF;--weak:#E3F4F7;--deep:#0B6373;--ink:#15171C;--ink2:#565A66;
+--ink3:#878C99;--canvas:#F1EFEA;--card:#fff;--card2:#FAF9F5;--border:#E5E1D8;--border2:#DAD6CC;
+--hair:#EDEAE2;--ok:#08875D;--ok-w:#E6F5EE;--warn:#B7791F;--warn-w:#FBF3E2;--danger:#D02748;
+--danger-w:#FBE9ED;--info:#0B72C9;--info-w:#E6F1FB;--navy1:#04252C;--navy2:#0B4A56}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',sans-serif;background-color:var(--canvas);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.35'/%3E%3C/svg%3E"),radial-gradient(900px 320px at 85% -80px, rgba(34,184,207,.09), transparent 60%);background-blend-mode:soft-light,normal;background-attachment:fixed,fixed;color:var(--ink);font-size:14px;display:flex;min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+h1,h2,h3,h4,.brand b,.nav-sec{font-family:'Plus Jakarta Sans','Inter','Segoe UI',sans-serif;letter-spacing:-.01em}
+input,select,textarea{font-family:inherit;font-size:13.5px;padding:9px 11px;border:1.5px solid var(--border2);border-radius:8px;width:100%;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:10px 0 4px}
+/* sidebar */
+aside{width:232px;background:linear-gradient(175deg,var(--navy1),#083039);color:#C9E2E7;padding:12px 12px 10px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 10px;border-bottom:1px solid rgba(255,255,255,.1);flex:0 0 auto}
+#nav{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;margin:6px -4px;padding:2px 4px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+#nav::-webkit-scrollbar{width:5px}#nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+.brand .mk{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+.brand b{font-size:15px;color:#fff}.brand small{display:block;font-size:8.5px;letter-spacing:2px;color:#7FA8AF}
+nav{flex:1;margin-top:8px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+nav::-webkit-scrollbar{width:5px}nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9.5px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#A9CBD1;cursor:pointer;margin-bottom:2px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
+.nav-ic{display:flex;align-items:center;opacity:.85}.nav-item.on .nav-ic{opacity:1}
+.nav-sec{font-size:10px;letter-spacing:1.8px;color:#5E858C;text-transform:uppercase;font-weight:800;margin:10px 12px 4px}
+.me{border-top:1px solid rgba(255,255,255,.1);padding-top:8px;display:flex;flex-direction:column;gap:7px;flex:0 0 auto}
+.me-row{display:flex;align-items:center;gap:9px}
+.me .av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+.me b{font-size:12.5px;color:#fff;display:block}.me span{font-size:10.5px;color:#7FA8AF;text-transform:capitalize}
+.me form{width:100%}
+.me button{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:12px;font-weight:600;padding:7px;border-radius:8px;cursor:pointer}
+.me button:hover{background:var(--accent);border-color:var(--accent)}
+/* main */
+main{flex:1;padding:26px 30px;max-width:calc(100vw - 232px);display:flex;flex-direction:column;min-height:100vh}
+main>#page{flex:1 1 auto}
+.page-copy{margin-top:28px;padding-top:14px;border-top:1px solid var(--hair);text-align:center;font-size:10.5px;color:var(--ink3);line-height:1.5}
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.topbar h1{font-size:21px;font-weight:800}
+.help-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--accent);color:var(--accent);background:#fff;font-weight:800;font-size:13px}
+.topbar .sp{flex:1}
+.btn{padding:9px 16px;border-radius:8px;border:none;font-weight:700;font-size:13px}
+.btn-p{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff}
+.btn-l{background:#fff;border:1.5px solid var(--border2);color:var(--deep)}
+.btn-d{background:var(--danger-w);color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+/* cards & stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{background:#fff;border:1px solid var(--hair);border-radius:15px;padding:16px 18px;box-shadow:0 1px 2px rgba(16,42,51,.05),0 6px 18px rgba(16,42,51,.06),inset 0 1px 0 rgba(255,255,255,.7)}
+.stat .l{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;font-weight:700}
+.stat .v{font-size:26px;font-weight:800;margin-top:3px}
+.stat .v.teal{color:var(--accent)}.stat .v.ok{color:var(--ok)}.stat .v.warn{color:var(--warn)}
+.card{background:#fff;border:1px solid var(--hair);border-radius:15px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,42,51,.05),0 6px 18px rgba(16,42,51,.06),inset 0 1px 0 rgba(255,255,255,.7)}
+.card h3{font-size:14.5px;font-weight:800;margin-bottom:12px;color:var(--deep)}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;background:var(--weak);color:var(--deep);padding:9px 11px;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px}
+th:first-child{border-radius:8px 0 0 8px}th:last-child{border-radius:0 8px 8px 0}
+td{padding:10px 11px;border-bottom:1px solid var(--hair);vertical-align:middle}
+tr:hover td{background:var(--card2)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700}
+.p-ok{background:var(--ok-w);color:var(--ok)}.p-warn{background:var(--warn-w);color:var(--warn)}
+.p-dang{background:var(--danger-w);color:var(--danger)}.p-info{background:var(--info-w);color:var(--info)}
+.p-mut{background:var(--hair);color:var(--ink3)}
+.mini{font-size:11.5px;color:var(--ink3)}
+.link{color:var(--accent);font-weight:700;cursor:pointer;background:none;border:none;font-size:12.5px}
+.filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.filters input,.filters select{width:auto;min-width:160px}
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(4,37,44,.55);display:none;align-items:flex-start;justify-content:center;z-index:40;padding:40px 16px;overflow-y:auto}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:560px;padding:24px 26px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.modal.wide{max-width:760px}
+.modal h2{font-size:17px;font-weight:800;margin-bottom:4px}
+.modal .sub{font-size:12.5px;color:var(--ink3);margin-bottom:12px}
+.modal .row{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.modal .foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+/* help modal */
+.help-head{background:linear-gradient(135deg,var(--navy1),var(--navy2));color:#fff;margin:-24px -26px 14px;padding:18px 26px;border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:space-between}
+.help-head b{font-size:15px}.help-head span{font-size:11px;color:#9FC5CC;display:block}
+.help-head button{background:none;border:none;color:#fff;font-size:20px}
+.help-tabs{display:flex;gap:6px;margin-bottom:14px}
+.help-tabs button{padding:7px 14px;border-radius:8px;border:1.5px solid var(--border2);background:#fff;font-weight:700;font-size:12px;color:var(--ink2)}
+.help-tabs button.on{background:var(--weak);border-color:var(--accent);color:var(--deep)}
+.help-body{font-size:13px;line-height:1.65;color:var(--ink2);max-height:52vh;overflow-y:auto}
+.help-body h4{color:var(--deep);margin:12px 0 6px;font-size:13px}
+.help-body ol{padding-left:20px}.help-body li{margin-bottom:5px}
+.tip{background:var(--warn-w);border-left:3.5px solid var(--warn);padding:9px 12px;border-radius:0 8px 8px 0;margin-top:10px;color:#7A5614}
+.scen{background:var(--navy1);color:#DFF0F3;padding:12px 14px;border-radius:10px;margin:10px 0;font-size:12.5px}
+.gain{color:var(--ok)}
+/* quote box */
+.quote-box{background:var(--weak);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:12.5px;color:var(--deep)}
+.quote-box .ln{display:flex;justify-content:space-between;padding:3px 0}
+.quote-box .tt{border-top:1.5px solid rgba(11,99,115,.25);margin-top:6px;padding-top:6px;font-weight:800;font-size:14px}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--navy1);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;display:none;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.pager{display:flex;gap:8px;margin-top:12px;align-items:center;font-size:12.5px;color:var(--ink3)}
+@media(max-width:1100px){.stats{grid-template-columns:1fr 1fr}.modal .row{grid-template-columns:1fr}}
+/* ---- Mobile ---- */
+.ham{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--ink);font-size:19px;line-height:1;cursor:pointer;align-items:center;justify-content:center;flex:none}
+.nav-backdrop{display:none;position:fixed;inset:0;background:rgba(4,20,25,.5);z-index:30}
+@media(max-width:860px){
+  aside{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .26s ease;z-index:40;box-shadow:0 0 50px rgba(0,0,0,.5)}
+  body.nav-open aside{transform:translateX(0)}
+  body.nav-open .nav-backdrop{display:block}
+  main{max-width:100vw;padding:16px 14px}
+  .ham{display:inline-flex}
+  .topbar h1{font-size:18px}
+  .stats{grid-template-columns:1fr 1fr}
+  .filters{gap:8px}
+  .card{overflow-x:auto}
+  .card table{min-width:560px}
+  .modal{max-width:96vw}
+}
+@media(max-width:520px){.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-role="<?php echo e($user->role); ?>" data-default-console-url="<?php echo e(\App\Models\Setting::get('default_console_url','')); ?>">
+
+<aside>
+  <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT Central" style="width:150px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CENTRAL &middot; SUPER ADMIN</small></div>
+  <nav id="nav">
+    <div class="nav-sec">Business</div>
+    <div class="nav-item on" data-page="dashboard"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></svg></span> Dashboard</div>
+    <div class="nav-item" data-page="tenants"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="8.2" r="3.4"/><path d="M2.8 20.2a6.2 6.2 0 0 1 12.4 0"/><circle cx="17.2" cy="9.4" r="2.6"/><path d="M16 15.6a5 5 0 0 1 5.2 4.6"/></svg></span> Clients / Tenants</div>
+    <div class="nav-item" data-page="trials"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 1.9"/></svg></span> Trials</div>
+    <div class="nav-item" data-page="leads"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg></span> Leads</div>
+    <div class="nav-item" data-page="support"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-3.3A8.4 8.4 0 1 1 21 11.5z"/><path d="M9 10h.01M12.5 10h.01M16 10h.01"/></svg></span> Support</div>
+    <div class="nav-sec">Licensing</div>
+    <div class="nav-item" data-page="licences"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="8" cy="12" r="4.6"/><path d="M12.6 12H21M17.5 12v3.4M21 12v2.4"/></svg></span> Licences</div>
+    <div class="nav-item" data-page="plans"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M3 7h18M3 12h18M3 17h12"/></svg></span> Plans &amp; Pricing</div>
+    <div class="nav-sec">Money</div>
+    <div class="nav-item" data-page="orders"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2.2l2.2 11.2a1.4 1.4 0 0 0 1.4 1.1h8.2a1.4 1.4 0 0 0 1.4-1.1L21 8H6"/></svg></span> Orders &amp; Payments</div>
+    <div class="nav-item" data-page="credit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18M6.5 14.5h4"/></svg></span> Credit Clients</div>
+    <div class="nav-item" data-page="invoices"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M6 2.5h9l4 4V21a.9.9 0 0 1-.9.9H6a.9.9 0 0 1-.9-.9V3.4a.9.9 0 0 1 .9-.9z"/><path d="M15 2.5V7h4.5M9 12h6M9 16h6"/></svg></span> Invoices</div>
+    <div class="nav-item" data-page="storage"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span> Cloud Storage</div>
+    <div class="nav-item" data-page="coupons"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg></span> Coupons</div>
+    <div class="nav-item" data-page="reports"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M6 2.5h9l4 4V21a.9.9 0 0 1-.9.9H6a.9.9 0 0 1-.9-.9V3.4a.9.9 0 0 1 .9-.9z"/><path d="M9 13h6M9 17h4M9 9h2"/></svg></span> Accountant Reports</div>
+    <div class="nav-sec">System</div>
+    <div class="nav-item" data-page="cms" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M7 13h6M7 16h10"/></svg></span> Landing CMS</div>
+    <div class="nav-item" data-page="watemplates" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.6-1.3A9 9 0 1 0 12 3z"/><path d="M8.6 9.4c.3 1.9 1.9 3.6 3.9 4.1"/></svg></span> WhatsApp Templates</div>
+    <div class="nav-item" data-page="downloads" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5"/><path d="M5 21h14"/></svg></span> Downloads</div>
+    <div class="nav-item" data-page="settings" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 13.4H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 6.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span> Settings</div>
+    <div class="nav-item" data-page="users" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="8.2" r="3.4"/><path d="M2.8 20.2a6.2 6.2 0 0 1 12.4 0"/><circle cx="17.2" cy="9.4" r="2.6"/><path d="M16 15.6a5 5 0 0 1 5.2 4.6"/></svg></span> Users &amp; Roles</div>
+    <div class="nav-item" data-page="audit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></span> Audit Log</div>
+    <div class="nav-item" data-page="help" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.6-2.8 2.6"/><path d="M12 17h.01"/></svg></span> Help &amp; Troubleshooting</div>
+  </nav>
+  <div class="me">
+    <div class="me-row">
+      <div class="av"><?php echo e(strtoupper(substr($user->name, 0, 2))); ?></div>
+      <div><b><?php echo e($user->name); ?></b><span><?php echo e($user->role); ?></span></div>
+    </div>
+    <form method="POST" action="/admin/logout"><?php echo csrf_field(); ?><button type="submit">&#x23FB;&nbsp; Sign out</button></form>
+  </div>
+</aside>
+
+<div class="nav-backdrop" id="nav-backdrop" onclick="document.body.classList.remove('nav-open')"></div>
+<main>
+  <div class="topbar">
+    <button class="ham" id="nav-toggle" aria-label="Menu" title="Menu" onclick="document.body.classList.toggle('nav-open')">☰</button>
+    <h1 id="pageTitle">Dashboard</h1>
+    <button class="help-btn" onclick="go(PAGE)" title="Refresh this screen">&#x21bb;</button>
+    <button class="help-btn" onclick="openHelp()" title="Screen help">i</button>
+    <div class="sp"></div>
+    <div id="pageActions"></div>
+  </div>
+  <div id="page"></div>
+  <div class="page-copy">© 2026 SmartEPT, developed by Ametecs India Private Limited — all rights reserved.</div>
+</main>
+
+<!-- generic modal -->
+<div class="overlay" id="modalOv"><div class="modal" id="modalBox"></div></div>
+<!-- help modal -->
+<div class="overlay" id="helpOv"><div class="modal">
+  <div class="help-head"><div><b id="helpTitle"></b><span>SmartEPT Central · Screen Help</span></div>
+  <button onclick="closeHelp()">×</button></div>
+  <div class="help-tabs">
+    <button class="on" onclick="helpTab(0,this)">How to use it</button>
+    <button onclick="helpTab(1,this)">Why it matters</button>
+    <button onclick="helpTab(2,this)">Do it right</button>
+  </div>
+  <div class="help-body" id="helpBody"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CSRF = document.querySelector('meta[name=csrf-token]').content;
+const ROLE = document.body.dataset.role;
+const DEFAULT_CONSOLE_URL = document.body.dataset.defaultConsoleUrl || '';
+const CAN_WRITE = ROLE === 'super' || ROLE === 'sales';
+const fmtMoney = (n, c='INR') => (c==='INR'?'₹':'$') + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2});
+const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const toast = m => { const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none', 3200); };
+
+async function api(path, opts={}) {
+  const res = await fetch('/admin/api/' + path, {
+    headers: {'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},
+    ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (res.status === 401) { location.href = '/admin/login'; return; }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw (data.error || data.message || 'Request failed');
+  return data;
+}
+
+// ---------- modal helpers ----------
+const ov = document.getElementById('modalOv'), box = document.getElementById('modalBox');
+function openModal(html, wide=false) { box.className = 'modal' + (wide?' wide':''); box.innerHTML = html; ov.classList.add('show'); }
+function closeModal() { ov.classList.remove('show'); }
+ov.addEventListener('click', e => { if (e.target === ov) closeModal(); });
+
+// ---------- pages ----------
+let PAGE = 'dashboard';
+const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
+plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
+storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log',
+help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports',support:'Support',users:'Users & Roles'};
+const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  if (el.dataset.super && ROLE !== 'super') { el.style.display = 'none'; return; }
+  el.onclick = () => go(el.dataset.page);
+});
+function go(page) {
+  document.body.classList.remove('nav-open');
+  PAGE = page;
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('on', e.dataset.page === page));
+  document.getElementById('pageTitle').textContent = TITLES[page] || page;
+  document.getElementById('pageActions').innerHTML = '';
+  // Clear first so a failing screen can never leave the PREVIOUS screen showing
+  // (that was the "Audit and Settings look the same" bug), and surface any error.
+  document.getElementById('page').innerHTML = '<div class="mini">Loading…</div>';
+  Promise.resolve().then(() => RENDER[page] ? RENDER[page]() : Promise.reject(new Error('Unknown screen: ' + page)))
+    .catch(err => {
+      document.getElementById('page').innerHTML =
+        '<div class="card"><h3>Could not load this screen</h3><div class="mini">'
+        + esc(String(err && err.message ? err.message : err)) + '</div></div>';
+    });
+}
+const P = document.getElementById('page');
+const ACTIONS = document.getElementById('pageActions');
+const statusPill = s => ({quote:'p-info',active:'p-ok',trial:'p-info',paid:'p-ok',created:'p-warn',suspended:'p-warn',
+  expired:'p-dang',revoked:'p-dang',failed:'p-dang',refunded:'p-mut',churned:'p-mut',issued:'p-info',
+  cancelled:'p-mut',draft:'p-mut'}[s] || 'p-mut');
+const pill = s => `<span class="pill ${statusPill(s)}">${esc(s)}</span>`;
+
+let AUDIT_ACTION = '';
+let WA_PURPOSES = {};
+function waEdit(t) {
+  const p = t || {purpose:'welcome', name:'', language:'en', category:'utility', body:'', sample_values:'', var_count:0, status:'draft'};
+  const opts = Object.entries(WA_PURPOSES).map(([k,v]) => `<option value="${k}"${k===p.purpose?' selected':''}>${esc(v)}</option>`).join('');
+  const cats = ['utility','marketing','authentication'].map(c => `<option${c===(p.category||'utility')?' selected':''}>${c}</option>`).join('');
+  openModal(`<h2>${t?'Edit':'New'} WhatsApp template</h2>
+  <div class="sub">Use the EXACT template name approved in your Interakt dashboard.</div>
+  <div class="row">
+  <div><label>Purpose</label><select id="wa_purpose">${opts}</select></div>
+  <div><label>Template name (Interakt)</label><input id="wa_name" value="${esc(p.name)}" placeholder="smartept_welcome"></div>
+  <div><label>Language</label><input id="wa_lang" value="${esc(p.language||'en')}" placeholder="en"></div>
+  <div><label>Category</label><select id="wa_cat">${cats}</select></div></div>
+  <label>Body (reference — must match the approved template)</label>
+  <textarea id="wa_body" rows="3" placeholder="Hi {{1}}, thanks for your interest in SmartEPT…">${esc(p.body||'')}</textarea>
+  <label>Sample values (comma-separated — used for the test send; must match the {{n}} variables)</label>
+  <input id="wa_samples" value="${esc(p.sample_values||'')}" placeholder="Ejaz">
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="waSave(${t?t.id:0})">Save</button></div>`);
+}
+async function waSave(id) {
+  const samples = document.getElementById('wa_samples').value.trim();
+  const body = {
+    purpose: document.getElementById('wa_purpose').value,
+    name: document.getElementById('wa_name').value.trim(),
+    language: document.getElementById('wa_lang').value.trim() || 'en',
+    category: document.getElementById('wa_cat').value,
+    body: document.getElementById('wa_body').value,
+    sample_values: samples,
+    var_count: samples ? samples.split(',').filter(x => x.trim()).length : 0,
+  };
+  if (!body.name) { toast('Template name is required'); return; }
+  try { await api('wa-templates' + (id ? ('/' + id) : ''), {method: id ? 'PUT' : 'POST', body}); closeModal(); toast('Template saved'); go('watemplates'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function waTest(id) {
+  const mobile = prompt('Send a test of this template to which mobile number? (10-digit, +91 assumed)');
+  if (!mobile) return;
+  try { const r = await api('wa-templates/' + id + '/test', {method:'POST', body:{mobile}}); toast(r.message); go('watemplates'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function waDelete(id) {
+  if (!confirm('Remove this template from the registry? (It does not delete it from Interakt.)')) return;
+  try { await api('wa-templates/' + id, {method:'DELETE'}); toast('Deleted'); go('watemplates'); }
+  catch (e) { toast('Error: ' + e); }
+}
+// ============ HELP & TROUBLESHOOTING (system health + known issues + log) ============
+function ensureHelpCss() {
+  if (document.getElementById('help-css')) return;
+  const st = document.createElement('style'); st.id = 'help-css';
+  st.textContent =
+    '#hc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}'
+    + '@media(max-width:820px){#hc-grid{grid-template-columns:1fr}}'
+    + '.hc-item{display:flex;gap:11px;align-items:flex-start;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:var(--card)}'
+    + '.hc-item .dot{width:11px;height:11px;border-radius:50%;flex:none;margin-top:4px}'
+    + '.hc-ok .dot{background:var(--ok)}.hc-warn .dot{background:var(--warn)}.hc-down .dot{background:var(--danger)}'
+    + '.hc-item.hc-down{background:var(--danger-w);border-color:transparent}.hc-item.hc-warn{background:var(--warn-w);border-color:transparent}'
+    + '.hc-item b{font-size:12.5px;color:var(--ink)}.hc-item p{margin:3px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.5}'
+    + '.hc-item a{color:var(--accent);font-weight:700;cursor:pointer;font-size:11px;white-space:nowrap}'
+    + 'details.hkb{border:1px solid var(--border);border-radius:11px;margin-bottom:9px;background:var(--card);overflow:hidden}'
+    + 'details.hkb>summary{cursor:pointer;padding:12px 14px;font-weight:700;font-size:12.5px;color:var(--ink);list-style:none;display:flex;align-items:center;gap:10px}'
+    + 'details.hkb>summary::-webkit-details-marker{display:none}'
+    + 'details.hkb>summary::after{content:"\\25be";margin-left:auto;color:var(--ink3);transition:transform .15s}'
+    + 'details.hkb[open]>summary::after{transform:rotate(180deg)}'
+    + '.hkb-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap}'
+    + '.hkb-body{padding:2px 15px 14px;font-size:12px;line-height:1.6;color:var(--ink2)}'
+    + '.hkb-body p{margin:7px 0}.hkb-body b{color:var(--ink)}'
+    + '.hkb-body ol,.hkb-body ul{margin:6px 0 6px 18px;padding:0}.hkb-body li{margin:3px 0}'
+    + '.hkb-body code{background:var(--card2);padding:1.5px 6px;border-radius:5px;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace}'
+    + '.hkb-esc{background:var(--weak);border-radius:8px;padding:8px 11px;margin-top:10px!important;color:var(--deep)}'
+    + '.hkb-div{margin:18px 0 10px;font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--ink3);text-transform:uppercase}'
+    + '.hkb-flash{outline:2px solid var(--accent);outline-offset:1px}'
+    + '.hc-log{background:#0B1220;color:#D6E2F0;border-radius:11px;padding:14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.55;max-height:440px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}'
+    + '.htabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}'
+    + '.htab{appearance:none;border:0;background:none;cursor:pointer;padding:9px 16px;font-size:12.5px;font-weight:700;color:var(--ink3);border-bottom:2px solid transparent;margin-bottom:-1px}'
+    + '.htab.on{color:var(--accent);border-bottom-color:var(--accent)}'
+    + '.htab:hover{color:var(--ink)}'
+    + '.htab-panel{display:none}.htab-panel.on{display:block}';
+  document.head.appendChild(st);
+}
+const WA = '90000 98877';
+const HELP_KB_CENTRAL = [
+  { id:'c-db', tag:'Platform', cls:'p-dang', title:'Billing, licences or client logins are failing',
+    kw:'database mysql sqlite connection central down billing licence login',
+    body:'<p><b>What you see:</b> Screens error, or licences/orders/logins do not work.</p>'
+      +'<p><b>Likely cause:</b> Central lost its database settings and fell back to an empty local database.</p>'
+      +'<p><b>How to check:</b> Run System Health above — the “Database connection” row will be red.</p>'
+      +'<p><b>How to fix:</b> In <code>.env</code> confirm <code>DB_CONNECTION=mysql</code> and the correct <code>DB_DATABASE</code>, run <code>migrate.bat</code>, then Laragon Stop All then Start All.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If the row is still red after this — WhatsApp '+WA+'.</p>' },
+  { id:'c-wa', tag:'WhatsApp', cls:'p-warn', title:'WhatsApp messages are not being sent',
+    kw:'whatsapp interakt not sending template approved api key otp welcome payment renewal',
+    body:'<p><b>What you see:</b> Welcome, payment, renewal or OTP WhatsApp messages never arrive.</p>'
+      +'<p><b>Likely cause:</b> Either the Interakt API key is missing / status is off, or the template used is not approved on Interakt.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “WhatsApp (Interakt)” row shows if it is configured. Then open <b>WhatsApp Templates</b> and confirm the template for that purpose shows <b>approved</b>.</p>'
+      +'<p><b>How to fix:</b></p><ol>'
+      +'<li>In <b>Settings → WhatsApp API</b>, paste the Interakt API key and set status to <b>active</b>.</li>'
+      +'<li>In <b>WhatsApp Templates</b>, make sure each purpose points to a template name that is <b>approved</b> in your Interakt dashboard, with matching variables.</li>'
+      +'<li>Use the template’s <b>Test</b> button to send yourself one.</li></ol>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If the key is set and the template is approved but sending still fails — WhatsApp '+WA+'.</p>' },
+  { id:'c-payments', tag:'Payments', cls:'p-warn', title:'Clients cannot pay online',
+    kw:'payment razorpay stripe gateway not working checkout webhook keys',
+    body:'<p><b>What you see:</b> The checkout/pay link fails, or online payment options do not appear.</p>'
+      +'<p><b>Likely cause:</b> No payment gateway keys are set, or the webhook secret is missing so paid orders are not marked paid automatically.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “Online payments” row shows whether Razorpay/Stripe is set up.</p>'
+      +'<p><b>How to fix:</b> Add the Razorpay and/or Stripe keys (including the webhook secret) in <b>Settings</b>. You can always record a manual/offline payment on the order in the meantime.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If keys are set but payments still fail or orders don’t auto-mark paid — WhatsApp '+WA+'.</p>' },
+  { id:'c-mail', tag:'Email', cls:'p-warn', title:'Invoices, OTPs or credential emails are not arriving',
+    kw:'email smtp mail not sending invoice otp credentials host settings test',
+    body:'<p><b>What you see:</b> Emailed invoices, OTPs or sign-in details never reach the client.</p>'
+      +'<p><b>Likely cause:</b> The SMTP mail settings are missing or wrong.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “Email sending” row. Then in <b>Settings</b> use <b>Send test email</b>.</p>'
+      +'<p><b>How to fix:</b> Fill the mail host, port, username, password and encryption in <b>Settings</b>, save, and send a test. Check spam if it still doesn’t show.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If the test email won’t send with correct details — WhatsApp '+WA+'.</p>' },
+  { id:'c-otp', tag:'Client login', cls:'p-warn', title:'A client cannot log in to the portal / OTP not received',
+    kw:'client portal login otp not received signup forgot password whatsapp email',
+    body:'<p><b>What you see:</b> A client can’t sign up or reset their password because the OTP never arrives.</p>'
+      +'<p><b>Likely cause:</b> OTPs go out over WhatsApp and/or email — if either is not configured, delivery fails.</p>'
+      +'<p><b>How to check:</b> Run System Health and confirm both “Email sending” and “WhatsApp (Interakt)” are green.</p>'
+      +'<p><b>How to fix:</b> Fix email (card above) and WhatsApp (card above). Confirm the client’s mobile/email on their tenant record is correct.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If both channels are green but OTP still fails — WhatsApp '+WA+'.</p>' },
+  { id:'c-provision', tag:'Provisioning', cls:'p-warn', title:'A new client’s console or licence didn’t provision',
+    kw:'provision provisioning tenant console sso secret licence issue new client hosted',
+    body:'<p><b>What you see:</b> After creating a client/order, their hosted console or licence isn’t set up, or one-click sign-in fails.</p>'
+      +'<p><b>Likely cause:</b> The shared provisioning/SSO secret in Central doesn’t match the one on the client server.</p>'
+      +'<p><b>How to check:</b> Open the <b>Application log</b> below right after provisioning — the newest lines usually name the failure.</p>'
+      +'<p><b>How to fix:</b> Confirm <code>PROVISION_SECRET</code> and <code>SSO_SHARED_SECRET</code> in Central’s <code>.env</code> match the client server’s values, then do a full Laragon restart on both.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> Send the copied log to WhatsApp '+WA+'.</p>' },
+  { id:'c-migrate', tag:'After an update', cls:'p-warn', title:'A new feature is missing or a screen errors after an update',
+    kw:'migration migrate database update pending feature missing column table',
+    body:'<p><b>What you see:</b> After a new build, a feature is missing or a screen throws a “column/table not found” error.</p>'
+      +'<p><b>Likely cause:</b> The database updates for the new build haven’t been applied.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “Database updates” row shows any pending count.</p>'
+      +'<p><b>How to fix:</b> Run <code>migrate.bat</code> in the Central app folder, then re-run System Health.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If migrate errors — copy it to WhatsApp '+WA+'.</p>' },
+  { id:'c-opcache', tag:'Updates not applying', cls:'p-warn', title:'My changes don’t take effect no matter what',
+    kw:'opcache validate timestamps frozen changes not applying restart cache',
+    body:'<p><b>What you see:</b> You change a setting or file, but Central keeps behaving the old way.</p>'
+      +'<p><b>Likely cause:</b> PHP’s code cache (OPcache) is set never to re-read files.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “PHP code cache (OPcache)” row will be amber.</p>'
+      +'<p><b>How to fix:</b> Set <code>opcache.validate_timestamps=1</code> in <code>php.ini</code>, then Laragon <b>Stop All</b> then <b>Start All</b> (a full stop, not a reload).</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If it stays amber after a full restart — WhatsApp '+WA+'.</p>' },
+  { id:'c-storage', tag:'Storage', cls:'p-dang', title:'Invoices or files won’t save / disk is full',
+    kw:'storage disk full not writable invoices pdf files save space',
+    body:'<p><b>What you see:</b> Invoice/quote PDFs or installer files fail to generate or download.</p>'
+      +'<p><b>Likely cause:</b> The storage folder isn’t writable or the disk is out of space.</p>'
+      +'<p><b>How to check:</b> Run System Health — the “File storage” row shows the folder and whether it’s writable/near full.</p>'
+      +'<p><b>How to fix:</b> Free up disk space and make sure the web server account can write to the app’s <code>storage</code> folder.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If writable with space but files still fail — WhatsApp '+WA+'.</p>' },
+  { id:'c-500', tag:'A screen errors', cls:'p-dang', title:'A screen shows an error or won’t load',
+    kw:'500 internal server error screen not loading crash could not load',
+    body:'<p><b>What you see:</b> A screen shows “Could not load this screen” or a 500 error.</p>'
+      +'<p><b>Likely cause:</b> A code/template error on that screen, or the database issue above.</p>'
+      +'<p><b>How to check:</b> Open the <b>Application log</b> below and load the last 100 lines — the newest ERROR line names the file and line.</p>'
+      +'<p><b>How to fix:</b> If it points at the database, use the first card. Otherwise use “Copy for developer” and send the log to Ametecs.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> Any error that isn’t the database — WhatsApp '+WA+'.</p>' },
+];
+const HELP_KB_CLIENT = [
+  { id:'p-agent-db', tag:'Client · data', cls:'p-dang', title:'A client’s agent data / screenshots stopped arriving',
+    kw:'client agent data screenshots stopped sqlite mysql database fallback token rejected',
+    body:'<p><b>What the client sees:</b> Agents look fine on the PCs, but new screenshots/activity stop appearing in their console.</p>'
+      +'<p><b>Likely cause:</b> The client server’s web app fell back to an empty SQLite database, so agent logins can’t be verified and uploads are rejected.</p>'
+      +'<p><b>How to fix (on the client server):</b> In <code>.env</code> set <code>DB_CONNECTION=mysql</code> and <code>DB_DATABASE=smartept</code>, run <code>migrate.bat</code>, then Laragon Stop All then Start All, and re-login one agent. The client’s own Help → System Health confirms it.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-opcache', tag:'Client · updates', cls:'p-warn', title:'A client’s changes/fixes don’t take effect',
+    kw:'client opcache frozen validate timestamps changes not applying',
+    body:'<p><b>Cause:</b> OPcache on the client server is serving a frozen copy of the code.</p>'
+      +'<p><b>Fix (client server):</b> Set <code>opcache.validate_timestamps=1</code> in <code>php.ini</code>, then Laragon Stop All then Start All.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-license', tag:'Client · licence', cls:'p-warn', title:'A client’s recording is paused / “evaluation ended”',
+    kw:'client licence evaluation ended monitoring blocked storage paused key validate',
+    body:'<p><b>Cause:</b> The client’s licence key isn’t entered/validated, so recording is held.</p>'
+      +'<p><b>Fix:</b> Issue/confirm their licence here in <b>Licences</b>, then have them enter the key in their console’s Licence screen and validate. Recording resumes immediately.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-storage', tag:'Client · storage', cls:'p-dang', title:'A client’s screenshots aren’t saving / disk full',
+    kw:'client storage evidence disk full not writable nas screenshots not saving',
+    body:'<p><b>Cause:</b> The client’s evidence folder isn’t writable or the disk is full.</p>'
+      +'<p><b>Fix:</b> In their console → <b>Audit &amp; Ops → Local / On-premise storage</b>, point evidence at a bigger drive or NAS, and turn on automatic cleanup. Their Help → System Health shows the exact folder.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-agent-silent', tag:'Client · agents', cls:'p-warn', title:'A client’s agent stopped checking in',
+    kw:'client agent offline silent no heartbeat stopped reporting',
+    body:'<p><b>Cause:</b> The PC is off/asleep/off-network, or the agent was stopped.</p>'
+      +'<p><b>Fix:</b> Confirm the PC is on and online; reopen the agent from the Start Menu. Data recorded offline syncs automatically when it returns.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-agent-install', tag:'Client · agents', cls:'p-warn', title:'A client’s agent “isn’t responding” right after install',
+    kw:'client agent not responding after install defender smartscreen first run',
+    body:'<p><b>Cause:</b> Windows Defender/SmartScreen scans a new app on first run.</p>'
+      +'<p><b>Fix:</b> Wait ~30 seconds and reopen the agent from the Start Menu — it settles on its own.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-agent-upgrade', tag:'Client · good to know', cls:'p-info', title:'Updating a client’s agent keeps it paired',
+    kw:'client agent update over old preserves pairing upgrade keeps device paired',
+    body:'<p>Installing a newer agent over an existing one does not wipe pairing or settings — the PC stays paired. It’s safe to push updates to a whole fleet without re-pairing.</p>'
+      +'<p class="hkb-esc"><b>Note:</b> Only a full uninstall clears pairing. Questions? WhatsApp '+WA+'.</p>' },
+  { id:'p-migrate', tag:'Client · after update', cls:'p-warn', title:'A client feature is missing after an update',
+    kw:'client migration pending feature missing column table after update migrate',
+    body:'<p><b>Cause:</b> The client server’s database updates weren’t applied after the new build.</p>'
+      +'<p><b>Fix:</b> Run <code>migrate.bat</code> on the client server; their Help → System Health “Database updates” row confirms.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-gcs', tag:'Client · cloud', cls:'p-warn', title:'A client’s Cloud Storage says “libraries not installed”',
+    kw:'client cloud storage google gcs composer libraries not installed enable',
+    body:'<p><b>Fix (client server):</b> Run <code>deployment\\installers\\ENABLE-CLOUD-STORAGE.bat</code>, or in Laragon Terminal (one command per line): <code>cd /d C:\\laragon\\www\\smartept</code> then <code>composer require google/cloud-storage league/flysystem-google-cloud-storage</code>.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+  { id:'p-composer', tag:'Client · setup', cls:'p-warn', title:'Composer fails with “does not contain valid JSON”',
+    kw:'client composer invalid json variable one line terminal reserved',
+    body:'<p><b>Cause:</b> A batch variable was named <code>COMPOSER</code>, or <code>cd</code> and a command were on one line.</p>'
+      +'<p><b>Fix:</b> In Laragon Terminal, type one command per line and never use a variable called <code>COMPOSER</code>.</p>'
+      +'<p class="hkb-esc"><b>Escalate:</b> WhatsApp '+WA+'.</p>' },
+];
+function helpKbCard(c) {
+  return '<details class="hkb" id="' + c.id + '" data-kb="' + esc(c.kw || '') + '">'
+    + '<summary><span class="hkb-tag ' + c.cls + '">' + esc(c.tag) + '</span> ' + esc(c.title) + '</summary>'
+    + '<div class="hkb-body">' + c.body + '</div></details>';
+}
+async function helpRun() {
+  const box = document.getElementById('hc-grid'); if (!box) return;
+  box.innerHTML = '<div class="mini">Running checks…</div>';
+  const ov = document.getElementById('hc-overall'); if (ov) ov.style.display = 'none';
+  try {
+    const r = await api('diagnostics'); if (!r) return;
+    const M = { ok:['p-ok','All good'], warn:['p-warn','Needs attention'], down:['p-dang','Action needed'] };
+    const o = M[r.overall] || M.ok;
+    if (ov) { ov.className = 'pill ' + o[0]; ov.textContent = o[1]; ov.style.display = ''; }
+    const wn = document.getElementById('hc-when'); if (wn) wn.textContent = 'Checked ' + r.checked_at;
+    box.innerHTML = (r.checks || []).map(c => {
+      const cls = c.status === 'ok' ? 'hc-ok' : (c.status === 'warn' ? 'hc-warn' : 'hc-down');
+      const fix = c.fix ? ' <a onclick="openHelpKb(\'' + c.fix + '\')">How to fix this &rarr;</a>' : '';
+      return '<div class="hc-item ' + cls + '"><span class="dot"></span><div><b>'
+        + esc(c.label) + '</b><p>' + esc(c.detail) + fix + '</p></div></div>';
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div class="mini" style="color:var(--danger)">Could not run checks: ' + esc(String(e)) + '</div>';
+  }
+}
+function helpPanelTab(name) {
+  document.querySelectorAll('#page .htab').forEach(b => b.classList.toggle('on', b.dataset.ht === name));
+  document.querySelectorAll('#page .htab-panel').forEach(p => p.classList.toggle('on', p.dataset.ht === name));
+  // Auto-load the log when the tab opens so it is never a blank panel.
+  if (name === 'log') { try { loadHelpLog(); } catch (e) { /* ignore */ } }
+}
+function openHelpKb(id) {
+  const el = document.getElementById(id); if (!el) return;
+  helpPanelTab('fix'); // the KB lives on the "Fix a problem" tab — switch to it first
+  el.open = true; el.scrollIntoView({ behavior:'smooth', block:'center' });
+  el.classList.add('hkb-flash'); setTimeout(() => el.classList.remove('hkb-flash'), 1600);
+}
+function filterHelpKb() {
+  const q = (document.getElementById('hkb-search').value || '').toLowerCase().trim();
+  document.querySelectorAll('#hkb-list details.hkb').forEach(d => {
+    const hay = (d.getAttribute('data-kb') || '') + ' ' + d.textContent.toLowerCase();
+    d.style.display = (!q || hay.indexOf(q) !== -1) ? '' : 'none';
+  });
+}
+async function loadHelpLog() {
+  const out = document.getElementById('hc-log'); if (!out) return;
+  out.textContent = 'Loading…'; const meta = document.getElementById('hc-log-meta'); if (meta) meta.textContent = '';
+  try {
+    const n = document.getElementById('hc-lines').value || 200;
+    const r = await api('logs?lines=' + n); if (!r) return;
+    if (!r.exists) { out.textContent = r.note || 'No log file yet.'; return; }
+    out.textContent = r.text || '(the log is empty)';
+    if (meta) meta.textContent = r.path + ' · ' + r.size_human + ' · last ' + r.lines + ' lines';
+    out.scrollTop = out.scrollHeight;
+  } catch (e) { out.textContent = 'Could not load the log: ' + String(e); }
+}
+function copyHelpLog() {
+  const t = document.getElementById('hc-log').textContent || '';
+  if (navigator.clipboard && t) {
+    navigator.clipboard.writeText(t).then(() => toast('Log copied — paste it to the developer.'),
+      () => toast('Copy failed — select the text and copy manually.'));
+  } else { toast('Nothing to copy yet — load the log first.'); }
+}
+
+// ============ DOWNLOADS (super-admin installer catalogue) ============
+let DL_ROWS = {}, DL_FILES = [], DL_LIMITS = {};
+const DL_PLAT = { windows:'Windows', mac:'macOS', linux:'Linux' };
+function dlAdd() { dlForm(null); }
+function dlEdit(id) { dlForm(DL_ROWS[id]); }
+function dlForm(a) {
+  a = a || { category:'agent', platform:'windows', title:'', version:'', description:'', notes:'', is_published:false, filename:'' };
+  const catOpt = [['agent','Employee Agent'],['server','Admin Server']].map(([v,l]) => '<option value="'+v+'"'+(v===a.category?' selected':'')+'>'+l+'</option>').join('');
+  const platOpt = [['windows','Windows'],['mac','macOS'],['linux','Linux']].map(([v,l]) => '<option value="'+v+'"'+(v===a.platform?' selected':'')+'>'+l+'</option>').join('');
+  const fileOpt = ['<option value="">— none —</option>'].concat(DL_FILES.map(f =>
+    '<option value="'+esc(f.name)+'"'+(f.name===a.filename?' selected':'')+'>'+esc(f.name)+' ('+esc(f.size_human)+')</option>')).join('');
+  openModal('<h2>' + (a.id?'Edit':'Add') + ' download</h2>'
+    + '<div class="row"><div><label>Type</label><select id="dl_cat">'+catOpt+'</select></div>'
+    + '<div><label>Platform</label><select id="dl_plat">'+platOpt+'</select></div></div>'
+    + '<label>Title</label><input id="dl_title" value="'+esc(a.title||'')+'" placeholder="SmartEPT Employee Agent — Windows">'
+    + '<label>Version</label><input id="dl_ver" value="'+esc(a.version||'')+'" placeholder="e.g. 1.0.3">'
+    + '<label>Short description</label><textarea id="dl_desc" rows="2" placeholder="One line shown to clients">'+esc(a.description||'')+'</textarea>'
+    + '<label>Release / install notes</label><textarea id="dl_notes" rows="2" placeholder="What changed, install tips…">'+esc(a.notes||'')+'</textarea>'
+    + '<div style="height:1px;background:var(--border);margin:14px 0"></div>'
+    + '<label>Upload installer file <span class="mini">(optional — replaces the attached file)</span></label>'
+    + '<input type="file" id="dl_file">'
+    + '<label style="margin-top:10px">…or use a file already on the server <span class="mini">(from storage/app/downloads)</span></label>'
+    + '<select id="dl_existing">'+fileOpt+'</select>'
+    + '<div class="mini" style="margin-top:5px">Currently attached: <b>'+(a.filename?esc(a.filename):'none')+'</b>. Max upload on this server: <b>'+esc(DL_LIMITS.upload_max||'?')+'</b>. Larger files: drop into <code>storage/app/downloads</code> and pick above.</div>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" id="dl_pub" '+(a.is_published?'checked':'')+'> Published (visible to clients)</label>'
+    + '<div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>'
+    + '<button class="btn btn-p" onclick="dlSave('+(a.id||0)+')">Save</button></div>', true);
+}
+function dlFd(fromForm, row) {
+  const fd = new FormData();
+  if (fromForm) {
+    fd.append('category', document.getElementById('dl_cat').value);
+    fd.append('platform', document.getElementById('dl_plat').value);
+    fd.append('title', document.getElementById('dl_title').value.trim());
+    fd.append('version', document.getElementById('dl_ver').value.trim());
+    fd.append('description', document.getElementById('dl_desc').value);
+    fd.append('notes', document.getElementById('dl_notes').value);
+    fd.append('is_published', document.getElementById('dl_pub').checked ? '1' : '0');
+    const ex = document.getElementById('dl_existing').value;
+    if (ex) fd.append('existing_file', ex);
+    const fi = document.getElementById('dl_file');
+    if (fi.files && fi.files[0]) fd.append('file', fi.files[0]);
+  } else {
+    fd.append('category', row.category); fd.append('platform', row.platform || '');
+    fd.append('title', row.title || ''); fd.append('version', row.version || '');
+    fd.append('description', row.description || ''); fd.append('notes', row.notes || '');
+    fd.append('is_published', row._pub ? '1' : '0');
+  }
+  return fd;
+}
+async function dlPost(id, fd) {
+  const res = await fetch('/admin/api/download-artifacts' + (id ? ('/' + id) : ''), {
+    method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }, body: fd });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw (data.message || data.error || 'Save failed');
+  return data;
+}
+async function dlSave(id) {
+  const fd = dlFd(true);
+  if (!fd.get('title')) { toast('Title is required'); return; }
+  try { await dlPost(id, fd); closeModal(); toast('Download saved'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function dlPublish(id, pub) {
+  const a = DL_ROWS[id]; if (!a) return;
+  try { await dlPost(id, dlFd(false, Object.assign({}, a, { _pub: pub }))); toast(pub ? 'Published' : 'Unpublished'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function dlDelete(id, title) {
+  if (!confirm('Remove “' + title + '” from the downloads list? (The file stays on the server.)')) return;
+  try { await api('download-artifacts/' + id, { method: 'DELETE' }); toast('Removed'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function dlSaveLimits() {
+  const body = {
+    download_daily_free: document.getElementById('lim_df').value,
+    download_monthly_free: document.getElementById('lim_mf').value,
+    download_daily_paid: document.getElementById('lim_dp').value,
+    download_monthly_paid: document.getElementById('lim_mp').value,
+  };
+  try { await api('download-limits', { method: 'POST', body }); toast('Limits saved'); go('downloads'); }
+  catch (e) { toast('Error: ' + e); }
+}
+
+// ---- Accountant CSV report downloads (session-authenticated GET links) ----
+function dlReport(kind) {
+  const f = (document.getElementById('rep-from') || {}).value || '';
+  const t = (document.getElementById('rep-to') || {}).value || '';
+  let url = '/admin/api/reports/' + kind;
+  if (kind !== 'outstanding') url += '?from=' + encodeURIComponent(f) + '&to=' + encodeURIComponent(t);
+  window.open(url, '_blank');
+}
+
+// ---- Support desk ----
+let TK_ROWS = {};
+const TK_PILL = { open: 'p-warn', in_progress: 'p-info', resolved: 'p-ok', closed: 'p-mut' };
+async function tkOpen(id) {
+  const t = TK_ROWS[id]; if (!t) return;
+  let thread;
+  try { thread = await api('tickets/' + id); } catch (e) { toast('Error: ' + e); return; }
+  const statusOpts = ['open', 'in_progress', 'resolved', 'closed'].map(s => '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s.replace('_', ' ') + '</option>').join('');
+  const items = (thread.timeline || []).map(m => {
+    if (m.event === 'status_change') {
+      return '<div class="mini" style="text-align:center;color:var(--muted);margin:8px 0">— ' + esc(m.author_name || '') + ' changed status ' + esc(String(m.old_status || '').replace('_', ' ')) + ' \u2192 <b>' + esc(String(m.new_status || '').replace('_', ' ')) + '</b> · ' + esc(m.at_h || '') + ' —</div>';
+    }
+    const mine = m.author_type === 'admin';
+    const tag = m.author_type === 'client' ? ' <span style="font-weight:400;color:var(--muted)">(client)</span>' : (mine ? ' <span style="font-weight:400;color:var(--muted)">(Ametecs)</span>' : '');
+    return '<div style="margin:8px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:' + (mine ? '#FEEFE4' : 'var(--card2)') + '">'
+      + '<div class="mini" style="font-weight:700;margin-bottom:3px">' + esc(m.author_name || '') + tag + ' · ' + esc(m.at_h || '') + '</div>'
+      + '<div style="white-space:pre-wrap">' + esc(m.body || '') + '</div></div>';
+  }).join('') || '<div class="mini">No messages yet.</div>';
+  openModal('<h2>Ticket #' + t.id + ' — ' + esc(t.subject) + '</h2>'
+    + '<div class="sub">' + esc(t.tenant || '') + ' · ' + esc(t.raised_by || '') + ' &lt;' + esc(t.raised_email || '') + '&gt; · ' + esc(t.category || '') + '</div>'
+    + '<div style="max-height:340px;overflow:auto;margin:10px 0;padding-right:4px">' + items + '</div>'
+    + '<label>Add a reply <span class="mini">(appended to the thread &amp; emailed to the client — earlier replies are never changed)</span></label><textarea id="tk-reply" rows="4" placeholder="Type your reply…"></textarea>'
+    + '<label>Status</label><select id="tk-status">' + statusOpts + '</select>'
+    + '<div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>'
+    + '<button class="btn btn-p" onclick="tkSave(' + t.id + ')">Save &amp; send</button></div>', true);
+}
+async function tkSave(id) {
+  const reply = (document.getElementById('tk-reply').value || '').trim();
+  const body = { status: document.getElementById('tk-status').value, reply: reply };
+  try { await api('tickets/' + id, { method: 'PUT', body }); closeModal(); toast(reply ? 'Reply sent & saved' : 'Ticket updated'); go('support'); }
+  catch (e) { toast('Error: ' + e); }
+}
+
+// ---- Admin users & roles ----
+let AU_ROWS = {};
+const AU_ROLES = [['super', 'Super admin — full access'], ['sales', 'Sales — business & money'], ['support', 'Support — read + tickets']];
+const AU_V = (id) => (document.getElementById(id) || {}).value || '';
+function auAdd() { auForm(null); }
+function auEdit(id) { auForm(AU_ROWS[id]); }
+function auForm(u) {
+  const isNew = !u; u = u || { name: '', email: '', role: 'support', active: true };
+  const roleOpts = AU_ROLES.map(([v, l]) => '<option value="' + v + '"' + (v === u.role ? ' selected' : '') + '>' + esc(l) + '</option>').join('');
+  openModal('<h2>' + (isNew ? 'Add' : 'Edit') + ' admin user</h2>'
+    + '<label>Name</label><input id="au-name" value="' + esc(u.name || '') + '" placeholder="Full name">'
+    + (isNew ? '<label>Email</label><input id="au-email" type="email" placeholder="name@ametecsindia.com">' : '<div class="sub">' + esc(u.email) + '</div>')
+    + '<label>Role</label><select id="au-role">' + roleOpts + '</select>'
+    + (isNew ? '<label>Temporary password (min 8)</label><input id="au-pass" type="text" placeholder="give them this to sign in">' : '')
+    + (isNew ? '' : '<label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" id="au-active" ' + (u.active ? 'checked' : '') + '> Active (can sign in)</label>')
+    + '<div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>'
+    + '<button class="btn btn-p" onclick="auSave(' + (isNew ? 0 : u.id) + ')">Save</button></div>');
+}
+async function auSave(id) {
+  try {
+    if (!id) {
+      const body = { name: AU_V('au-name'), email: AU_V('au-email'), role: AU_V('au-role'), password: AU_V('au-pass') };
+      if (!body.name || !body.email || !body.password) { toast('Name, email and password are required'); return; }
+      await api('admin-users', { method: 'POST', body });
+    } else {
+      const body = { name: AU_V('au-name'), role: AU_V('au-role'), active: document.getElementById('au-active').checked };
+      await api('admin-users/' + id, { method: 'PUT', body });
+    }
+    closeModal(); toast('Saved'); go('users');
+  } catch (e) { toast('Error: ' + e); }
+}
+async function auReset(id, name) {
+  const p = prompt('New password for ' + name + ' (min 8 characters):');
+  if (!p) return;
+  try { await api('admin-users/' + id + '/reset-password', { method: 'POST', body: { password: p } }); toast('Password reset'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function auDelete(id, name) {
+  if (!confirm('Remove admin user "' + name + '"? They will no longer be able to sign in.')) return;
+  try { await api('admin-users/' + id, { method: 'DELETE' }); toast('Removed'); go('users'); }
+  catch (e) { toast('Error: ' + e); }
+}
+function auMatrixCard() {
+  const M = [
+    ['Dashboard', 'view', 'view', 'view'], ['Clients / Tenants', 'manage', 'manage', 'view'],
+    ['Trials', 'manage', 'manage', 'view'], ['Leads', 'manage', 'manage', 'view'],
+    ['Support tickets', 'manage', 'manage', 'manage'], ['Licences', 'manage', 'manage', 'view'],
+    ['Plans & Pricing', 'manage', 'view', '—'], ['Orders & Payments', 'manage', 'manage', '—'],
+    ['Credit & Invoices', 'manage', 'manage', '—'], ['Cloud Storage', 'manage', 'manage', '—'],
+    ['Coupons', 'manage', 'manage', '—'], ['Accountant Reports', 'manage', 'manage', '—'],
+    ['Downloads', 'manage', '—', '—'], ['Landing CMS', 'manage', '—', '—'],
+    ['WhatsApp Templates', 'manage', '—', '—'], ['Settings', 'manage', '—', '—'],
+    ['Users & Roles', 'manage', '—', '—'], ['Audit Log', 'view', 'view', 'view'],
+  ];
+  const cell = (v) => v === 'manage' ? '<span class="pill p-ok">manage</span>' : (v === 'view' ? '<span class="pill p-info">view</span>' : '<span class="mini">—</span>');
+  const rows = M.map((m) => '<tr><td><b>' + esc(m[0]) + '</b></td><td>' + cell(m[1]) + '</td><td>' + cell(m[2]) + '</td><td>' + cell(m[3]) + '</td></tr>').join('');
+  return '<div class="card"><h3>Permission matrix <span class="mini">what each role can do — enforced on the server</span></h3>'
+    + '<table><tr><th>Module</th><th>Super admin</th><th>Sales</th><th>Support</th></tr>' + rows + '</table>'
+    + '<div class="mini" style="margin-top:8px"><b>manage</b> = view + create/edit · <b>view</b> = read only · <b>—</b> = no access</div></div>';
+}
+
+const RENDER = {
+
+// ============ DOWNLOADS ============
+async downloads() {
+  ACTIONS.innerHTML = '<button class="btn btn-p" onclick="dlAdd()">+ Add download</button>';
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('download-artifacts');
+  DL_ROWS = {}; DL_FILES = d.available_files || []; DL_LIMITS = d.limits || {};
+  (d.data || []).forEach(a => { DL_ROWS[a.id] = a; });
+  const rows = (d.data || []).map(a => {
+    const plat = a.platform ? (DL_PLAT[a.platform] || a.platform) : '—';
+    const file = a.file_present
+      ? '<span class="mini">' + esc(a.filename || '') + (a.size_human ? ' · ' + esc(a.size_human) : '') + '</span>'
+      : '<span class="mini" style="color:var(--warn)">no file attached</span>';
+    const status = a.is_published ? '<span class="pill p-ok">Published</span>' : '<span class="pill p-mut">Draft</span>';
+    return '<tr><td><b>' + esc(a.title) + '</b><div class="mini">' + esc(a.category) + ' · ' + plat
+      + (a.version ? ' · v' + esc(a.version) : '') + '</div></td>'
+      + '<td>' + file + '</td><td>' + status + '</td>'
+      + '<td class="mini">' + (a.uploaded_by ? esc(a.uploaded_by) : '—') + (a.updated_at ? '<br>' + esc(a.updated_at) : '') + '</td>'
+      + '<td style="white-space:nowrap">'
+      + '<button class="link" onclick="dlEdit(' + a.id + ')">Edit</button> '
+      + '<button class="link" onclick="dlPublish(' + a.id + ',' + (a.is_published ? 0 : 1) + ')">' + (a.is_published ? 'Unpublish' : 'Publish') + '</button> '
+      + '<button class="link" style="color:var(--danger)" onclick="dlDelete(' + a.id + ',\'' + esc((a.title || '').replace(/'/g, '')) + '\')">Delete</button>'
+      + '</td></tr>';
+  }).join('');
+  const catalogueCard = '<div class="card"><h3>Installer downloads <span class="mini">what clients see on their Install &amp; Downloads page — publish to make a file live</span></h3>'
+    + '<table><tr><th>Download</th><th>File</th><th>Status</th><th>Updated</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No downloads yet — click “+ Add download”.</td></tr>') + '</table>'
+    + '<div class="mini" style="margin-top:10px">Max upload size on this server: <b>' + esc(DL_LIMITS.upload_max || '?') + '</b> (POST limit ' + esc(DL_LIMITS.post_max || '?')
+    + '). For larger installers, drop the file into <code>storage/app/downloads</code> and choose “use a file already on the server”.</div></div>';
+
+  // Anti-abuse quotas (editable).
+  const q = d.quota || {};
+  const qv = k => (q[k] === undefined || q[k] === null) ? '' : q[k];
+  const limitsCard = '<div class="card"><h3>Per-client download limits <span class="mini">stops misuse — blank = built-in default</span></h3>'
+    + '<div class="row">'
+    + '<div><label>Trial — per day, each app</label><input id="lim_df" type="number" min="0" value="' + esc(qv('download_daily_free')) + '" placeholder="2"></div>'
+    + '<div><label>Trial — per month (total)</label><input id="lim_mf" type="number" min="0" value="' + esc(qv('download_monthly_free')) + '" placeholder="5"></div>'
+    + '<div><label>Paid — per day, each app</label><input id="lim_dp" type="number" min="0" value="' + esc(qv('download_daily_paid')) + '" placeholder="5"></div>'
+    + '<div><label>Paid — per month (total)</label><input id="lim_mp" type="number" min="0" value="' + esc(qv('download_monthly_paid')) + '" placeholder="20"></div>'
+    + '</div>'
+    + '<div class="row" style="margin-top:12px;align-items:center;gap:10px"><button class="btn btn-p" onclick="dlSaveLimits()">Save limits</button>'
+    + '<span class="mini">“Trial” = clients not yet Active. “Each app” counts every installer (agent Win/Mac/Linux, server) separately per day. Monthly is the total across all installers.</span></div></div>';
+
+  // Per-client cumulative totals.
+  const stats = d.tenant_stats || [];
+  const statsRows = stats.map(s => '<tr><td><b>' + esc(s.tenant) + '</b><div class="mini">Tenant #' + esc(String(s.tenant_id == null ? '—' : s.tenant_id)) + '</div></td>'
+    + '<td>' + s.today + '</td><td>' + s.this_month + '</td><td><b>' + s.total + '</b></td>'
+    + '<td class="mini">' + (s.last_at ? esc(s.last_at) : '—') + '</td></tr>').join('');
+  const statsCard = '<div class="card"><h3>Downloads by client <span class="mini">cumulative totals</span></h3>'
+    + '<table><tr><th>Client</th><th>Today</th><th>This month</th><th>All-time</th><th>Last download</th></tr>'
+    + (statsRows || '<tr><td colspan="5" class="mini">No downloads yet.</td></tr>') + '</table></div>';
+
+  // Recent events.
+  const log = d.log || [];
+  const logRows = log.map(l => '<tr><td class="mini">' + (l.at ? esc(l.at) : '—') + '</td>'
+    + '<td><b>' + esc(l.tenant) + '</b><div class="mini">#' + esc(String(l.tenant_id == null ? '—' : l.tenant_id)) + '</div></td>'
+    + '<td>' + esc(l.artifact || '') + (l.platform ? ' <span class="mini">(' + esc(l.platform) + ')</span>' : '') + '</td>'
+    + '<td class="mini">' + (l.ip ? esc(l.ip) : '') + '</td></tr>').join('');
+  const logCard = '<div class="card"><h3>Recent downloads <span class="mini">latest 100 — who downloaded what, when &amp; from where</span></h3>'
+    + '<table><tr><th>When</th><th>Client</th><th>Installer</th><th>IP</th></tr>'
+    + (logRows || '<tr><td colspan="4" class="mini">No downloads yet.</td></tr>') + '</table></div>';
+
+  P.innerHTML = catalogueCard + limitsCard + statsCard + logCard;
+},
+
+// ============ ACCOUNTANT REPORTS ============
+async reports() {
+  const d = new Date();
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const iso = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  P.innerHTML = '<div class="card"><h3>Accountant reports <span class="mini">download as CSV for Tally / Excel / your CA</span></h3>'
+    + '<div class="row" style="align-items:flex-end;gap:14px">'
+    + '<div><label>From</label><input type="date" id="rep-from" value="' + iso(first) + '" style="width:auto"></div>'
+    + '<div><label>To</label><input type="date" id="rep-to" value="' + iso(d) + '" style="width:auto"></div>'
+    + '</div>'
+    + '<div class="mini" style="margin-top:6px">Dates apply to the GST register &amp; Collections. Outstanding is always the current live balance.</div></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">'
+    + '<div class="card"><h3>GST register</h3><p class="mini">One row per invoice — taxable value, CGST/SGST/IGST, buyer GSTIN, place of supply, SAC. GSTR-1 style.</p><button class="btn btn-p" onclick="dlReport(\'gst-register\')">Download CSV &rarr;</button></div>'
+    + '<div class="card"><h3>Collections</h3><p class="mini">Every payment &amp; refund received in the range — client, order, method, reference, amount.</p><button class="btn btn-p" onclick="dlReport(\'collections\')">Download CSV &rarr;</button></div>'
+    + '<div class="card"><h3>Outstanding</h3><p class="mini">Live credit balances — order total, received, balance, due date, overdue flag.</p><button class="btn btn-p" onclick="dlReport(\'outstanding\')">Download CSV &rarr;</button></div>'
+    + '</div>';
+},
+
+// ============ USERS & ROLES ============
+async users() {
+  ACTIONS.innerHTML = '<button class="btn btn-p" onclick="auAdd()">+ Add user</button>';
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('admin-users');
+  AU_ROWS = {}; (d.data || []).forEach(u => { AU_ROWS[u.id] = u; });
+  const RP = { super: 'p-ok', sales: 'p-info', support: 'p-mut' };
+  const rows = (d.data || []).map(u => {
+    const nm = esc((u.name || '').replace(/'/g, ''));
+    return '<tr><td><b>' + esc(u.name) + '</b>' + (u.is_self ? ' <span class="mini">(you)</span>' : '') + '<div class="mini">' + esc(u.email) + '</div></td>'
+      + '<td><span class="pill ' + (RP[u.role] || 'p-mut') + '">' + esc(u.role) + '</span></td>'
+      + '<td>' + (u.active ? '<span class="pill p-ok">active</span>' : '<span class="pill p-dang">disabled</span>') + '</td>'
+      + '<td class="mini">' + (u.last_login_at ? esc(u.last_login_at) : 'never') + '</td>'
+      + '<td style="white-space:nowrap"><button class="link" onclick="auEdit(' + u.id + ')">Edit</button> '
+      + '<button class="link" onclick="auReset(' + u.id + ',\'' + nm + '\')">Reset password</button>'
+      + (u.is_self ? '' : ' <button class="link" style="color:var(--danger)" onclick="auDelete(' + u.id + ',\'' + nm + '\')">Delete</button>')
+      + '</td></tr>';
+  }).join('');
+  P.innerHTML = '<div class="card"><h3>Admin users <span class="mini">who can sign in to SmartEPT Central</span></h3>'
+    + '<table><tr><th>User</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No users.</td></tr>') + '</table></div>'
+    + auMatrixCard();
+},
+
+// ============ SUPPORT DESK ============
+async support() {
+  ACTIONS.innerHTML = '';
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('tickets');
+  TK_ROWS = {}; (d.data || []).forEach(t => { TK_ROWS[t.id] = t; });
+  const c = d.counts || {};
+  const chip = (s, l) => '<span class="pill ' + (TK_PILL[s] || 'p-mut') + '">' + (l || s) + ' ' + (c[s] || 0) + '</span>';
+  const rows = (d.data || []).map(t => '<tr onclick="tkOpen(' + t.id + ')" style="cursor:pointer">'
+    + '<td class="mini">' + esc(t.created_at_h || t.created_at || '') + '</td>'
+    + '<td><b>' + esc(t.tenant || '—') + '</b><div class="mini">' + esc(t.raised_by || '') + '</div></td>'
+    + '<td>' + esc(t.subject) + '<div class="mini">' + esc(t.category || '') + '</div></td>'
+    + '<td><span class="pill ' + (TK_PILL[t.status] || 'p-mut') + '">' + esc(String(t.status).replace('_', ' ')) + '</span></td>'
+    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at_h || t.replied_at)) : '') + (t.messages_count ? ' · ' + t.messages_count + ' msg' : '') + '</td></tr>').join('');
+  P.innerHTML = '<div class="card"><h3>Support tickets <span class="mini">' + chip('open', 'open') + ' · ' + chip('in_progress', 'in progress') + ' · ' + chip('resolved', 'resolved') + ' · ' + chip('closed', 'closed') + '</span></h3>'
+    + '<table><tr><th>Raised</th><th>Client</th><th>Subject</th><th>Status</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No tickets yet.</td></tr>') + '</table></div>';
+},
+
+// ============ HELP & TROUBLESHOOTING ============
+async help() {
+  ensureHelpCss();
+  P.innerHTML =
+    '<div class="htabs">'
+    + '<button class="htab on" data-ht="health" onclick="helpPanelTab(\'health\')">System Health</button>'
+    + '<button class="htab" data-ht="fix" onclick="helpPanelTab(\'fix\')">Fix a problem</button>'
+    + '<button class="htab" data-ht="log" onclick="helpPanelTab(\'log\')">Application log</button>'
+    + '</div>'
+    + '<div class="card htab-panel on" data-ht="health"><h3>System Health <span class="mini">one click checks the database, storage, email, WhatsApp, payments &amp; more</span></h3>'
+    + '<div class="row" style="margin-bottom:12px;align-items:center;gap:10px">'
+    + '<button class="btn btn-p" onclick="helpRun()">Run checks</button>'
+    + '<span class="pill p-mut" id="hc-overall" style="display:none"></span>'
+    + '<span class="mini" id="hc-when"></span></div>'
+    + '<div id="hc-grid"><div class="mini">Press “Run checks” to test SmartEPT Central.</div></div></div>'
+
+    + '<div class="card htab-panel" data-ht="fix"><h3>Known Issues — how to fix common problems <span class="mini">Central and the client product — plain language</span></h3>'
+    + '<div class="filters" style="margin-bottom:14px"><input id="hkb-search" oninput="filterHelpKb()" placeholder="Search problems… e.g. whatsapp, payment, screenshots, 500"></div>'
+    + '<div id="hkb-list">'
+    + '<div class="hkb-div">SmartEPT Central (this portal)</div>'
+    + HELP_KB_CENTRAL.map(helpKbCard).join('')
+    + '<div class="hkb-div">SmartEPT client product (helping a client site)</div>'
+    + HELP_KB_CLIENT.map(helpKbCard).join('')
+    + '</div></div>'
+
+    + '<div class="card htab-panel" data-ht="log"><h3>Application log <span class="mini">the most recent messages — copy them for the developer</span></h3>'
+    + '<div class="row" style="margin-bottom:10px;align-items:center;gap:8px">'
+    + '<span class="mini">Show last</span>'
+    + '<select id="hc-lines" style="width:auto"><option>100</option><option selected>200</option><option>500</option></select>'
+    + '<span class="mini">lines</span>'
+    + '<button class="btn btn-l" onclick="loadHelpLog()">Load log</button>'
+    + '<button class="btn btn-l" onclick="copyHelpLog()">Copy for developer</button>'
+    + '<span class="mini" id="hc-log-meta"></span></div>'
+    + '<pre id="hc-log" class="hc-log">Press “Load log” to read the most recent messages.</pre></div>';
+  helpRun();
+},
+
+// ============ DASHBOARD ============
+async dashboard() {
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('dashboard');
+  P.innerHTML = `
+  <div class="stats">
+    <div class="stat"><div class="l">Active Clients</div><div class="v teal">${d.tenants_active}</div><div class="mini">${d.tenants_trial} on trial · ${d.tenants_total} total</div></div>
+    <div class="stat"><div class="l">Revenue This Month</div><div class="v ok">${fmtMoney(d.revenue_this_month)}</div><div class="mini">MRR est. ${fmtMoney(d.mrr_estimate)}</div></div>
+    <div class="stat"><div class="l">Active Licences</div><div class="v">${d.licences_active}</div><div class="mini">${d.devices_active} devices activated</div></div>
+    <div class="stat"><div class="l">Needs Attention</div><div class="v warn">${d.trials_expiring_7d + d.orders_pending}</div><div class="mini">${d.trials_expiring_7d} trials expiring · ${d.orders_pending} unpaid orders</div></div>
+  </div>
+  <div class="card"><h3>Recent Orders</h3><table><tr><th>Order</th><th>Client</th><th>Description</th><th>Total</th><th>Status</th></tr>
+  ${d.recent_orders.map(o => `<tr><td><b>${esc(o.number)}</b></td><td>${esc(o.tenant?.company_name)}</td><td class="mini">${esc(o.description)}</td><td>${fmtMoney(o.total, o.currency)}</td><td>${pill(o.status)}</td></tr>`).join('') || '<tr><td colspan="5" class="mini">No orders yet</td></tr>'}</table></div>
+  <div class="card"><h3>Recent Licence Activations</h3><table><tr><th>Key</th><th>Client</th><th>Activated</th></tr>
+  ${d.recent_activations.map(l => `<tr><td class="mini">${esc(l.key)}</td><td>${esc(l.tenant?.company_name)}</td><td class="mini">${new Date(l.activated_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="3" class="mini">No activations yet</td></tr>'}</table></div>`;
+},
+
+// ============ TENANTS ============
+async tenants() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newTenant()">+ New Client</button>';
+  P.innerHTML = `<div class="filters">
+    <input id="tq" placeholder="Search company / email / phone…">
+    <select id="tst"><option value="">All statuses</option><option>trial</option><option>active</option><option>suspended</option><option>expired</option><option>churned</option></select>
+    <button class="btn btn-l" onclick="loadTenants()">Search</button></div><div id="tlist"></div>`;
+  loadTenants();
+},
+
+// ============ TRIALS ============
+async trials() {
+  const d = await api('trials');
+  const row = t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
+    <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
+    <td>${t.trial_ends_at ? new Date(t.trial_ends_at).toLocaleDateString() : '—'}</td>
+    <td>${CAN_WRITE ? `<button class="link" onclick="extendTrial(${t.id})">Extend</button>
+    <button class="link" onclick="convertTrial(${t.id}, '${esc(t.company_name)}')">Convert to Paid</button>` : ''}</td></tr>`;
+  P.innerHTML = `
+  <div class="card"><h3>Active Trials (${d.active.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ends</th><th></th></tr>
+  ${d.active.map(row).join('') || '<tr><td colspan="4" class="mini">No active trials</td></tr>'}</table></div>
+  <div class="card"><h3>Expired Trials (${d.expired.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ended</th><th></th></tr>
+  ${d.expired.map(row).join('') || '<tr><td colspan="4" class="mini">None</td></tr>'}</table></div>`;
+},
+
+// ============ LEADS (R3-7) ============
+async leads() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newLead()">+ Add Lead</button>';
+  P.innerHTML = `<div class="filters">
+    <input id="ldq" placeholder="Search name / company / email / phone…">
+    <select id="ldst"><option value="">All statuses</option>${LEAD_STATUSES.map(s=>`<option>${s}</option>`).join('')}</select>
+    <button class="btn btn-l" onclick="loadLeads()">Search</button></div><div id="ldlist"></div>`;
+  loadLeads();
+},
+
+// ============ COUPONS (R3-7) ============
+async coupons() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newCoupon()">+ New Coupon</button>';
+  P.innerHTML = '<div id="cplist" class="mini">Loading…</div>';
+  loadCoupons();
+},
+
+// ============ LICENCES ============
+async licences() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="issueLicence()">+ Issue Licence</button>';
+  P.innerHTML = `<div class="filters">
+    <input id="lq" placeholder="Search key / company…">
+    <select id="lst"><option value="">All statuses</option><option>active</option><option>suspended</option><option>revoked</option><option>expired</option></select>
+    <select id="lkind"><option value="">All kinds</option><option>trial</option><option>subscription</option><option>perpetual</option></select>
+    <button class="btn btn-l" onclick="loadLicences()">Search</button></div><div id="llist"></div>`;
+  loadLicences();
+},
+
+// ============ PLANS ============
+async plans() {
+  const [resp, s] = await Promise.all([api('plans'), api('settings').catch(()=>({}))]);
+  const plans = Array.isArray(resp) ? resp : (resp.data || []);
+  const p = plans.find(x=>x.code==='smartept') || plans.find(x=>x.active) || plans[0];
+  if (!p) { P.innerHTML = '<div class="mini">No pricing plan found — run the pricing seeder.</div>'; return; }
+  const legacy = plans.filter(x=>x!==p);
+  window.__PLAN = p;
+  const canW = ROLE==='super';
+  const ro = canW ? '' : 'readonly';
+  const aD = (+s.pricing_annual_discount_pct||25), hD = (+s.pricing_half_yearly_discount_pct||10);
+  const cloudRows = ((p.volume_tiers||[]).length ? p.volume_tiers : [{min_devices:'',max_devices:'',rate_inr_annual:''}]).map(t=>pcCloudRow(t.min_devices,t.max_devices,t.rate_inr_annual,canW)).join('');
+  const perpRows = ((p.perpetual_bands||[]).length ? p.perpetual_bands : [{min_users:'',max_users:'',price_inr:''}]).map(b=>pcPerpRow(b.min_users,b.max_users,b.price_inr,canW)).join('');
+  P.innerHTML = `
+  <div class="mini" style="margin-bottom:12px">Full pricing control for <b>${esc(p.name)}</b> — the single SmartEPT product. Edit the <b>Cloud rental</b> and <b>On-Premise Lifetime</b> bands below and Save; the public landing &amp; calculator follow within ~5 minutes.${canW?'':' <b>(read-only — super admin can edit)</b>'}</div>
+
+  <div class="card"><h3>SmartEPT Cloud — monthly rental (by users)</h3>
+    <div class="sub">Price is <b>₹ per user / month</b> at the Annual rate for each user band. Quarterly = base, Half-Yearly = &minus;${hD}%, Annual = published (&minus;${aD}% off base). Leave <b>Max users</b> blank for the open-ended top band.</div>
+    <div class="row" style="max-width:560px;margin-top:6px"><div><label>Default Annual ₹/user/mo (fallback)</label><input id="pc_base" type="number" value="${p.inr_annual}" ${ro}></div>
+    <div><label>Cloud storage note (GB, 0 = per-user policy)</label><input id="pc_sg" type="number" value="${p.storage_gb!=null?p.storage_gb:0}" ${ro}></div></div>
+    <table id="cloudBands" style="margin-top:10px"><tr><th style="width:22%">Min users</th><th style="width:30%">Max users (blank = &infin;)</th><th style="width:34%">₹ / user / month (annual)</th><th></th></tr>${cloudRows}</table>
+    ${canW?`<div style="margin-top:8px"><button class="btn btn-l" onclick="pcAddCloud()">+ Add band</button> <button class="btn btn-p" onclick="pcSaveCloud()">Save Cloud pricing</button></div>`:''}
+  </div>
+
+  <div class="card"><h3>On-Premise — Buy Once, use for a Lifetime (by users)</h3>
+    <div class="sub">One-time perpetual licence price for each user-capacity band. Leave <b>Max users</b> blank for the top band (above it = custom quotation).</div>
+    <table id="perpBands"><tr><th style="width:22%">Min users</th><th style="width:30%">Max users (blank = &infin;)</th><th style="width:34%">₹ one-time (lifetime)</th><th></th></tr>${perpRows}</table>
+    ${canW?`<div style="margin-top:8px"><button class="btn btn-l" onclick="pcAddPerp()">+ Add band</button> <button class="btn btn-p" onclick="pcSavePerp()">Save Lifetime pricing</button></div>`:''}
+  </div>
+
+  <div class="card"><h3>Fees &amp; rules</h3>
+    <div class="row">
+      <div><label>Setup fee base ₹</label><input id="pc_setb" type="number" value="${s.pricing_setup_base_inr||5000}" ${ro}></div>
+      <div><label>Setup covers (users)</label><input id="pc_seti" type="number" value="${s.pricing_setup_included_devices||30}" ${ro}></div>
+      <div><label>Setup ₹ per extra user</label><input id="pc_setx" type="number" value="${s.pricing_setup_per_extra_inr||100}" ${ro}></div>
+      <div><label>AMC % per year (perpetual)</label><input id="pc_amc" type="number" step="0.1" value="${s.pricing_amc_pct||18}" ${ro}></div>
+      <div><label>Annual discount %</label><input id="pc_ad" type="number" value="${aD}" ${ro}></div>
+      <div><label>Half-yearly discount %</label><input id="pc_hd" type="number" value="${hD}" ${ro}></div>
+    </div>
+    ${canW?`<div style="margin-top:8px"><button class="btn btn-p" onclick="pcSaveFees()">Save fees &amp; rules</button></div>`:''}
+  </div>
+  ${legacy.length?`<div class="mini" style="margin-top:6px">${legacy.length} legacy plan(s) hidden (${legacy.map(x=>esc(x.code)).join(', ')}) — kept for existing licences, not sold on the new model.</div>`:''}
+  `;
+},
+
+// ============ ORDERS ============
+async orders() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button>';
+  P.innerHTML = `<div class="filters">
+    <select id="ost"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
+    <select id="ogw"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
+    <button class="btn btn-l" onclick="loadOrders()">Filter</button></div><div id="olist"></div>`;
+  loadOrders();
+},
+
+// ============ CREDIT CLIENTS (master prompt §10) ============
+async credit() {
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('credit-clients');
+  const rows = (d.data||[]).map(c => `<tr>
+    <td><b>${esc(c.tenant?.company_name)}</b><div class="mini">${esc(c.quote_number || c.number)}${c.invoice_number ? ' · ' + esc(c.invoice_number) : ''}</div></td>
+    <td class="mini">${esc(c.description)}</td>
+    <td><b>${fmtMoney(c.total, c.currency)}</b></td>
+    <td style="color:var(--ok);font-weight:700">${fmtMoney(c.received, c.currency)}</td>
+    <td><b style="color:${c.overdue ? 'var(--danger)' : 'var(--ink)'}">${fmtMoney(c.balance, c.currency)}</b></td>
+    <td style="${c.overdue ? 'color:var(--danger);font-weight:800' : ''}">${c.credit_due_date ? new Date(c.credit_due_date).toLocaleDateString() : '—'}${c.overdue ? ' ⚠ OVERDUE' : ''}</td>
+    <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick="recordBalance(${c.id}, ${c.balance}, '${esc(c.tenant?.company_name)}')">Record balance</button>` : ''}
+      <button class="link" onclick="navigator.clipboard.writeText('${esc(c.pay_url)}');toast('Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
+  P.innerHTML = `<div class="card"><h3>Provisioned on credit — balance outstanding (${(d.data||[]).length})</h3>
+  <table><tr><th>Client</th><th>Order</th><th>Total</th><th>Received</th><th>Balance</th><th>Payable by</th><th></th></tr>
+  ${rows || '<tr><td colspan="7" class="mini">No credit balances — every provisioned order is fully paid. 🎉</td></tr>'}</table>
+  <div class="mini" style="margin-top:10px">Overdue turns red as a reminder for <b>manual follow-up only</b> — nothing locks automatically. Credit is a commercial judgement. The client's original pay link stays alive and collects exactly the balance.</div></div>`;
+},
+
+// ============ INVOICES ============
+async invoices() {
+  const d = await api('invoices');
+  P.innerHTML = `<div class="card"><table><tr><th>Invoice</th><th>Date</th><th>Client</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Status</th><th></th></tr>
+  ${d.data.map(i => `<tr><td><b>${esc(i.number)}</b></td><td class="mini">${i.date?.slice(0,10)}</td>
+  <td>${esc(i.tenant?.company_name)}</td><td>${fmtMoney(i.subtotal, i.currency)}</td>
+  <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
+  <td><b>${fmtMoney(i.total, i.currency)}</b></td>
+  <td>${i.status==='issued' && i.due_date ? `<span class="pill p-warn">DUE</span><div class="mini">by ${i.due_date.slice(0,10)}</div>` : pill(i.status)}</td>
+  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No invoices yet</td></tr>'}</table></div>`;
+},
+
+// ============ STORAGE ============
+async storage() {
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="recordStorage()">+ Record Usage</button>';
+  const month = new Date().toISOString().slice(0,7);
+  const d = await api('storage?month=' + month);
+  P.innerHTML = `<div class="card"><h3>Cloud Storage — ${d.month} <span class="mini">(₹3/GB to 500 GB · ₹2.50 to 2 TB · ₹2 above · min 50 GB)</span></h3>
+  <table><tr><th>Cloud Tenant</th><th>Avg GB (month)</th><th>Billable GB</th><th>Monthly Charge</th></tr>
+  ${d.tenants.map(t => `<tr><td><b>${esc(t.company_name)}</b></td><td>${t.avg_gb}</td><td>${t.billable_gb}</td><td><b>${t.monthly_charge ? fmtMoney(t.monthly_charge) : '—'}</b></td></tr>`).join('') || '<tr><td colspan="4" class="mini">No cloud tenants</td></tr>'}</table>
+  <div class="mini" style="margin-top:10px">Automatic daily metering arrives with the Phase-3 cloud platform — until then usage can be recorded manually or imported.</div></div>`;
+},
+
+// ============ LANDING CMS (master prompt §5) ============
+async cms() {
+  const s = await api('settings');
+  const f = (k, label, ph='') => `<label>${label}</label><input id="set_${k}" value="${esc(s[k]||'')}" placeholder="${esc(ph)}">`;
+  P.innerHTML = `
+  <div class="card"><h3>Hero &amp; announcement — leave a field blank to keep the landing page's built-in text</h3>
+  ${f('landing_hero_title','Hero headline','e.g. Know exactly how your teams work — without standing behind them')}
+  ${f('landing_hero_subtitle','Hero sub-headline','one persuasive sentence under the headline')}
+  ${f('landing_announcement','Announcement bar (offers/news — blank hides it)','e.g. Diwali offer: 25% off annual plans with code DIWALI25')}</div>
+  <div class="card"><h3>Contact &amp; lead alerts</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('landing_contact_phone','Contact phone shown on the site','+91 96666 12424')}
+  ${f('landing_contact_email','Contact email shown on the site','sales@ametecsindia.com')}
+  ${f('whatsapp_number','WhatsApp number (all buttons)','919000098877')}
+  ${f('sales_email','Lead alerts go to (email)','sales@ametecsindia.com')}</div></div>
+  <div class="card"><h3>Testimonials (JSON list)</h3>
+  <label>Format: [{"quote":"…","name":"…","role":"…"}] — blank keeps built-in testimonials</label>
+  <textarea id="set_landing_testimonials" rows="5" style="font-family:monospace;font-size:12px">${esc(s.landing_testimonials||'')}</textarea>
+  <div class="mini" style="margin-top:6px">Tip: keep 2–4 short quotes with Indian names and concrete outcomes ("caught 3 idle hours/day across 40 PCs").</div></div>
+  <button class="btn btn-p" onclick="saveSettings().then(()=>toast('Saved — the public landing picks it up on next refresh'))">Save Landing Content</button>`;
+},
+
+// ============ SETTINGS ============
+async settings() {
+  const s = await api('settings');
+  const f = (k, label, type='text') => `<label>${label}</label><input id="set_${k}" type="${type}" value="${esc(s[k]||'')}">`;
+  P.innerHTML = `
+  <div class="card"><h3>Company & Tax</h3><div class="modal-body row" style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('company_name','Company name')}${f('company_gstin','GSTIN')}${f('company_phone','Phone')}${f('company_email','Email')}
+  ${f('gst_rate','GST rate %')}${f('whatsapp_number','WhatsApp number')}${f('invoice_prefix','Invoice prefix (EPT → EPT-2026-27-07-0001)')}${f('quote_prefix','Quote prefix (EPT-Q)')}${f('order_prefix','Order number prefix')}</div>
+  <label>Registered address</label><textarea id="set_company_address" rows="2">${esc(s.company_address||'')}</textarea></div>
+  <div class="card"><h3>SmartEPT Cloud</h3>
+  <label>Default hosted console URL <span style="font-weight:400;color:#7A8B90">(prefilled into a new Cloud client's "Hosted console URL" — your shared Ametecs-hosted admin address)</span></label>
+  <input id="set_default_console_url" value="${esc(s.default_console_url||'')}" placeholder="https://client.smartept.cloud/admin"></div>
+  <div class="card"><h3>Razorpay (INR) — test keys work; paste live keys when ready</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('razorpay_key_id','Key ID (rzp_test_… / rzp_live_…)')}${f('razorpay_key_secret','Key Secret','password')}${f('razorpay_webhook_secret','Webhook Secret','password')}</div>
+  <div class="mini">Webhook URL for the Razorpay dashboard: <b>${location.origin}/webhooks/razorpay</b> · event: payment.captured</div></div>
+  <div class="card"><h3>Stripe (USD international)</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('stripe_publishable_key','Publishable key')}${f('stripe_secret_key','Secret key','password')}${f('stripe_webhook_secret','Webhook signing secret','password')}</div>
+  <div class="mini">Webhook URL: <b>${location.origin}/webhooks/stripe</b> · event: checkout.session.completed</div></div>
+  <div class="card"><h3>Email (SMTP) — your outgoing mail server</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('mail_host','SMTP host (e.g. smtp.gmail.com)')}${f('mail_port','Port (587 = TLS, 465 = SSL)')}
+  ${f('mail_username','Username')}${f('mail_password','Password / app password','password')}
+  ${f('mail_encryption','Encryption (tls / ssl / none)')}${f('mail_from_name','From name (e.g. SmartEPT Billing)')}
+  ${f('mail_from_address','From address (e.g. billing@yourcompany.com)')}</div>
+  <div class="row" style="margin-top:10px"><input id="test_email_to" placeholder="Send a test to… (email)" style="max-width:260px"><button class="btn" onclick="sendTestEmail()">Send test email</button> <span class="mini" id="test_email_msg"></span></div>
+  <div class="mini">Gmail: use an App Password, not your login. Leave host blank to keep the server's built-in mail.</div></div>
+  <div class="card"><h3>WhatsApp API (Interakt) — send OTPs &amp; alerts over WhatsApp</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('interakt_api_key','API Key (Interakt Secret Key)','password')}${f('interakt_sender_number','Sender number')}
+  ${f('interakt_waba_id','WABA ID (optional)')}${f('interakt_api_url','API URL (blank = Interakt default)')}
+  ${f('interakt_status','Status (active / inactive)')}</div>
+  <div class="mini">Same as SmartPRS: paste the Interakt Secret Key, set the sender number, status active. Leave API URL blank for the Interakt default. Business-initiated WhatsApp needs approved templates in Interakt — the send service + template registry come next. (Click-to-chat number is in Company &amp; Tax above.)</div></div>
+  <div class="card"><h3>Pricing, Billing Cycles &amp; Cloud — the whole commercial model, editable here</h3>
+  <div class="mini" style="margin-bottom:8px">Publish the <b>Annual</b> rate per plan on the Plans &amp; Pricing screen. Quarterly &amp; Half-Yearly derive from it using the discounts below; the landing page, calculator and quotes all follow within 5 minutes.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 16px">
+  ${f('pricing_annual_discount_pct','Annual discount % (off the base rate)')}
+  ${f('pricing_half_yearly_discount_pct','Half-yearly discount % (off base)')}
+  ${f('pricing_cloud_multiplier','Cloud multiplier (× client-hosted rate)')}</div>
+  <h4 style="margin:12px 0 4px">Setup &amp; Onboarding (one-time, first invoice only)</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 16px">
+  ${f('pricing_setup_base_inr','Base fee ₹')}
+  ${f('pricing_setup_included_devices','Devices covered by the base fee')}
+  ${f('pricing_setup_per_extra_inr','Per extra device ₹')}</div>
+  <h4 style="margin:12px 0 4px">Cloud storage (hosting)</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+  ${f('pricing_storage_min_gb','Minimum billable GB')}
+  ${f('pricing_storage_min_inr','Minimum ₹ / month')}</div>
+  <label style="margin-top:8px">Storage slabs — JSON list of [from GB, to GB or null, ₹ per GB/mo]</label>
+  <textarea id="set_pricing_storage_slabs" rows="3" style="font-family:monospace;font-size:12px">${esc(s.pricing_storage_slabs||'')}</textarea>
+  <div class="mini" style="margin-top:4px">Example: [[1,500,3],[501,2048,2.5],[2049,null,2]] — ₹3/GB up to 500 GB, ₹2.5 to 2048 GB, ₹2 beyond. Leave blank to keep the built-in slabs.</div></div>
+  <button class="btn btn-p" onclick="saveSettings()">Save Settings</button>`;
+},
+
+// ============ AUDIT ============
+  async watemplates() {
+    const d = await api('wa-templates');
+    WA_PURPOSES = d.purposes || {};
+    if (ROLE === 'super') ACTIONS.innerHTML = `<button class="btn btn-p" onclick="waEdit(null)">+ New template</button>`;
+    const cfg = d.configured
+      ? '<span class="pill p-ok">Interakt connected</span>'
+      : '<span class="pill p-warn">Interakt not configured</span> — add the API key in <b>Settings → WhatsApp API</b> first.';
+    const rows = (d.data || []).map(t => `<tr>
+      <td>${esc(WA_PURPOSES[t.purpose] || t.purpose)}</td>
+      <td><b>${esc(t.name)}</b><div class="mini">${esc(t.language||'en')} · ${esc(t.category||'utility')}${t.var_count?(' · '+t.var_count+' vars'):''}</div></td>
+      <td>${pill(t.status)}</td>
+      <td class="mini">${t.last_test_at ? new Date(t.last_test_at).toLocaleString() : '—'}${t.last_error?('<div style="color:var(--danger)">'+esc(t.last_error).slice(0,90)+'</div>'):''}</td>
+      <td class="row" style="flex-wrap:nowrap"><button class="link" onclick='waEdit(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Edit</button>
+      <button class="link" onclick="waTest(${t.id})">Send test</button>
+      <button class="link" style="color:var(--danger)" onclick="waDelete(${t.id})">Delete</button></td></tr>`).join('')
+      || '<tr><td colspan="5" class="mini">No templates yet. Create one per purpose (welcome, payment, renewal, lead, otp) using the EXACT name approved in Interakt, then Send test to mark it Approved.</td></tr>';
+    P.innerHTML = `<div class="card"><div class="mini" style="margin-bottom:10px">${cfg}</div>
+    <div class="mini" style="margin-bottom:12px">Interakt only <b>sends</b> templates that are <b>approved in the Interakt dashboard</b>. Register the same template here (exact name + sample values), then <b>Send test</b> — a successful test marks it Approved and the live flows (lead thank-you, welcome, payment, renewal, OTP) start using it automatically.</div>
+    <table><tr><th>Purpose</th><th>Template</th><th>Status</th><th>Last test</th><th></th></tr>${rows}</table></div>`;
+  },
+async audit() {
+  const cur = AUDIT_ACTION || '';
+  const d = await api('audit' + (cur ? ('?action=' + encodeURIComponent(cur)) : ''));
+  const base = (t) => t ? t.split(String.fromCharCode(92)).pop() : '';
+  const subj = (a) => a.subject_type ? (esc(base(a.subject_type)) + ' #' + (a.subject_id || '')) : '—';
+  const det = (a) => {
+    const m = a.meta;
+    if (!m || (typeof m === 'object' && !Object.keys(m).length)) return '—';
+    if (typeof m !== 'object') return esc(String(m));
+    return esc(Object.entries(m).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : (v && typeof v === 'object' ? JSON.stringify(v) : v))).join('  ·  ')).slice(0, 140) || '—';
+  };
+  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
+  const opts = ACTS.map((a) => '<option value="' + a + '"' + (a === cur ? ' selected' : '') + '>' + (a || 'All actions') + '</option>').join('');
+  P.innerHTML = `<div class="card">
+  <div class="row" style="margin-bottom:12px;align-items:flex-end">
+    <div><label>Filter action</label><select id="aud-act" onchange="AUDIT_ACTION=this.value;go('audit')">${opts}</select></div>
+    <button class="btn" onclick="go('audit')">Refresh</button>
+    <span class="mini" style="margin-left:auto">${(d.total ?? d.data.length)} entries${cur ? ' · filtered' : ''}</span>
+  </div>
+  <table><tr><th>When</th><th>Who</th><th>Action</th><th>Subject</th><th>Details</th></tr>
+  ${d.data.map((a) => `<tr><td class="mini">${new Date(a.created_at).toLocaleString()}</td>
+  <td>${esc(a.admin_user?.name || 'system')}</td><td><b>${esc(a.action)}</b></td>
+  <td class="mini">${subj(a)}</td>
+  <td class="mini">${det(a)}</td></tr>`).join('') || '<tr><td colspan="5" class="mini">No matching audit entries.</td></tr>'}</table></div>`;
+},
+};
+
+// ---------- tenants helpers ----------
+async function loadTenants() {
+  const q = document.getElementById('tq').value, st = document.getElementById('tst').value;
+  const d = await api(`tenants?q=${encodeURIComponent(q)}&status=${st}`);
+  document.getElementById('tlist').innerHTML = `<div class="card"><table>
+  <tr><th>Company</th><th>Contact</th><th>Deployment</th><th>Plan</th><th>Status</th><th></th></tr>
+  ${d.data.map(t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
+  <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
+  <td>${t.deployment === 'cloud' ? '<span class="pill p-info">SmartEPT Cloud</span>' : '<span class="pill p-mut">Client-hosted</span>'}${t.ecosystem_customer?' <span class="pill p-warn">Ecosystem</span>':''}</td>
+  <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td><td>${pill(t.status)}</td>
+  <td style="white-space:nowrap"><button class="link" onclick="showTenant(${t.id})">Open</button>${CAN_WRITE ? ` <button class="link" onclick="editTenantById(${t.id})">Edit</button> ${t.status==='suspended' ? `<button class="link" onclick="setTenantStatus(${t.id},'active')">Enable</button>` : `<button class="link" onclick="setTenantStatus(${t.id},'suspended')">Suspend</button>`}` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="mini">No clients found</td></tr>'}</table></div>`;
+}
+
+async function showTenant(id) {
+  const t = await api('tenants/' + id);
+  openModal(`<h2>${esc(t.company_name)} ${pill(t.status)}</h2>
+  <div class="sub">${esc(t.contact_name||'')} · ${esc(t.email)} · ${esc(t.phone||'')} · GSTIN: ${esc(t.gstin||'—')}<br>
+  ${t.deployment==='cloud'?'SmartEPT-Managed Cloud':'Client-Hosted'} · ${esc(t.currency)} · Setup fee: ${t.setup_fee_paid?'<span class="gain">paid ✓</span>':'not yet charged'}${t.deployment==='cloud'?'<br>Console: '+(t.console_url?`<a class="link" target="_blank" href="${esc(t.console_url)}">${esc(t.console_url)}</a>`:'<span style="color:#C77">not provisioned — set it via Edit</span>'):''}</div>
+  <h4 style="color:var(--deep);margin:10px 0 6px">Licences</h4>
+  <table><tr><th>Key</th><th>Plan</th><th>Kind</th><th>Devices</th><th>Expires</th><th>Status</th></tr>
+  ${t.licences.map(l => `<tr><td class="mini">${esc(l.key)}</td><td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}</td>
+  <td>${(l.devices||[]).filter(d=>d.status==='active').length}/${l.device_limit}</td>
+  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : 'perpetual'}</td><td>${pill(l.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="mini">No licences</td></tr>'}</table>
+  <h4 style="color:var(--deep);margin:12px 0 6px">Recent Orders</h4>
+  <table><tr><th>Order</th><th>Total</th><th>Status</th></tr>
+  ${(t.orders||[]).slice(0,6).map(o => `<tr><td class="mini">${esc(o.number)} — ${esc(o.description)}</td><td>${fmtMoney(o.total,o.currency)}</td><td>${pill(o.status)}</td></tr>`).join('') || '<tr><td colspan="3" class="mini">None</td></tr>'}</table>
+  <div class="foot">${CAN_WRITE?`<button class="btn btn-l" onclick='editTenant(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Edit</button>
+  <button class="btn btn-l" onclick='raiseSetup(${t.id}, ${JSON.stringify(t.company_name).replace(/'/g,"&#39;")})'>Raise installation invoice</button>`:''}
+  <button class="btn btn-p" onclick="closeModal()">Close</button></div>`, true);
+}
+
+function tenantForm(t = {}) {
+  return `<div class="row">
+  <div><label>Company name *</label><input id="f_company" value="${esc(t.company_name||'')}"></div>
+  <div><label>Contact person</label><input id="f_contact" value="${esc(t.contact_name||'')}"></div>
+  <div><label>Email *</label><input id="f_email" value="${esc(t.email||'')}"></div>
+  <div><label>Phone</label><input id="f_phone" value="${esc(t.phone||'')}"></div>
+  <div><label>GSTIN</label><input id="f_gstin" maxlength="15" placeholder="36AAHCT0971F1ZB" value="${esc(t.gstin||'')}"></div>
+  <div><label>GST state code (place of supply)</label><input id="f_state" maxlength="2" placeholder="36 = Telangana" value="${esc(t.state_code||'')}"></div>
+  <div><label>Currency</label><select id="f_currency"><option ${t.currency==='INR'?'selected':''}>INR</option><option ${t.currency==='USD'?'selected':''}>USD</option></select></div>
+  <div><label>Deployment</label><select id="f_deploy"><option value="client_hosted" ${t.deployment!=='cloud'?'selected':''}>Client-Hosted</option><option value="cloud" ${t.deployment==='cloud'?'selected':''}>SmartEPT Cloud</option></select></div>
+  <div><label>Ecosystem customer (SmartDCM/PRS)</label><select id="f_eco"><option value="0" ${!t.ecosystem_customer?'selected':''}>No</option><option value="1" ${t.ecosystem_customer?'selected':''}>Yes — 10% ecosystem discount</option></select></div>
+  </div><label>Hosted console URL <span style="font-weight:400;color:#7A8B90">(SmartEPT-Cloud clients only — the address of their Ametecs-hosted admin console; the client portal links to it)</span></label>
+  <input id="f_console" placeholder="https://client.smartept.cloud/admin" value="${esc(t.console_url||'')}">
+  <label>Address</label><textarea id="f_addr" rows="2">${esc(t.address||'')}</textarea>
+  <label>Billing address (printed on GST invoices — leave blank to use address above)</label><textarea id="f_billaddr" rows="2">${esc(t.billing_address||'')}</textarea>
+  <label>Notes</label><textarea id="f_notes" rows="2">${esc(t.notes||'')}</textarea>`;
+}
+function readTenantForm() {
+  return { company_name: f_company.value, contact_name: f_contact.value, email: f_email.value,
+    phone: f_phone.value, gstin: f_gstin.value, state_code: f_state.value, currency: f_currency.value,
+    deployment: f_deploy.value, ecosystem_customer: f_eco.value === '1',
+    console_url: f_console.value || null,
+    address: f_addr.value, billing_address: f_billaddr.value, notes: f_notes.value };
+}
+function newTenant() {
+  openModal(`<h2>New Client</h2><div class="sub">Create the client record — then issue a licence or start a trial.</div>
+  ${tenantForm({console_url: DEFAULT_CONSOLE_URL})}<label>Start 7-day trial immediately?</label>
+  <select id="f_trial"><option value="0">No</option><option value="1">Yes — provision trial licence (10 devices)</option></select>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="saveTenant()">Create Client</button></div>`, true);
+}
+async function saveTenant() {
+  try {
+    const body = readTenantForm();
+    body.start_trial = f_trial.value === '1';
+    await api('tenants', {method:'POST', body});
+    closeModal(); toast('Client created'); loadTenants();
+  } catch (e) { toast('Error: ' + e); }
+}
+async function editTenant(t) {
+  openModal(`<h2>Edit — ${esc(t.company_name)}</h2>${tenantForm(t)}
+  <label>Status</label><select id="f_status">${['trial','active','suspended','expired','churned'].map(s=>`<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="updateTenant(${t.id})">Save</button></div>`, true);
+}
+async function updateTenant(id) {
+  try {
+    await api('tenants/' + id, {method:'PUT', body: {...readTenantForm(), status: f_status.value}});
+    closeModal(); toast('Client updated'); loadTenants();
+  } catch (e) { toast('Error: ' + e); }
+}
+async function editTenantById(id) {
+  try { editTenant(await api('tenants/' + id)); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function setTenantStatus(id, status) {
+  if (status === 'suspended' && !confirm('Suspend this client? You can re-enable them anytime.')) return;
+  try { await api('tenants/' + id, {method:'PUT', body:{status}}); toast('Client ' + (status === 'suspended' ? 'suspended' : 'enabled')); loadTenants(); }
+  catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- licences helpers ----------
+let LIC_ROWS = [];
+async function loadLicences() {
+  const d = await api(`licences?q=${encodeURIComponent(lq.value)}&status=${lst.value}&kind=${lkind.value}`);
+  LIC_ROWS = d.data;
+  document.getElementById('llist').innerHTML = `<div class="card"><table>
+  <tr><th>Key</th><th>Client</th><th>Plan</th><th>Kind</th><th>Devices</th><th>Expires</th><th>Status</th><th></th></tr>
+  ${d.data.map(l => `<tr><td class="mini"><b>${esc(l.key)}</b></td><td>${esc(l.tenant?.company_name)}</td>
+  <td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}${l.kind==='perpetual'?`<div class="mini">AMC: ${l.amc_expires_at?l.amc_expires_at.slice(0,10):'lapsed'}</div>`:''}</td>
+  <td>${l.active_devices_count}/${l.device_limit}</td>
+  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}</td><td>${pill(l.status)}</td>
+  <td>${CAN_WRITE ? `<button class="link" onclick="renewLic(${l.id})">Renew</button>
+  <button class="link" onclick="editLic(${l.id})">Edit</button>
+  ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
+  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+}
+async function licAction(id, action) {
+  if (action === 'revoke' && !confirm('Revoke this licence permanently?')) return;
+  try { await api(`licences/${id}/action`, {method:'POST', body:{action}}); toast('Licence ' + action + ' done'); loadLicences(); }
+  catch (e) { toast('Error: ' + e); }
+}
+function _licById(id){ return LIC_ROWS.find(x=>x.id===id) || {}; }
+function suggestRenew(l){
+  const months = {monthly:1,quarterly:3,half_yearly:6,annual:12}[l.billing] || 12;
+  let base = new Date();
+  if (l.expires_at) { const e = new Date(l.expires_at.slice(0,10)); if (e > base) base = e; }
+  base.setMonth(base.getMonth()+months);
+  return base.toISOString().slice(0,10);
+}
+function renewLic(id){
+  const l=_licById(id);
+  const to=suggestRenew(l);
+  openModal(`<h2>Renew licence</h2>
+    <div class="sub">Extend <b>${esc(l.key||'')}</b> for <b>${esc(l.tenant?.company_name||'')}</b>. The new expiry is filled in from the billing cycle (${esc(l.billing||'annual')}) — change it if you need a different date.</div>
+    <label>New expiry date</label>
+    <input id="rn_exp" type="date" value="${to}">
+    <div class="mini" style="margin-top:6px">Current expiry: ${l.expires_at? l.expires_at.slice(0,10) : '— (perpetual)'}. A future date re-activates an expired licence.</div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="doRenew(${id})">Confirm renewal</button></div>`);
+}
+async function doRenew(id){
+  const v=(document.getElementById('rn_exp').value||'').trim();
+  if(!v){ toast('Pick an expiry date'); return; }
+  try{ await api(`licences/${id}`,{method:'PUT',body:{expires_at:v}}); toast('Licence renewed to '+v); closeModal(); loadLicences(); }
+  catch(e){ toast('Error: '+e); }
+}
+function editLic(id){
+  const l=_licById(id);
+  const sel=(name,val,opts)=>`<select id="${name}">`+opts.map(o=>`<option value="${o[0]}"${o[0]===val?' selected':''}>${o[1]}</option>`).join('')+`</select>`;
+  openModal(`<h2>Edit licence</h2>
+    <div class="sub">Correct any detail for <b>${esc(l.key||'')}</b> — e.g. a wrong expiry date. Leave the date blank for a perpetual (never-expiring) licence.</div>
+    <label>Expiry date</label>
+    <input id="ed_exp" type="date" value="${l.expires_at? l.expires_at.slice(0,10):''}">
+    <label>Device limit</label>
+    <input id="ed_dev" type="number" min="1" value="${l.device_limit||1}">
+    <label>Kind</label>
+    ${sel('ed_kind', l.kind, [['trial','Trial'],['subscription','Subscription'],['perpetual','Perpetual']])}
+    <label>Billing cycle</label>
+    ${sel('ed_bill', l.billing, [['monthly','Monthly'],['quarterly','Quarterly'],['half_yearly','Half-yearly'],['annual','Annual']])}
+    <label>Deployment</label>
+    ${sel('ed_dep', l.deployment, [['client_hosted','On-premises (client hosted)'],['cloud','Cloud (Ametecs hosted)']])}
+    <div class="mini" id="ed_msg" style="margin-top:6px"></div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="saveLic(${id})">Save changes</button></div>`);
+}
+async function saveLic(id){
+  const body={
+    expires_at:(document.getElementById('ed_exp').value||''),
+    device_limit:parseInt(document.getElementById('ed_dev').value,10)||null,
+    kind:document.getElementById('ed_kind').value,
+    billing:document.getElementById('ed_bill').value,
+    deployment:document.getElementById('ed_dep').value,
+  };
+  try{ await api(`licences/${id}`,{method:'PUT',body}); toast('Licence updated'); closeModal(); loadLicences(); }
+  catch(e){ document.getElementById('ed_msg').textContent='Error: '+e; }
+}
+function licFile(id, key) {
+  openModal(`<h2>Generate licence file (.lic)</h2>
+    <div class="sub">Offline, node-locked licence for <b>${esc(key)}</b>. Paste the client's machine fingerprint (from their console's Licence screen). Leave blank for a file that runs on any machine.</div>
+    <label>Client machine fingerprint</label>
+    <input id="lf_fp" placeholder="40-character fingerprint from the client" style="font-family:ui-monospace,monospace">
+    <div class="mini" id="lf_msg" style="margin-top:6px"></div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="doLicFile(${id})">Generate &amp; download</button></div>`);
+}
+async function doLicFile(id) {
+  const fp = (document.getElementById('lf_fp').value || '').trim();
+  const msg = document.getElementById('lf_msg');
+  msg.textContent = 'Generating…';
+  try {
+    const r = await api(`licences/${id}/license-file`, {method:'POST', body:{fingerprint: fp || null}});
+    const blob = new Blob([r.token + '\n'], {type:'application/octet-stream'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = r.filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    msg.innerHTML = '✓ Downloaded <b>' + esc(r.filename) + '</b> — ' + (r.locked ? 'locked to that machine.' : 'not machine-locked.') + ' Send it to the client to import.';
+  } catch (e) { msg.textContent = '✗ ' + (e.message || e); }
+}
+async function issueLicence() {
+  const tenants = await api('tenants?status=');
+  openModal(`<h2>Issue Licence</h2><div class="sub">Direct issue without an order — use Orders for the full payment flow.</div>
+  <label>Client</label><select id="il_tenant">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  <div class="row"><div><label>Plan</label><select id="il_plan"><option value="smartept" selected>SmartEPT (all features)</option></select></div>
+  <div><label>Kind</label><select id="il_kind"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
+  <div><label>Billing period</label><select id="il_billing"><option value="annual">Annual — 12 months (best price, 25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
+  <div><label>Deployment</label><select id="il_deploy"><option value="client_hosted">Client-Hosted</option><option value="cloud">Cloud</option></select></div>
+  <div><label>User limit</label><input id="il_devices" type="number" value="10" min="1"></div></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doIssue()">Issue Licence</button></div>`);
+}
+async function doIssue() {
+  try {
+    const l = await api('licences', {method:'POST', body:{tenant_id:+il_tenant.value, plan_code:il_plan.value,
+      kind:il_kind.value, billing:il_billing.value, deployment:il_deploy.value, device_limit:+il_devices.value}});
+    closeModal(); toast('Licence issued: ' + l.key); go('licences');
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- orders helpers ----------
+async function loadOrders() {
+  const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}`);
+  document.getElementById('olist').innerHTML = `<div class="card"><table>
+  <tr><th>Order</th><th>Client</th><th>Licence</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
+  ${d.data.map(o => `<tr><td><b>${esc(o.quote_number || o.number)}</b><div class="mini">${o.quote_number ? esc(o.number) + ' · ' : ''}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}</div></td>
+  <td>${esc(o.tenant?.company_name)}</td><td class="mini">${o.licence ? '<b>'+esc(o.licence.key)+'</b>'+(o.licence.status&&o.licence.status!=='active'?' <span style="color:var(--muted)">('+esc(o.licence.status)+')</span>':'') : '<span style="color:var(--muted)">—</span>'}</td><td class="mini">${esc(o.description)}</td>
+  <td><b>${fmtMoney(o.total, o.currency)}</b><div class="mini">incl. tax ${fmtMoney(o.tax_amount, o.currency)}</div>
+  ${o.provisioned_at && o.status!=='paid' && o.balance>0 ? `<div class="mini" style="color:var(--danger);font-weight:700">balance ${fmtMoney(o.balance, o.currency)}${o.credit_due_date?' by '+o.credit_due_date.slice(0,10):''}</div>`:''}</td>
+  <td class="mini">${esc(o.gateway)}${o.manual_method?` (${esc(o.manual_method)})`:''}</td>
+  <td>${pill(o.status)}${o.provisioned_at && o.status!=='paid' ? '<div class="mini" style="color:var(--warn);font-weight:700">on credit ✓ live</div>':''}</td>
+  <td>${o.status==='quote' && CAN_WRITE ? `<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Print Quote</a>
+  <button class="link" onclick="approveQuote(${o.id})">Approve</button>
+  <button class="link" onclick="markPaid(${o.id},'${esc(o.quote_number||o.number)}',${o.balance ?? o.total})">Record Payment</button>` :
+  o.status==='created' && CAN_WRITE ? `${o.provisioned_at && o.balance>0
+    ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
+    : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
+  <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:''}` :
+  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
+}
+async function approveQuote(id) {
+  try { await api(`orders/${id}/approve-quote`, {method:'POST'}); toast('Quotation approved — now payable'); loadOrders(); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function copyPayLink(number) {
+  toast('Payment link: ' + location.origin + '/pay/' + number + '/<token> — token shown in order meta (or share from the client record)');
+}
+async function newOrder() {
+  const tenants = await api('tenants?status=');
+  openModal(`<h2>New Order / Quote</h2><div class="sub">Live quote updates as you type — includes the one-time Setup &amp; Onboarding fee automatically on a client's first paid order.</div>
+  <label>Client</label><select id="no_tenant" onchange="refreshQuote()">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  <div class="row">
+  <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="smartept" selected>SmartEPT — all features</option></select></div>
+  <div><label>Kind</label><select id="no_kind" onchange="refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual</option></select></div>
+  <div><label>Billing period</label><select id="no_billing" onchange="refreshQuote()"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
+  <div><label>Deployment</label><select id="no_deploy" onchange="refreshQuote()"><option value="client_hosted">Client-Hosted</option><option value="cloud">SmartEPT Cloud</option></select></div>
+  <div><label>Devices</label><input id="no_devices" type="number" value="25" min="1" oninput="refreshQuote()"></div>
+  <div><label>Create as</label><select id="no_asquote"><option value="0">Order — payable now</option><option value="1">Quotation — management pays later</option></select></div>
+  <div><label>Requested by (manager/employee)</label><input id="no_reqby" placeholder="e.g. Rajesh Kumar, Ops Manager"></div>
+  <div><label>Client PO number (optional)</label><input id="no_po" placeholder="e.g. PO-2026-0042"></div>
+  <div><label>Coupon code (optional)</label><input id="no_coupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" onchange="refreshQuote()"></div></div>
+  <div class="quote-box" id="quoteBox">…</div>
+  <div class="mini" id="couponNote" style="margin-top:6px"></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="createOrder()">Create Order</button></div>`, true);
+  refreshQuote();
+}
+async function refreshQuote() {
+  try {
+    const coupon = (document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null;
+    const q = await api('quote', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
+      devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
+      coupon_code:coupon}});
+    document.getElementById('quoteBox').innerHTML = q.lines.map(l =>
+      `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('') +
+      `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>
+      <div class="ln tt"><span>Total</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
+    const note = document.getElementById('couponNote');
+    if (note) note.innerHTML = !coupon ? '' : (q.coupon?.ok
+      ? '<span style="color:var(--ok);font-weight:700">✓ Coupon ' + esc(q.coupon.code) + ' applied — saves ' + fmtMoney(q.coupon.discount, q.currency) + ' (locked into a quotation even if the code expires later)</span>'
+      : '<span style="color:var(--danger);font-weight:700">✗ Coupon not applied: ' + esc(q.coupon?.reason || 'not valid') + '</span>');
+  } catch (e) { document.getElementById('quoteBox').textContent = 'Quote error: ' + e; }
+}
+async function createOrder() {
+  try {
+    const o = await api('orders', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
+      devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
+      as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null, po_number:(document.getElementById('no_po')?.value||null),
+      coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null}});
+    closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
+  } catch (e) { toast('Error: ' + e); }
+}
+async function raiseSetup(tenantId, company) {
+  openModal(`<h2>Installation &amp; Onboarding invoice</h2>
+  <div class="sub">For <b>${esc(company)}</b>. Use this when a client did not buy setup up front and now wants Ametecs to install &amp; onboard. It creates a standalone invoice (one-time ₹5,000 for 25 devices + ₹100 per extra) with a pay link you can send.</div>
+  <label>Number of devices to install</label><input id="su_dev" type="number" min="1" value="25">
+  <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="su_quote" style="width:auto"> Raise as a quotation first (management approves before payment)</label>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doRaiseSetup(${tenantId})">Create invoice &amp; get pay link</button></div>`);
+}
+async function doRaiseSetup(tenantId) {
+  try {
+    const r = await api('setup-invoice', {method:'POST', body:{tenant_id:tenantId, devices:+document.getElementById('su_dev').value, as_quote:document.getElementById('su_quote').checked}});
+    const o = r.order, url = r.pay_url;
+    openModal(`<h2>Installation invoice created</h2>
+    <div class="sub">${esc(o.number)}${o.quote_number?' · '+esc(o.quote_number):''} — total ${fmtMoney(o.total,o.currency)} (incl. GST)</div>
+    <label>Send this pay link to the client</label>
+    <div style="display:flex;gap:8px;align-items:center"><input id="su_link" value="${esc(url)}" readonly style="flex:1"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById('su_link').value);toast('Link copied')">Copy</button></div>
+    <div style="margin-top:10px"><a class="btn btn-l" target="_blank" href="https://wa.me/?text=${encodeURIComponent('Your SmartEPT installation & onboarding invoice '+o.number+': '+url)}">Send on WhatsApp</a></div>
+    <div class="foot"><button class="btn btn-p" onclick="closeModal();go('orders')">Done</button></div>`);
+  } catch (e) { toast('Error: ' + e); }
+}
+async function markPaid(id, number, balance) {
+  openModal(`<h2>Record Payment — ${esc(number)}</h2>
+  <div class="sub">For money received directly (NEFT / UPI / cheque / cash) — or to provision a trusted client on CREDIT. Any choice below activates the licence and issues the GST invoice <b>immediately</b>; the invoice shows DUE until the balance reaches zero.</div>
+  <label>Payment received</label>
+  <select id="mp_status" onchange="mpStatusUi()">
+    <option value="paid">Paid in full — ${fmtMoney(balance||0)}</option>
+    <option value="partial">Partial — part now, balance on credit</option>
+    <option value="due">Due — whole amount on credit (₹0 now)</option>
+  </select>
+  <div id="mp_amt_row" style="display:none"><label>Amount received now (₹)</label><input id="mp_amount" type="number" min="1" step="0.01" placeholder="e.g. 20000"></div>
+  <div id="mp_pay_rows"><div class="row">
+    <div><label>Method</label><select id="mp_method"><option>NEFT</option><option>UPI</option><option>cheque</option><option>cash</option><option>other</option></select></div>
+    <div><label>Reference (UTR / cheque no.)</label><input id="mp_ref" placeholder="e.g. UTR 12345678"></div>
+  </div></div>
+  <div id="mp_due_row" style="display:none"><label>Balance payable by (credit due date)</label><input id="mp_due" type="date"></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doMarkPaid(${id})">Save &amp; provision</button></div>`);
+}
+function mpStatusUi() {
+  const s = document.getElementById('mp_status').value;
+  document.getElementById('mp_amt_row').style.display = s === 'partial' ? '' : 'none';
+  document.getElementById('mp_due_row').style.display = s === 'paid' ? 'none' : '';
+  document.getElementById('mp_pay_rows').style.display = s === 'due' ? 'none' : '';
+}
+async function doMarkPaid(id) {
+  const s = document.getElementById('mp_status').value;
+  const body = {payment_status: s};
+  if (s !== 'due') { body.manual_method = mp_method.value; body.manual_reference = mp_ref.value; }
+  if (s === 'partial') body.amount = +document.getElementById('mp_amount').value;
+  if (s !== 'paid') body.credit_due_date = document.getElementById('mp_due').value || null;
+  try {
+    if (s === 'partial' && !(body.amount > 0)) throw 'Enter the amount received now.';
+    if (s !== 'paid' && !body.credit_due_date) throw 'Pick the credit due date — the balance needs a payable-by date.';
+    await api(`orders/${id}/mark-paid`, {method:'POST', body});
+    closeModal();
+    toast(s === 'paid' ? 'Payment recorded — licence active, invoice issued, receipt emailed'
+      : 'Provisioned on credit — licence active, invoice issued as DUE. Track it in Credit Clients.');
+    go('orders');
+  } catch (e) { toast('Error: ' + e); }
+}
+async function recordBalance(id, balance, company) {
+  openModal(`<h2>Record balance — ${esc(company || '')}</h2>
+  <div class="sub">Outstanding balance: <b>${fmtMoney(balance)}</b>. Record an offline instalment here — the receipt and PAID invoice go out automatically the moment the balance reaches zero.</div>
+  <div class="row">
+    <div><label>Amount received (₹)</label><input id="rb_amount" type="number" min="1" step="0.01" value="${balance}"></div>
+    <div><label>Method</label><select id="rb_method"><option>NEFT</option><option>UPI</option><option>cheque</option><option>cash</option><option>other</option></select></div>
+  </div>
+  <label>Reference (UTR / cheque no.)</label><input id="rb_ref" placeholder="e.g. UTR 12345678">
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doRecordBalance(${id})">Record instalment</button></div>`);
+}
+async function doRecordBalance(id) {
+  try {
+    const r = await api(`orders/${id}/record-balance`, {method:'POST', body:{
+      amount:+document.getElementById('rb_amount').value,
+      manual_method:document.getElementById('rb_method').value,
+      manual_reference:document.getElementById('rb_ref').value}});
+    closeModal();
+    toast(r.settled ? 'Balance cleared — invoice PAID, receipt emailed 🎉' : 'Instalment recorded — balance now ' + fmtMoney(r.balance));
+    go(PAGE);
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- trials helpers ----------
+async function extendTrial(id) {
+  const days = prompt('Extend trial by how many days? (1–30)', '7');
+  if (!days) return;
+  try { await api(`trials/${id}/extend`, {method:'POST', body:{days:+days}}); toast('Trial extended'); go('trials'); }
+  catch (e) { toast('Error: ' + e); }
+}
+function convertTrial(id, name) {
+  go('orders'); setTimeout(() => { newOrder().then(() => { no_tenant.value = id; refreshQuote(); }); }, 300);
+}
+
+// ---------- storage helpers ----------
+async function recordStorage() {
+  const tenants = await api('tenants?status=');
+  openModal(`<h2>Record Storage Usage</h2><div class="sub">Manual entry until Phase-3 automatic metering.</div>
+  <label>Cloud tenant</label><select id="su_tenant">${tenants.data.filter(t=>t.deployment==='cloud').map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  <div class="row"><div><label>Date</label><input id="su_date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+  <div><label>GB used</label><input id="su_gb" type="number" step="0.1" min="0" value="50"></div></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="doRecordStorage()">Save</button></div>`);
+}
+async function doRecordStorage() {
+  try {
+    await api('storage', {method:'POST', body:{tenant_id:+su_tenant.value, date:su_date.value, gb_used:+su_gb.value}});
+    closeModal(); toast('Usage recorded'); go('storage');
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- settings / plans ----------
+async function saveSettings() {
+  const body = {};
+  document.querySelectorAll('[id^=set_]').forEach(el => body[el.id.slice(4)] = el.value);
+  try { await api('settings', {method:'PUT', body}); toast('Settings saved'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function sendTestEmail() {
+  const to = (document.getElementById('test_email_to')||{}).value?.trim();
+  const msg = document.getElementById('test_email_msg');
+  if (!to) { msg.textContent = 'Enter an email address first.'; msg.style.color = '#DC2626'; return; }
+  msg.style.color = ''; msg.textContent = 'Saving settings & sending…';
+  try {
+    const body = {}; document.querySelectorAll('[id^=set_]').forEach(el => body[el.id.slice(4)] = el.value);
+    await api('settings', {method:'PUT', body});
+    const r = await api('config/test-email', {method:'POST', body:{to}});
+    msg.textContent = r.message; msg.style.color = r.ok ? '#16A34A' : '#DC2626';
+  } catch (e) { msg.textContent = 'Error: ' + e; msg.style.color = '#DC2626'; }
+}
+function editPlan(p) {
+  const pr = window.__PRICING || {aD:0.25,hD:0.10,cx:1.5};
+  const q = A => Math.round(A/Math.max(0.1,1-pr.aD)), h = A => Math.round(A/Math.max(0.1,1-pr.aD)*(1-pr.hD));
+  openModal(`<h2>Edit ${esc(p.name)}</h2>
+  <div class="sub">Set the <b>Annual</b> rate — Quarterly &amp; Half-Yearly derive from it automatically (change the discounts in Settings → Pricing &amp; Cloud).</div><div class="row">
+  <div><label>Annual ₹ /device/mo (the base)</label><input id="ep_ia" type="number" value="${p.inr_annual}" oninput="epCycle(this.value)"></div>
+  <div><label>Cloud storage included (GB)</label><input id="ep_sg" type="number" value="${p.storage_gb!=null?p.storage_gb:50}"></div>
+  <div><label>USD annual</label><input id="ep_ua" type="number" step="0.01" value="${p.usd_annual}"></div>
+  <div><label>USD monthly</label><input id="ep_um" type="number" step="0.01" value="${p.usd_monthly}"></div>
+  <div style="grid-column:1/-1"><label>Perpetual pricing (by user band)</label><div class="mini">${(p.perpetual_bands||[]).length ? p.perpetual_bands.map(b=>`${b.min_users}${b.max_users?'–'+b.max_users:'+'} users: ₹${Number(b.price_inr).toLocaleString('en-IN')}`).join(' · ') : 'Set via the Pricing v2 seeder / perpetual bands'}</div></div>
+  <div><label>Min devices</label><input id="ep_md" type="number" value="${p.min_devices}"></div>
+  <div><label>INR monthly (legacy — not offered)</label><input id="ep_im" type="number" value="${p.inr_monthly}"></div></div>
+  <div class="mini" id="ep_cyc" style="margin:6px 2px 2px">Derived: Quarterly ₹${q(p.inr_annual)} · Half-Yearly ₹${h(p.inr_annual)} · Annual ₹${p.inr_annual} /device/mo</div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="savePlan(${p.id})">Save</button></div>`);
+}
+function epCycle(v){
+  const pr = window.__PRICING || {aD:0.25,hD:0.10};
+  const A = +v||0, q = Math.round(A/Math.max(0.1,1-pr.aD)), h = Math.round(A/Math.max(0.1,1-pr.aD)*(1-pr.hD));
+  const el = document.getElementById('ep_cyc');
+  if (el) el.textContent = `Derived: Quarterly ₹${q} · Half-Yearly ₹${h} · Annual ₹${A} /device/mo`;
+}
+async function savePlan(id) {
+  try {
+    await api('plans/' + id, {method:'PUT', body:{inr_annual:+ep_ia.value, inr_monthly:+ep_im.value,
+      usd_annual:+ep_ua.value, usd_monthly:+ep_um.value, min_devices:+ep_md.value, storage_gb:+ep_sg.value}});
+    closeModal(); toast('Plan updated'); go('plans');
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---- Full pricing control (Cloud rental + On-Premise Lifetime bands) ----
+function pcCloudRow(min,max,rate,canW){const ro=canW?'':'readonly';return `<tr><td><input type="number" class="cb-min" value="${min??''}" ${ro}></td><td><input type="number" class="cb-max" value="${max??''}" placeholder="∞" ${ro}></td><td><input type="number" step="0.01" class="cb-rate" value="${rate??''}" ${ro}></td><td>${canW?`<button class="link" onclick="this.closest('tr').remove()">✕</button>`:''}</td></tr>`;}
+function pcPerpRow(min,max,price,canW){const ro=canW?'':'readonly';return `<tr><td><input type="number" class="pb-min" value="${min??''}" ${ro}></td><td><input type="number" class="pb-max" value="${max??''}" placeholder="∞" ${ro}></td><td><input type="number" class="pb-price" value="${price??''}" ${ro}></td><td>${canW?`<button class="link" onclick="this.closest('tr').remove()">✕</button>`:''}</td></tr>`;}
+function pcAddCloud(){document.getElementById('cloudBands').insertAdjacentHTML('beforeend', pcCloudRow('','','',true));}
+function pcAddPerp(){document.getElementById('perpBands').insertAdjacentHTML('beforeend', pcPerpRow('','','',true));}
+async function pcSaveCloud(){
+  const p=window.__PLAN;
+  const tiers=[...document.querySelectorAll('#cloudBands tr')].slice(1).map(r=>({
+    min_devices:+r.querySelector('.cb-min').value||0,
+    max_devices:r.querySelector('.cb-max').value===''?null:(+r.querySelector('.cb-max').value),
+    rate_inr_annual:+r.querySelector('.cb-rate').value||0,
+  })).filter(t=>t.min_devices>0);
+  try{
+    await api('plans/'+p.id,{method:'PUT',body:{inr_annual:+document.getElementById('pc_base').value,storage_gb:+document.getElementById('pc_sg').value}});
+    await api('plans/'+p.id+'/volume-tiers',{method:'PUT',body:{tiers}});
+    toast('Cloud pricing saved — landing follows in ~5 min'); go('plans');
+  }catch(e){toast('Error: '+e);}
+}
+async function pcSavePerp(){
+  const p=window.__PLAN;
+  const bands=[...document.querySelectorAll('#perpBands tr')].slice(1).map(r=>({
+    min_users:+r.querySelector('.pb-min').value||0,
+    max_users:r.querySelector('.pb-max').value===''?null:(+r.querySelector('.pb-max').value),
+    price_inr:+r.querySelector('.pb-price').value||0,
+  })).filter(b=>b.min_users>0);
+  try{
+    await api('plans/'+p.id+'/perpetual-bands',{method:'PUT',body:{bands}});
+    toast('Lifetime pricing saved — landing follows in ~5 min'); go('plans');
+  }catch(e){toast('Error: '+e);}
+}
+async function pcSaveFees(){
+  try{
+    await api('settings',{method:'PUT',body:{
+      pricing_setup_base_inr:+document.getElementById('pc_setb').value,
+      pricing_setup_included_devices:+document.getElementById('pc_seti').value,
+      pricing_setup_per_extra_inr:+document.getElementById('pc_setx').value,
+      pricing_amc_pct:+document.getElementById('pc_amc').value,
+      pricing_annual_discount_pct:+document.getElementById('pc_ad').value,
+      pricing_half_yearly_discount_pct:+document.getElementById('pc_hd').value,
+    }});
+    toast('Fees & rules saved'); go('plans');
+  }catch(e){toast('Error: '+e);}
+}
+
+// ---------- ⓘ HELP (3-tab, per screen) ----------
+const HELP = {
+dashboard: {
+ use: `<h4>What is this screen for?</h4><p>Your business at a glance — clients, money, licences and what needs attention today.</p>
+ <h4>What you can do here</h4><p>Monitor revenue this month, estimated MRR, trials expiring within 7 days and unpaid orders.</p>
+ <ol><li>Check <b>Needs Attention</b> first every morning</li><li>Open <b>Trials</b> to follow up expiring evaluations</li><li>Open <b>Orders</b> to chase unpaid orders</li></ol>
+ <div class="tip"><b>Good to know:</b> MRR counts annual contracts divided by 12 — it is an estimate for trend-watching, not your GST turnover.</div>
+ <h4>Who can use it</h4><p>Super Admin · Sales · Support (read-only)</p>`,
+ why: `<h4>Why this exists</h4><p>A licensing business dies quietly when trials expire un-followed and invoices sit unpaid. This screen makes silence impossible.</p>
+ <div class="scen"><b>Picture this:</b> Monday 9:15 AM. Dashboard shows 3 trials expiring this week — one is Krishna NBFC with 40 potential devices (₹49 × 40 = ₹1,960/month). Your sales call converts them before Friday. That one glance was worth ₹23,520 a year.</div>
+ <p class="gain">✓ Never lose a trial silently ✓ Cash follow-up same day ✓ One screen for the whole business</p>`,
+ right: `<h4>Mistake → Impact → Right way</h4>
+ <p>❌ <b>Checking only revenue.</b> → Trials quietly expire. → ✅ Treat "Needs Attention" as your daily to-do list.</p>
+ <p>❌ <b>Reading MRR as turnover.</b> → Wrong GST expectations. → ✅ Use Invoices for accounting figures.</p>`,
+},
+tenants: {
+ use: `<h4>What is this screen for?</h4><p>The master register of every SmartEPT customer — client-hosted and cloud.</p>
+ <ol><li>Press <b>+ New Client</b> and fill company, contact, GSTIN</li><li>Choose deployment: Client-Hosted or SmartEPT Cloud</li><li>Mark <b>Ecosystem customer</b> if they already use SmartDCM/SmartPRS (a flat 10% discount applies automatically on every plan)</li><li>Optionally start a 7-day trial immediately</li><li>Open any client to see licences, devices, orders, invoices in one place</li></ol>
+ <div class="tip"><b>Good to know:</b> the one-time Setup &amp; Onboarding fee (₹5,000 up to 25 devices + ₹100/extra) is charged automatically on the client's FIRST paid order — the system tracks who has paid it.</div>`,
+ why: `<h4>Why this exists</h4><p>Every licence, payment and support call hangs off the client record. Clean records here = clean invoices and easy renewals later.</p>
+ <div class="scen"><b>Picture this:</b> ABC Recoveries calls about adding 20 devices. You open their record: Professional, 50 devices at ₹49 volume rate, setup fee already paid, renewal in March. You quote 70 devices × ₹49 = ₹3,430/month in ten seconds, no setup fee again.</div>
+ <p class="gain">✓ One source of truth ✓ Instant quotes ✓ GSTIN captured for clean invoices</p>`,
+ right: `<p>❌ <b>Skipping GSTIN at creation.</b> → Invoice corrections later. → ✅ Capture GSTIN on day one.</p>
+ <p>❌ <b>Forgetting the Ecosystem flag.</b> → Customer misses the flat 10% ecosystem discount, feels cheated. → ✅ Ask "do you use SmartDCM or SmartPRS?" on every call.</p>
+ <p>❌ <b>Deleting clients.</b> → Orphaned invoices. → ✅ Use status churned instead.</p>`,
+},
+trials: {
+ use: `<h4>What is this screen for?</h4><p>Follow every 7-day evaluation from signup to conversion (or expiry).</p>
+ <ol><li>Active trials are sorted by expiry — call the nearest first</li><li><b>Extend</b> adds days (max 30) when a genuine evaluation needs more time</li><li><b>Convert to Paid</b> opens a pre-filled order</li></ol>
+ <div class="tip"><b>Good to know:</b> trial data auto-purges after the grace period (7 days post expiry) — extensions also move the purge date.</div>`,
+ why: `<h4>Why this exists</h4><p>The framework rule is deliberate: no permanent free plan. That only works if every trial gets a decision — buy, extend, or expire.</p>
+ <div class="scen"><b>Picture this:</b> Krishna NBFC's trial ends Thursday. You call Wednesday: "How did the Gate-to-PC test go?" They loved it but need MD sign-off — you extend 7 days instead of losing them to an expiry.</div>
+ <p class="gain">✓ No trial dies unworked ✓ Extensions logged and auditable</p>`,
+ right: `<p>❌ <b>Extending repeatedly without a reason.</b> → Free plan through the back door. → ✅ One extension, with a note.</p>
+ <p>❌ <b>Converting without checking devices used.</b> → Underquoted deal. → ✅ Check actual device count in the client record first.</p>`,
+},
+licences: {
+ use: `<h4>What is this screen for?</h4><p>Every licence key: status, devices used vs limit, expiry, AMC.</p>
+ <ol><li><b>Issue Licence</b> for direct issues; use Orders for paid flow</li><li><b>Renew</b> extends by the billing period</li><li><b>Suspend / Resume</b> for payment disputes</li><li>Perpetual keys show AMC — <b>Renew AMC</b> after payment (18% of licence value)</li></ol>
+ <div class="tip"><b>Good to know:</b> the product server phones home to validate the key — licence metadata ONLY travels; client operational data never leaves their server.</div>`,
+ why: `<h4>Why this exists</h4><p>The licence key is the product's cash register. Device caps, feature flags and expiry all enforce what was actually paid for.</p>
+ <div class="scen"><b>Picture this:</b> A customer paid for 50 devices but IT quietly installs 60. The 51st agent activation is refused with "device limit reached" — the customer calls, and it becomes a ₹5,880/year upsell instead of silent revenue leakage.</div>
+ <p class="gain">✓ Zero over-deployment ✓ AMC renewals visible ✓ Clean suspend/resume for disputes</p>`,
+ right: `<p>❌ <b>Revoking for a late payment.</b> → Angry customer, dead server. → ✅ Suspend first — it's reversible.</p>
+ <p>❌ <b>Raising device limit as a favour.</b> → Unbilled seats forever. → ✅ Create an order for the difference, then raise.</p>`,
+},
+plans: {
+ use: `<h4>What is this screen for?</h4><p>The commercial matrix: Core ₹29 / Professional ₹59 / Enterprise ₹99, volume tiers and feature entitlements.</p>
+ <ol><li>Review rates and perpetual prices per plan</li><li>Super Admin can <b>Edit</b> rates — new orders use new rates immediately</li></ol>
+ <div class="tip"><b>Good to know:</b> existing paid orders and active licences are NOT retro-changed by a price edit — only new quotes.</div>`,
+ why: `<h4>Why this exists</h4><p>Prices live in the database, not in code — approved changes go live without a developer.</p>
+ <div class="scen"><b>Picture this:</b> Management approves Professional at ₹69 from next quarter. You edit one field; the landing page calculator, quotes and checkout all follow.</div>`,
+ right: `<p>❌ <b>Editing prices mid-negotiation.</b> → Quote confusion. → ✅ Create the order first (locks its price), then edit.</p>`,
+},
+orders: {
+ use: `<h4>What is this screen for?</h4><p>Create quotations/orders and record payments — gateway, manual, or on credit.</p>
+ <ol><li><b>+ New Order/Quote</b> → pick client, plan, devices (+ optional coupon) → live totals show licence + setup fee + discount + GST</li><li>Choose <b>Quotation</b> when a manager requests but MANAGEMENT pays later — quote number EPT-Q-2026-27-07-0001, printable, with the pay link printed on it</li><li>Management approves (or pays the link directly); <b>Record Payment</b> for NEFT/UPI/cheque offers three choices: <b>Paid</b> (full), <b>Partial</b> (part now, balance on credit) or <b>Due</b> (whole amount on credit)</li><li>ANY of the three provisions the licence and GST invoice immediately — credit clients appear in the <b>Credit Clients</b> screen until their balance is zero</li></ol>
+ <div class="tip"><b>Good to know:</b> the Setup &amp; Onboarding fee appears automatically on a client's first paid order only. A coupon captured on a quotation is LOCKED into that quote — the pay link honours it even if the code expires meanwhile.</div>`,
+ why: `<h4>Why this exists</h4><p>One golden automation: money in → licence out → invoice out. No manual steps to forget, no licence issued before payment.</p>
+ <div class="scen"><b>Picture this:</b> Godavari Finserv pays ₹58,800 by NEFT at 4 PM. Accounts enters the UTR at 4:05. By 4:06 their licence key is active, the GST invoice is numbered, and their server validates on the next phone-home. Zero emails between departments.</div>
+ <p class="gain">✓ No unpaid activations ✓ No paid-but-forgotten clients ✓ Every rupee has an invoice</p>`,
+ right: `<p>❌ <b>Issuing the licence first, collecting later.</b> → Aging receivables. → ✅ Payment first; use a trial for evaluations.</p>
+ <p>❌ <b>Recording manual payment without UTR.</b> → Unreconcilable books. → ✅ Always paste the reference.</p>`,
+},
+invoices: {
+ use: `<h4>What is this screen for?</h4><p>Every GST invoice — numbered EPT-{FY}-{month}-{count}, e.g. EPT-2026-27-07-0001. The count runs <b>consecutively through the financial year</b> (GST style): July's last invoice 0009 → August starts at 0010; the series resets only on 1 April. One shared series covers subscription, renewal, upgrade and installation invoices.</p>
+ <ol><li><b>Print</b> opens the branded invoice — use the browser's Save as PDF</li><li>Invoices issued on credit show <b>DUE</b> with the payable-by date, and flip to PAID automatically when the balance reaches zero</li><li>Series prefix and GST rate are configured in Settings</li></ol>`,
+ why: `<h4>Why this exists</h4><p>Indian B2B buyers pay against proper GST invoices. Automatic, consecutive, FY-correct numbering keeps your CA happy and audits painless — a gap in the series is the first thing an auditor asks about.</p>
+ <div class="scen"><b>Picture this:</b> your CA files GSTR-1 for July. Every EPT-2026-27 invoice is in one unbroken series across the year — Telangana buyers show CGST 9% + SGST 9%, others IGST 18%, exactly as the return needs. Zero manual reconciliation.</div>`,
+ right: `<p>❌ <b>Manually editing invoice JSON.</b> → Broken audit trail. → ✅ Cancel and re-issue via a corrected order.</p>
+ <p>❌ <b>Deleting an invoice to "fix" a number.</b> → A hole in a GST series. → ✅ Numbers are MAX+1 within the FY — deletions never cause duplicates, and cancelled invoices stay on record.</p>`,
+},
+credit: {
+ use: `<h4>What is this screen for?</h4><p>Every client who was provisioned <b>before paying in full</b> — the credit book. Total, received, balance and the payable-by date, in one table. Overdue rows turn red.</p>
+ <ol><li>Collections work both ways: <b>Record balance</b> for NEFT/UPI/cheque instalments you receive, or <b>Pay link</b> to resend the client's original link — it stays alive and collects exactly the balance online</li><li>The receipt and PAID invoice go out automatically the moment the balance reaches zero</li><li>Overdue (red) = your call list for the day</li></ol>
+ <div class="tip"><b>Good to know:</b> nothing locks automatically on overdue — credit is a commercial judgement (Ejaz's standing rule). The licence stays live; the red row is your reminder to call.</div>
+ <h4>Who can use it</h4><p>Super Admin · Sales record payments; Support sees the list read-only.</p>`,
+ why: `<h4>Why this exists</h4><p>Real business does not always pay online first. Banks' recovery partners and NBFCs often need the software running while finance processes the payment — refusing credit loses the deal; forgetting credit loses the money. This table makes forgetting impossible.</p>
+ <div class="scen"><b>Picture this:</b> Krishna NBFC signs for 50 devices — ₹40,000 quote. Their MD approves but accounts pays in two parts: ₹25,000 NEFT today, balance by 15 August. You record Partial ₹25,000 — their licence goes live the same minute, the invoice prints DUE ₹15,000 by 15-Aug. On 16 August the row turns red, you call, they pay the link. Receipt goes out on its own. Deal saved, money tracked, zero spreadsheets.</div>
+ <p class="gain">✓ Deals close on the client's payment rhythm ✓ Every rupee outstanding is visible daily ✓ Receipts are automatic at zero</p>`,
+ right: `<p>❌ <b>Provisioning on credit for a stranger.</b> → Bad debt. → ✅ Credit is for known/repeat clients — new names pay first or use the trial.</p>
+ <p>❌ <b>Collecting an instalment and noting it in a diary.</b> → Books disagree with reality. → ✅ Record it here the same minute — the balance and invoice update themselves.</p>
+ <p>❌ <b>Suspending a licence because a due date passed.</b> → Dead product at the client, angry MD. → ✅ Call first; suspension is a last resort you do manually and deliberately.</p>`,
+},
+cms: {
+ use: `<h4>What is this screen for?</h4><p>Edit the public landing page's words — hero headline, announcement bar, contact details, testimonials — without touching code or calling a developer.</p>
+ <ol><li>Type new text and press <b>Save Landing Content</b></li><li>Blank fields keep the landing page's built-in copy — you can never break the page</li><li>The announcement bar is perfect for festival offers ("25% off with DIWALI25") — blank hides it</li><li>Lead alerts email goes to whatever address you set here</li></ol>
+ <div class="tip"><b>Good to know:</b> the landing page picks changes up within 5 minutes (or instantly on a hard refresh) — the content travels through the same live API as prices.</div>
+ <h4>Who can use it</h4><p>Super Admin only.</p>`,
+ why: `<h4>Why this exists</h4><p>Marketing must move at the owner's speed, not the developer's calendar. A festival campaign that needs a deploy is a campaign that launches late.</p>
+ <div class="scen"><b>Picture this:</b> Wednesday 6 PM, management approves a Diwali push. You type the announcement line, create coupon DIWALI25, and share the ad on WhatsApp. The landing page is already carrying the offer before the tea gets cold.</div>`,
+ right: `<p>❌ <b>Writing long paragraphs in the hero.</b> → Visitors bounce. → ✅ One sharp headline + one persuasive sentence.</p>
+ <p>❌ <b>Leaving a finished offer in the announcement bar.</b> → Stale site, awkward calls. → ✅ Blank the field the day the offer ends.</p>`,
+},
+storage: {
+ use: `<h4>What is this screen for?</h4><p>Cloud tenants' storage: average GB this month and the rental charge (₹3/GB slab pricing, 50 GB minimum).</p>
+ <ol><li>Until Phase-3 automatic metering, <b>Record Usage</b> manually or via import</li><li>Monthly charge = average daily GB → rounded up → slab rates</li></ol>`,
+ why: `<h4>Why this exists</h4><p>The framework promise is transparent storage billing — customers pay for what they keep, and you never subsidise hoarders.</p>
+ <div class="scen"><b>Picture this:</b> Godavari keeps 210 GB average. Bill: 210 × ₹3 = ₹630/month, shown as its own invoice line. They shorten screenshot retention to 30 days; next month it's 140 GB = ₹420. They feel in control — because they are.</div>`,
+ right: `<p>❌ <b>Billing peak-day usage.</b> → Disputes. → ✅ The system averages the month — record daily values honestly.</p>`,
+},
+settings: {
+ use: `<h4>What is this screen for?</h4><p>Company details, GST rate, invoice series, and payment gateway keys.</p>
+ <ol><li>Paste Razorpay keys (test rzp_test_… or live) — webhook URL shown below the fields</li><li>Paste Stripe keys for international USD</li><li>Saved secrets display masked — leaving a masked value unchanged keeps the old secret</li></ol>
+ <div class="tip"><b>Good to know:</b> configure the webhook URLs in each gateway's dashboard, or payments will succeed but licences won't auto-activate.</div>`,
+ why: `<h4>Why this exists</h4><p>Key rotation and price-of-business settings shouldn't need a developer or a deploy.</p>`,
+ right: `<p>❌ <b>Sharing secret keys on WhatsApp/chat.</b> → Compromise risk. → ✅ Paste directly here, only over HTTPS, only Super Admin.</p>`,
+},
+leads: {
+ use: `<h4>What is this screen for?</h4><p>Your sales pipeline: every enquiry from the website form, WhatsApp, referrals or walk-ins, with a status that moves NEW → CONTACTED → DEMO_SCHEDULED → QUOTED → WON/LOST.</p><ol><li>Change the status right in the row as the conversation progresses</li><li>Set a follow-up date — overdue follow-ups turn red and float to the top</li><li>Keep call notes on the lead so anyone can pick it up</li></ol>`,
+ why: `<h4>Why this exists</h4><p>Leads that live in one person's WhatsApp die there. <b>Picture this:</b> Suresh from a Vijayawada NBFC fills the website form on Monday asking about 60 devices (₹28,000+ a year). Without a pipeline, that email sits unread over a busy week and he signs with a competitor. With Leads, sales@ gets the mail instantly, the lead shows NEW at the top, and Friday's follow-up date makes sure someone calls.</p><p>✔ No enquiry ever lost &nbsp;✔ Handovers survive leave days &nbsp;✔ WON converts to a Client with the story attached</p>`,
+ right: `<p>❌ <b>Marking WON without creating the client.</b> → Pipeline says money that billing can't see. → ✅ On WON, immediately create the tenant from Clients and link it.</p><p>❌ <b>Leaving follow-up blank.</b> → "Someday" never comes. → ✅ Every open lead carries a date.</p>`,
+},
+coupons: {
+ use: `<h4>What is this screen for?</h4><p>Discount coupons for campaigns: percent or flat ₹ off, with optional caps (max uses, minimum devices, expiry). The same code works at public signup, in the client portal and on admin-raised orders.</p>`,
+ why: `<h4>Why this exists</h4><p>A festival offer needs a switch you control, not a price edit that forgets to get reverted. <b>Picture this:</b> Diwali campaign — DIWALI25 gives 25% off annual plans of 25+ devices, capped at 20 redemptions, auto-expiring Nov 15. The discount appears as its own line on the quote and GST invoice, so accounts stay clean.</p><p>✔ Usage counted only on PAID orders &nbsp;✔ Full audit trail &nbsp;✔ Disable instantly any time</p>`,
+ right: `<p>❌ <b>Editing plan prices for a campaign.</b> → Old quotes break, prices never come back. → ✅ Coupon with an expiry date.</p><p>❌ <b>Unlimited uses on a deep discount.</b> → One viral WhatsApp forward = margin gone. → ✅ Always set max uses.</p>`,
+},
+audit: {
+ use: `<h4>What is this screen for?</h4><p>The immutable trail: who issued, renewed, suspended, edited, or recorded what — and when.</p>`,
+ why: `<h4>Why this exists</h4><p>When a licence "mysteriously" changed or a price was edited, this answers who and when in one search. Trust, but verify.</p>`,
+ right: `<p>❌ <b>Sharing one admin login.</b> → The log says "Ejaz did everything". → ✅ One account per person, role-appropriate.</p>`,
+},
+};
+let helpTabIdx = 0;
+function openHelp() {
+  document.getElementById('helpTitle').textContent = TITLES[PAGE];
+  helpTab(0, document.querySelector('.help-tabs button'));
+  document.getElementById('helpOv').classList.add('show');
+}
+function closeHelp() { document.getElementById('helpOv').classList.remove('show'); }
+document.getElementById('helpOv').addEventListener('click', e => { if (e.target.id === 'helpOv') closeHelp(); });
+function helpTab(i, btn) {
+  helpTabIdx = i;
+  document.querySelectorAll('.help-tabs button').forEach((b, j) => b.classList.toggle('on', j === i));
+  const h = HELP[PAGE] || {use:'<p>General screen.</p>', why:'<p></p>', right:'<p></p>'};
+  document.getElementById('helpBody').innerHTML = [h.use, h.why, h.right][i] || '<p>—</p>';
+}
+
+// ---------- leads helpers (R3-7) ----------
+const leadPill = s => ({NEW:'p-info',CONTACTED:'p-warn',DEMO_SCHEDULED:'p-warn',QUOTED:'p-info',WON:'p-ok',LOST:'p-mut'}[s] || 'p-mut');
+async function loadLeads() {
+  const q = encodeURIComponent(document.getElementById('ldq')?.value || '');
+  const st = encodeURIComponent(document.getElementById('ldst')?.value || '');
+  const d = await api(`leads?q=${q}&status=${st}`);
+  const rows = (d.data || []).map(l => {
+    const overdue = l.follow_up_at && new Date(l.follow_up_at) <= new Date();
+    return `<tr>
+      <td><b>${esc(l.name)}</b><div class="mini">${esc(l.company || '')}</div></td>
+      <td class="mini">${esc(l.email || '—')}<div>${esc(l.phone || '')}</div></td>
+      <td class="mini">${esc(l.city || '—')}<div>${l.devices_interested ? l.devices_interested + ' devices' : ''}</div></td>
+      <td class="mini">${esc(l.source || '')}</td>
+      <td>${CAN_WRITE
+        ? `<select onchange="setLeadStatus(${l.id}, this.value)">${LEAD_STATUSES.map(s => `<option ${s === l.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`
+        : `<span class="pill ${leadPill(l.status)}">${esc(l.status)}</span>`}</td>
+      <td class="mini" style="${overdue ? 'color:#C0392B;font-weight:700' : ''}">${l.follow_up_at ? new Date(l.follow_up_at).toLocaleDateString() : '—'}</td>
+      <td class="mini" style="max-width:240px">${esc((l.notes || l.message || '').slice(0, 120))}</td>
+      <td>${CAN_WRITE ? `<button class="link" onclick="editLead(${l.id})">Edit</button>` : ''}</td></tr>`;
+  }).join('');
+  document.getElementById('ldlist').innerHTML = `<div class="card">
+    <table><tr><th>Lead</th><th>Contact</th><th>City / Size</th><th>Source</th><th>Status</th><th>Follow-up</th><th>Notes</th><th></th></tr>
+    ${rows || '<tr><td colspan="8" class="mini">No leads yet. They arrive from the website form, or add one with + Add Lead.</td></tr>'}</table></div>`;
+  window._LEADS = d.data || [];
+}
+async function setLeadStatus(id, status) {
+  try { await api('leads/' + id, {method:'PUT', body:{status}}); toast('Lead → ' + status); loadLeads(); }
+  catch (e) { toast('Error: ' + e); }
+}
+function leadForm(l = {}) {
+  return `<div class="row">
+  <div><label>Name *</label><input id="lf-name" value="${esc(l.name || '')}"></div>
+  <div><label>Company</label><input id="lf-company" value="${esc(l.company || '')}"></div>
+  <div><label>Email</label><input id="lf-email" value="${esc(l.email || '')}"></div>
+  <div><label>Phone</label><input id="lf-phone" value="${esc(l.phone || '')}"></div>
+  <div><label>City</label><input id="lf-city" value="${esc(l.city || '')}"></div>
+  <div><label>Devices interested</label><input id="lf-dev" type="number" min="1" value="${l.devices_interested || ''}"></div>
+  <div><label>Follow-up date</label><input id="lf-fu" type="date" value="${l.follow_up_at ? String(l.follow_up_at).slice(0, 10) : ''}"></div>
+  <div><label>Assigned to</label><input id="lf-asg" value="${esc(l.assigned_to || '')}"></div>
+  </div>
+  <label>Notes</label><textarea id="lf-notes" rows="3" style="width:100%">${esc(l.notes || '')}</textarea>`;
+}
+function leadFormBody() {
+  const v = id => document.getElementById(id).value.trim();
+  return {name:v('lf-name'), company:v('lf-company') || null, email:v('lf-email') || null, phone:v('lf-phone') || null,
+    city:v('lf-city') || null, devices_interested:v('lf-dev') || null, follow_up_at:v('lf-fu') || null,
+    assigned_to:v('lf-asg') || null, notes:v('lf-notes') || null};
+}
+function newLead() {
+  openModal(`<h2>Add lead</h2><div class="sub">Walk-in, referral or phone enquiry — website leads arrive here automatically.</div>${leadForm()}
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="saveLead(null)">Save lead</button></div>`, true);
+}
+function editLead(id) {
+  const l = (window._LEADS || []).find(x => x.id === id) || {};
+  openModal(`<h2>Edit lead — ${esc(l.name || '')}</h2>${leadForm(l)}
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="saveLead(${id})">Save changes</button></div>`, true);
+}
+async function saveLead(id) {
+  try {
+    const body = leadFormBody();
+    if (!body.name) { toast('Name is required'); return; }
+    await api(id ? 'leads/' + id : 'leads', {method: id ? 'PUT' : 'POST', body});
+    closeModal(); toast('Lead saved'); loadLeads();
+  } catch (e) { toast('Error: ' + e); }
+}
+
+// ---------- coupons helpers (R3-7) ----------
+async function loadCoupons() {
+  const d = await api('coupons');
+  const rows = (d.data || []).map(c => `<tr>
+    <td><b>${esc(c.code)}</b><div class="mini">${esc(c.description || '')}</div></td>
+    <td>${c.type === 'percent' ? Number(c.value) + '% off' : '₹' + Number(c.value).toLocaleString('en-IN') + ' off'}</td>
+    <td class="mini">${c.used_count}${c.max_uses ? ' / ' + c.max_uses : ''} used</td>
+    <td class="mini">${c.min_devices ? '≥ ' + c.min_devices + ' devices' : '—'}${c.exclusive_email ? '<div style="color:var(--warn);font-weight:700">exclusive: ' + esc(c.exclusive_email) + '</div>' : ''}</td>
+    <td class="mini">${c.valid_until ? 'till ' + String(c.valid_until).slice(0, 10) : 'no expiry'}</td>
+    <td><span class="pill ${c.active ? 'p-ok' : 'p-mut'}">${c.active ? 'active' : 'off'}</span></td>
+    <td>${CAN_WRITE ? `<button class="link" onclick="toggleCoupon(${c.id}, ${c.active ? 0 : 1})">${c.active ? 'Disable' : 'Enable'}</button>` : ''}</td></tr>`).join('');
+  document.getElementById('cplist').innerHTML = `<div class="card"><h3>Discount coupons</h3>
+    <table><tr><th>Code</th><th>Discount</th><th>Usage</th><th>Condition</th><th>Validity</th><th>Status</th><th></th></tr>
+    ${rows || '<tr><td colspan="7" class="mini">No coupons yet. Create one and share the code in campaigns — it applies at signup, in the client portal and on admin orders.</td></tr>'}</table></div>`;
+}
+function newCoupon() {
+  openModal(`<h2>New coupon</h2><div class="sub">Applies at signup, in the client portal and on admin orders — usage counts only when the order is PAID.</div>
+  <div class="row">
+  <div><label>Code * (e.g. DIWALI25)</label><input id="cf-code" style="text-transform:uppercase"></div>
+  <div><label>Type *</label><select id="cf-type"><option value="percent">% percent off</option><option value="flat">₹ flat off</option></select></div>
+  <div><label>Value *</label><input id="cf-value" type="number" min="0.01" step="0.01" placeholder="10 = 10% or ₹10"></div>
+  <div><label>Max uses (blank = unlimited)</label><input id="cf-max" type="number" min="1"></div>
+  <div><label>Min devices (blank = any)</label><input id="cf-min" type="number" min="1"></div>
+  <div><label>Valid until (blank = no expiry)</label><input id="cf-until" type="date"></div>
+  <div><label>Exclusive to one email (blank = public)</label><input id="cf-excl" type="email" placeholder="cfo@bigclient.in"></div>
+  </div>
+  <label>Description</label><input id="cf-desc" placeholder="Diwali festive offer" style="width:100%">
+  <div class="mini" style="margin-top:6px">Exclusive coupons auto-apply the moment that email is typed at signup (the "exclusive-offer catch") and are invisible to everyone else. Note: coupons stack AFTER the advance-period discount — price campaigns knowingly.</div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="saveCoupon()">Create coupon</button></div>`, true);
+}
+async function saveCoupon() {
+  const v = id => document.getElementById(id).value.trim();
+  try {
+    if (!v('cf-code') || !v('cf-value')) { toast('Code and value are required'); return; }
+    await api('coupons', {method:'POST', body:{code:v('cf-code'), type:v('cf-type'), value:v('cf-value'),
+      max_uses:v('cf-max') || null, min_devices:v('cf-min') || null, valid_until:v('cf-until') || null,
+      exclusive_email:v('cf-excl') || null, description:v('cf-desc') || null, active:true}});
+    closeModal(); toast('Coupon created'); loadCoupons();
+  } catch (e) { toast('Error: ' + e); }
+}
+async function toggleCoupon(id, active) {
+  try { await api('coupons/' + id, {method:'PUT', body:{active: !!active}}); loadCoupons(); }
+  catch (e) { toast('Error: ' + e); }
+}
+
+go('dashboard');
+</script>
+</body>
+</html>
+<?php /**PATH C:\laragon\www\smartept-central\resources\views/admin/console.blade.php ENDPATH**/ ?>
