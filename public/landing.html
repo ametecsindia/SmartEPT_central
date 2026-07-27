@@ -648,9 +648,10 @@ const NPX_BANDS = [
 ];
 const NPX_FEATURES = ['Attendance & shift adherence','Productive vs idle time','App & website usage','Screenshots (policy-driven)','Webcam presence photos','Live status & live screen','Meetings & scheduling','Productivity scoring','AI-tool usage insights','Reports, exports & payroll pack','Restrictions & USB controls','Biometric gate-to-PC','Multi-office & departments','Role-based access & SSO','Unlimited manager accounts','Full API access','Screen recording','Employee data archive & backup'];
 let npxSel=0, npxCycle='annual';
+let npxAnnualDisc=0.25, npxHalfDisc=0.10, npxSetupBase=5000, npxSetupIncl=30, npxSetupPer=100, npxAmc='15\u201320';
 const npxINR = n => '\u20B9'+Number(n).toLocaleString('en-IN');
-function npxRate(annual,c){ const base=annual/0.75; if(c==='annual') return annual; if(c==='half_yearly') return Math.round(base*0.9*100)/100; return Math.round(base*100)/100; }
-function npxSetup(cap){ return 5000+Math.max(0,cap-30)*100; }
+function npxRate(annual,c){ const base=annual/Math.max(0.1,1-npxAnnualDisc); if(c==='annual') return annual; if(c==='half_yearly') return Math.round(base*(1-npxHalfDisc)*100)/100; return Math.round(base*100)/100; }
+function npxSetup(cap){ return npxSetupBase+Math.max(0,cap-npxSetupIncl)*npxSetupPer; }
 function npxRender(){
   const b=NPX_BANDS[npxSel];
   const camt=document.getElementById('npxCloudAmt'), crun=document.getElementById('npxCloudRun'), cset=document.getElementById('npxCloudSetup');
@@ -658,7 +659,7 @@ function npxRender(){
   const cyclbl={quarterly:'quarterly',half_yearly:'half-yearly',annual:'annually'}[npxCycle];
   if(b.custom){
     camt.textContent='\u2014'; crun.textContent='Custom quotation for 5,000+ users'; cset.innerHTML='Talk to sales for volume setup.';
-    pamt.textContent='Custom'; pper.textContent='quotation \u00B7 5,000+ users'; pset.innerHTML='Volume setup quoted with the licence.'; pamc.innerHTML='+ Optional AMC 15\u201320%/year on prevailing prices.';
+    pamt.textContent='Custom'; pper.textContent='quotation \u00B7 5,000+ users'; pset.innerHTML='Volume setup quoted with the licence.'; pamc.innerHTML='+ Optional AMC '+npxAmc+'%/year on prevailing prices.';
   } else {
     const r=npxRate(b.cloud,npxCycle);
     camt.textContent=(r%1===0)?r:r.toFixed(2);
@@ -667,7 +668,7 @@ function npxRender(){
     pamt.textContent=Number(b.perp).toLocaleString('en-IN');
     pper.textContent='one-time \u00B7 '+b.label.toLowerCase()+' users';
     pset.innerHTML='+ <b>'+npxINR(npxSetup(b.cap))+'</b> one-time setup (self-service)';
-    pamc.innerHTML='+ Optional AMC <b>15\u201320%/year</b> (updates & support), on prevailing prices.';
+    pamc.innerHTML='+ Optional AMC <b>'+npxAmc+'%/year</b> (updates & support), on prevailing prices.';
   }
   document.querySelectorAll('#npxChips .npx-chip').forEach((c,i)=>c.classList.toggle('on',i===npxSel));
   document.querySelectorAll('#npxCyc button').forEach(x=>x.classList.toggle('on',x.dataset.c===npxCycle));
@@ -679,6 +680,37 @@ function npxRender(){
   const fg=document.getElementById('npxFeatures');
   NPX_FEATURES.forEach(f=>{ const d=document.createElement('div'); d.className='npx-fi'; d.innerHTML='<b>\u2713</b> <span>'+f+'</span>'; fg.appendChild(d); });
   npxRender();
+})();
+/* ===== live pricing: wire calculator + hero to admin bands (Cloud + Lifetime) ===== */
+function npxMerge(p){
+  const vts=(p.volume_tiers||[]).slice().sort((a,b)=>a.min-b.min);
+  const pbs=(p.perpetual_bands||[]).slice().sort((a,b)=>a.min-b.min);
+  if(!vts.length && !pbs.length) return [];
+  const bounds=[...new Set([].concat(vts,pbs).map(x=>x.max))].filter(x=>x!=null).sort((a,b)=>a-b);
+  const cloudFor=cap=>{const t=vts.find(t=>(t.max==null||cap<=t.max)&&cap>=t.min);return t?t.rate:(p.inr_annual||0);};
+  const perpFor=cap=>{const b=pbs.find(b=>(b.max==null||cap<=b.max)&&cap>=b.min);return b?b.price:null;};
+  const bands=bounds.map(cap=>({cap:cap,label:'Up to '+Number(cap).toLocaleString('en-IN'),cloud:cloudFor(cap),perp:perpFor(cap)}));
+  if(vts.some(t=>t.max==null)||pbs.some(b=>b.max==null)){const top=bounds.length?bounds[bounds.length-1]:0;bands.push({cap:null,label:(top?Number(top).toLocaleString('en-IN'):'5,000')+'+',custom:true});}
+  return bands;
+}
+function npxUpdateHero(entry){
+  if(!entry||entry.custom||entry.perp==null) return;
+  const pe=document.querySelector('.ps-price'); if(pe) pe.textContent='₹'+Number(entry.perp).toLocaleString('en-IN');
+}
+(function npxLive(){
+  const chips=document.getElementById('npxChips'); if(!chips || location.protocol==='file:') return;
+  fetch('/api/v1/public/plans',{headers:{Accept:'application/json'}}).then(r=>r.ok?r.json():null).then(d=>{
+    if(!d||!d.plans) return;
+    const p=d.plans.find(x=>x.code==='smartept')||d.plans[0]; if(!p) return;
+    const nb=npxMerge(p); if(!nb.length) return;
+    NPX_BANDS.length=0; nb.forEach(x=>NPX_BANDS.push(x));
+    if(d.cycles){ if(d.cycles.annual_discount!=null) npxAnnualDisc=+d.cycles.annual_discount; if(d.cycles.half_yearly_discount!=null) npxHalfDisc=+d.cycles.half_yearly_discount; }
+    if(d.setup){ if(d.setup.base) npxSetupBase=+d.setup.base; if(d.setup.included) npxSetupIncl=+d.setup.included; if(d.setup.per_extra) npxSetupPer=+d.setup.per_extra; }
+    if(d.amc_pct) npxAmc=(''+d.amc_pct).replace(/\.0+$/,'');
+    npxSel=0; chips.innerHTML='';
+    NPX_BANDS.forEach((b,i)=>{ const el=document.createElement('button'); el.className='npx-chip'+(i===0?' on':''); el.textContent=b.custom?(b.label||'5,000+'):b.label.replace('Up to ',''); el.onclick=()=>{npxSel=i;npxRender();}; chips.appendChild(el); });
+    npxRender(); npxUpdateHero(NPX_BANDS[0]);
+  }).catch(()=>{});
 })();
 /* ===== FAQ ===== */
 function fq(btn){

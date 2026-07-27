@@ -25,7 +25,7 @@ class PublicController extends Controller
             $cfg = PricingService::config();
 
             return [
-                'plans' => Plan::with('volumeTiers')->where('active', true)->orderBy('sort')->get()
+                'plans' => Plan::with(['volumeTiers', 'perpetualBands'])->where('active', true)->orderBy('sort')->get()
                     ->map(fn ($p) => [
                         'code' => $p->code,
                         'name' => $p->name,
@@ -39,6 +39,11 @@ class PublicController extends Controller
                             'min' => (int) $t->min_devices,
                             'max' => $t->max_devices === null ? null : (int) $t->max_devices,
                             'rate' => (float) $t->rate_inr_annual,
+                        ])->all(),
+                        'perpetual_bands' => $p->perpetualBands->map(fn ($b) => [
+                            'min' => (int) $b->min_users,
+                            'max' => $b->max_users === null ? null : (int) $b->max_users,
+                            'price' => (int) $b->price_inr,
                         ])->all(),
                     ])->all(),
                 'cloud_multiplier' => $cfg['cloud_multiplier'],
@@ -57,6 +62,7 @@ class PublicController extends Controller
                     'min_inr' => $cfg['storage_min_inr'],
                 ],
                 'gst_rate' => (float) Setting::get('gst_rate', 18),
+                'amc_pct' => (float) Setting::get('pricing_amc_pct', 18),
                 'trial' => ['days' => 7, 'devices' => 10, 'plan' => 'professional'],
             ];
         });
