@@ -9,17 +9,26 @@ them on behalf of your organisation.</p>
 
 <h2>1. The service and licence types</h2>
 <ul>
-  <li><b>Subscription licences</b> (monthly or annual) — priced per active endpoint device, on your
-  own server (client-hosted) or on SmartEPT-Managed Cloud. The licence is valid for the paid period
-  and renews only when a renewal payment is made.</li>
-  <li><b>Perpetual licences</b> — a one-time licence for the purchased device count, with an optional
-  Annual Maintenance Contract (AMC) for updates and support.</li>
-  <li><b>Free trial</b> — 7 days, Professional features, up to 10 devices, no card required. Trial
-  data is purged if you do not continue.</li>
+  <li><b>Subscription licences</b> (monthly or annual advance) — priced per <b>Licensed Monitored User</b>,
+  on your own server (client-hosted) or on SmartEPT Managed Cloud. A Licensed Monitored User represents
+  one employee authorised to use the SmartEPT Agent. An employee may move to another authorised
+  workstation using personal credentials but may maintain only one active SmartEPT Agent session at a
+  time. Dashboard-only administrators, HR users and managers do not consume monitored-user licences
+  unless they are actively monitored. The licence is valid for the paid period and renews only when a
+  renewal payment is made.</li>
+  <li><b>Perpetual licences</b> — a one-time licence for the purchased monitored-user capacity. The
+  software licence does not expire. The first 12 months of updates and support are included, followed
+  by an optional Annual Maintenance Contract (AMC) for future updates and support.</li>
+  <li><b>Free trial</b> — a 7-day full-platform evaluation, every standard feature included, up to 10
+  monitored employees, no card required. Infrastructure-dependent integrations (biometric, AD/SSO,
+  client-hosted installation) require assisted setup. Trial data is scheduled for deletion within 14
+  days after trial expiry unless a paid service is activated.</li>
 </ul>
-<p>Licences are counted per endpoint device, are non-transferable between organisations, and the
-licence key must be kept confidential. A one-time Setup &amp; Onboarding fee applies on the first
-order only. SmartEPT-Managed Cloud storage is billed monthly on average usage (50 GB minimum).</p>
+<p>Licences are priced per Licensed Monitored User, are non-transferable between organisations, and the
+licence key must be kept confidential. A one-time Remote Assisted Setup &amp; Onboarding fee may apply on
+the first paid order. SmartEPT Managed Cloud includes 500&nbsp;MB of pooled storage per subscribed user
+across the organisation; storage beyond the tenant's included pooled allowance is charged at &#8377;3 per
+GB per month, and standard retention is configurable up to a maximum of three months.</p>
 
 <h2>2. Payments, taxes and invoices</h2>
 <p>Payments are processed by Razorpay (UPI, cards, NetBanking) and Stripe (international cards);
@@ -40,8 +49,9 @@ GSTIN — required if you wish to claim input tax credit) and for all activity u
 <p>On client-hosted deployments, all monitoring data stays on your infrastructure and is entirely
 your responsibility. On SmartEPT-Managed Cloud, we host that data for you as described in the
 <a href="/privacy">Privacy Policy</a>; you remain its owner. We may suspend accounts with overdue
-cloud invoices after notice; data of expired trials and closed accounts is purged per our published
-retention rules.</p>
+cloud invoices after notice. Trial data is scheduled for deletion within 14 days after trial expiry
+unless a paid service is activated; data of closed accounts is deleted according to employer policy,
+service termination and legal obligations.</p>
 
 <h2>5. Support, availability and updates</h2>
 <p>Support is provided on business days via WhatsApp (90000 98877) and email

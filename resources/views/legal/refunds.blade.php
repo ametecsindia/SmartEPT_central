@@ -9,8 +9,8 @@ has you covered.</p>
 <h2>1. 7-day money-back on your first subscription purchase</h2>
 <p>If you are not satisfied with your <b>first subscription purchase</b> (monthly or annual), write
 to us within <b>7 days of payment</b> and we will refund the full amount. The licence is deactivated
-on refund. The one-time Setup &amp; Onboarding fee is included in this money-back window if no
-onboarding session has yet been delivered.</p>
+on refund. The one-time Remote Assisted Setup &amp; Onboarding fee is included in this money-back window
+if no onboarding session has yet been delivered.</p>
 
 <h2>2. What is not refundable</h2>
 <ul>
@@ -18,7 +18,8 @@ onboarding session has yet been delivered.</p>
   To stop, simply do not renew: there is no auto-charge without your action, and your licence runs to
   the end of the paid period.</li>
   <li><b>Used service periods</b> — months or days already consumed are not refunded.</li>
-  <li><b>Cloud storage charges</b> — metered charges for storage already used.</li>
+  <li><b>Cloud storage charges</b> — charges for additional cloud storage actually consumed beyond the
+  organisation's included pooled allowance are not refundable after use.</li>
   <li><b>Perpetual licences and AMC</b> — once the licence key is issued, a perpetual licence sale is
   final; evaluate via the trial first. AMC covers a service year and is not refundable after start.</li>
 </ul>
