@@ -168,7 +168,9 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
 <script>
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
 let signupStep = 1, forgotStep = 1;
-let PLANS=[], GST=18, SETUP={base:5000,included:30,per:100};
+let PLANS=[], GST=18, SETUP={base:5000,included:30,per:100}, ANN_DISC=0.25, HALF_DISC=0.10;
+// Per-user/month cloud rate — mirrors backend PricingService::deviceRate exactly (config-driven, rounded).
+function cloudRate(annual,cyc){ const base=annual/Math.max(0.1,1-ANN_DISC); if(cyc==='y') return annual; if(cyc==='h') return Math.round(base*(1-HALF_DISC)*100)/100; return Math.round(base*100)/100; }
 let SEL='smartept', KIND='subscription', CYC='y', COUPON=null;
 const PERP_BANDS=[{cap:30,price:25000},{cap:100,price:50000},{cap:250,price:85000},{cap:500,price:125000},{cap:1000,price:200000},{cap:2000,price:325000},{cap:5000,price:500000}];
 function perpBandFor(u){for(const b of PERP_BANDS)if(u<=b.cap)return b;return null;}
@@ -226,11 +228,13 @@ function render(){
     return;
   }
 
-  const baseMonthly=aRate/0.75;
+  const qRate=Math.round(aRate/Math.max(0.1,1-ANN_DISC)*100)/100; // quarterly base (undiscounted)
+  const rate=cloudRate(aRate,CYC);                                 // actual per-user/month (matches backend)
   const per=PERIOD[CYC];
-  const gross=dev*baseMonthly*per.m;
-  const discAmt=gross*per.d;
-  const sub=gross-discAmt;
+  const refGross=dev*qRate*per.m;                                  // amount at quarterly base (for the "you save" line)
+  const sub=Math.round(dev*rate*per.m*100)/100;                    // licence charge — identical to backend invoice
+  const cycDisc=CYC==='y'?ANN_DISC:(CYC==='h'?HALF_DISC:0);
+  const discAmt=Math.max(0,refGross-sub);
   let taxable=sub+setup, coupDisc=0;
   if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
     cr.style.display='';document.getElementById('ivCoupLbl').textContent='Coupon '+COUPON.code+(COUPON.type==='percent'?' ('+COUPON.value+'% off)':'');
@@ -239,8 +243,8 @@ function render(){
   const gstAmt=taxable*GST/100, total=taxable+gstAmt;
   const effPerMo=sub/dev/per.m;
   document.getElementById('ivSubLbl').textContent='Cloud · '+dev+' user'+(dev>1?'s':'')+' × '+per.m+' mo';
-  document.getElementById('ivSub').textContent=inr(gross);
-  if(per.d>0){dr.style.display='';document.getElementById('ivDiscLbl').textContent='Advance discount ('+(per.d*100)+'%)';document.getElementById('ivDisc').textContent='− '+inr(discAmt);}else dr.style.display='none';
+  document.getElementById('ivSub').textContent=inr(refGross);
+  if(discAmt>0.5){dr.style.display='';document.getElementById('ivDiscLbl').textContent='Advance discount ('+Math.round(cycDisc*100)+'%)';document.getElementById('ivDisc').textContent='− '+inr(discAmt);}else dr.style.display='none';
   document.getElementById('ivGst').textContent=inr(gstAmt);
   document.getElementById('ivTotLbl').textContent='Payable now ('+per.m+'-month advance)';
   document.getElementById('ivTot').textContent=inr(total);
@@ -302,6 +306,8 @@ function render(){
     const r=await fetch('/api/v1/public/plans',{headers:{Accept:'application/json'},cache:'no-store'});const j=await r.json();
     PLANS=(j.plans||j.data||[]);GST=j.gst_rate||18;
     if(j.setup)SETUP={base:j.setup.base,included:j.setup.included,per:j.setup.per_extra};
+    if(j.cycles){if(j.cycles.annual_discount!=null)ANN_DISC=+j.cycles.annual_discount;if(j.cycles.half_yearly_discount!=null)HALF_DISC=+j.cycles.half_yearly_discount;}
+    {const oh=document.querySelector('#cH .off');if(oh)oh.textContent=Math.round(HALF_DISC*100)+'% off';const oy=document.querySelector('#cY .off');if(oy)oy.textContent=Math.round(ANN_DISC*100)+'% off';}
     document.getElementById('sumPlan').textContent='SmartEPT';
     document.getElementById('sumTag').textContent='Every feature included — free for the first 7 days.';
     render();
