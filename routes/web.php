@@ -14,6 +14,8 @@ Route::view('/privacy', 'legal.privacy')->name('legal.privacy');
 Route::view('/terms', 'legal.terms')->name('legal.terms');
 Route::view('/refunds', 'legal.refunds')->name('legal.refunds');
 Route::view('/contact', 'legal.contact')->name('legal.contact');
+Route::view('/security', 'legal.security')->name('legal.security');
+Route::view('/system-requirements', 'legal.system-requirements')->name('legal.system-requirements');
 
 // ---------- Client portal (Phase 3): auth ----------
 Route::get('/client/login', [Client\AuthController::class, 'showAuth'])->name('client.login');
