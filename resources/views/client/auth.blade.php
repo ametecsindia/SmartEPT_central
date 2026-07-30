@@ -308,6 +308,7 @@ function render(){
     if(j.setup)SETUP={base:j.setup.base,included:j.setup.included,per:j.setup.per_extra};
     if(j.cycles){if(j.cycles.annual_discount!=null)ANN_DISC=+j.cycles.annual_discount;if(j.cycles.half_yearly_discount!=null)HALF_DISC=+j.cycles.half_yearly_discount;}
     {const oh=document.querySelector('#cH .off');if(oh)oh.textContent=Math.round(HALF_DISC*100)+'% off';const oy=document.querySelector('#cY .off');if(oy)oy.textContent=Math.round(ANN_DISC*100)+'% off';}
+    if(PLANS[0]&&Array.isArray(PLANS[0].perpetual_bands)){const pb=PLANS[0].perpetual_bands.filter(b=>b.max!=null).map(b=>({cap:b.max,price:b.price})).sort((a,b)=>a.cap-b.cap);if(pb.length){PERP_BANDS.length=0;pb.forEach(b=>PERP_BANDS.push(b));}}
     document.getElementById('sumPlan').textContent='SmartEPT';
     document.getElementById('sumTag').textContent='Every feature included — free for the first 7 days.';
     render();
