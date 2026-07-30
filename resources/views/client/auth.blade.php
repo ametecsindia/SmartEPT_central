@@ -65,7 +65,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
   <aside class="summary">
     <div class="brand" style="flex-direction:column;align-items:flex-start;gap:8px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT" style="width:210px;max-width:84%;height:auto;display:block"></div>
     <div class="plan-name" id="sumPlan">SmartEPT</div>
-    <div class="plan-tag" id="sumTag">Every feature included — free for the first 7 days.</div>
+    <div class="plan-tag" id="sumTag">Every standard feature included — free for the first 7 days.</div>
 
     <div class="ctrl"><label>How you buy</label>
       <div class="seg" id="segKind">
@@ -73,7 +73,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
         <button type="button" data-kind="perpetual" id="kPerp">Own · Perpetual</button>
       </div>
     </div>
-    <div class="ctrl"><label>Users</label>
+    <div class="ctrl"><label>Monitored users</label>
       <div class="dev"><button type="button" id="devMinus">&minus;</button><input id="devCount" type="number" min="1" value="25"><button type="button" id="devPlus">+</button></div>
     </div>
     <div class="ctrl" id="advPayCtrl"><label>Advance payment</label>
@@ -85,7 +85,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     </div>
     <label style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:#BFD6DA;font-weight:600;margin-bottom:11px;cursor:pointer;text-transform:none;letter-spacing:0">
       <input type="checkbox" id="setupChk" style="width:auto;margin-top:2px;accent-color:#22B8CF">
-      <span>Add professional installation &amp; onboarding <span style="color:#7FA8AF">(one-time — we install &amp; set up SmartEPT for you). Skip it to self-install; you can request it later.</span></span>
+      <span>Add <b>Remote Assisted Setup &amp; Onboarding</b> <span style="color:#7FA8AF">(one-time — installation assistance, configuration guidance, administrator orientation and go-live support; charged on your first paid order). Optional — you can self-install and add it later.</span></span>
     </label>
     <div class="ctrl" id="couponCtrl"><label>Coupon code</label>
       <div style="display:flex;gap:6px">
@@ -96,7 +96,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     </div>
 
     <div class="inv" id="inv">
-      <div class="ln"><span id="ivSubLbl">Cloud subscription</span><b id="ivSub">—</b></div>
+      <div class="ln"><span id="ivSubLbl">Subtotal</span><b id="ivSub">—</b></div>
       <div class="ln disc" id="ivDiscRow" style="display:none"><span id="ivDiscLbl">Advance discount</span><b id="ivDisc">—</b></div>
       <div class="ln" id="ivSetupRow" style="display:none"><span>Setup &amp; onboarding (one-time)</span><b id="ivSetup">—</b></div>
       <div class="ln disc" id="ivCoupRow" style="display:none"><span id="ivCoupLbl">Coupon</span><b id="ivCoup">—</b></div>
@@ -104,11 +104,11 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
       <div class="ln tot"><span id="ivTotLbl">Payable now</span><b id="ivTot">—</b></div>
       <div class="eff" id="ivEff"></div>
     </div>
-    <div class="trust">SmartEPT Cloud — we host it, storage &amp; hosting included, every feature on. First invoice includes one-time setup (if selected); renewals bill the subscription only. Prefer to own it? <b>Perpetual licences from &#8377;25,000</b> — just ask.</div>
+    <div class="trust">SmartEPT Managed Cloud — we host it, every standard feature on. Managed hosting is included, and each subscribed user contributes 500&nbsp;MB to your organisation&rsquo;s pooled storage; additional storage is &#8377;3 per GB per month, with standard retention configurable up to a maximum of three months. First invoice includes one-time Remote Assisted Setup (if selected); renewals bill the subscription only. Prefer to own it? <b>Perpetual licences from &#8377;25,000</b> — just ask.</div>
   </aside>
 
   <div class="card">
-  <p class="sub">Start your free trial or sign in — self-service licence, billing &amp; cloud.</p>
+  <p class="sub"><b>New to SmartEPT?</b> Start a 7-day free trial, buy Cloud or Perpetual, or request a quote. <b>Already a customer?</b> Sign in below.</p>
   <div class="tabs">
     <button class="on" data-mode="login" onclick="mode('login',this)">Sign in</button>
     <button data-mode="signup" onclick="mode('signup',this)">Start free trial</button>
@@ -144,7 +144,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     </div>
     <button class="go" type="submit" id="signupBtn">Email me a verification code →</button>
     <a class="quote" id="quoteCta" href="#" target="_blank">Prefer a formal quotation? Request one →</a>
-    <div class="trial-note"><b>7-day free trial · all features · up to 10 users.</b><br>No card needed. Your data auto-deletes if you don't continue.</div>
+    <div class="trial-note"><b>7-day full-platform evaluation · every standard feature · up to 10 monitored employees.</b><br>No card needed. Biometric, AD/SSO, client-hosted and other infrastructure-dependent integrations require assisted setup. Trial data is scheduled for deletion within 14 days after trial expiry unless you activate a paid service.</div>
   </form>
   <form id="f-forgot" style="display:none" onsubmit="return doForgot(event)">
     <label>Account email</label><input type="email" name="email" required>
@@ -265,7 +265,7 @@ function render(){
   document.getElementById('cQ').onclick=()=>segCyc('q');
   document.getElementById('cH').onclick=()=>segCyc('h');
   document.getElementById('cY').onclick=()=>segCyc('y');
-  function segKind(v){KIND=v;document.getElementById('kCloud').classList.toggle('on',v==='subscription');document.getElementById('kPerp').classList.toggle('on',v==='perpetual');const ap=document.getElementById('advPayCtrl');if(ap)ap.style.display=(v==='perpetual'?'none':'');document.getElementById('sumTag').textContent=(v==='perpetual'?'Own it forever — a one-time licence for your users.':'Every feature included — free for the first 7 days.');render();upd();}
+  function segKind(v){KIND=v;document.getElementById('kCloud').classList.toggle('on',v==='subscription');document.getElementById('kPerp').classList.toggle('on',v==='perpetual');const ap=document.getElementById('advPayCtrl');if(ap)ap.style.display=(v==='perpetual'?'none':'');document.getElementById('sumPlan').textContent=(v==='perpetual'?'SmartEPT Perpetual':'SmartEPT Managed Cloud');document.getElementById('sumTag').textContent=(v==='perpetual'?'One-time, client-hosted licence — never expires. First 12 months of updates & support included; optional AMC from Year 2.':'Every standard feature included. Managed hosting + 500 MB pooled storage per user; additional storage ₹3/GB/month. Free for the first 7 days.');try{const u=new URL(location.href);u.searchParams.set('buy',v==='perpetual'?'perpetual':'cloud');history.replaceState({},'',u);}catch(e){}render();upd();}
   document.getElementById('kCloud').onclick=()=>segKind('subscription');
   document.getElementById('kPerp').onclick=()=>segKind('perpetual');
   document.getElementById('setupChk').onchange=render;
