@@ -581,7 +581,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
       <div class="npx-fg" id="npxFeatures"></div>
     </div>
 
-    <div class="pr-foot"><b>Remote Assisted Setup &amp; Onboarding</b> is optional; when added, it is charged once on the first paid order: <b>&#8377;5,000</b> (covers 30 users) + &#8377;100 per additional user. Perpetual is a lifetime licence for your chosen capacity; <b>AMC optional</b> at 15&ndash;20%/year on prevailing prices. Upgrade your licensed user capacity at any time by paying the applicable difference at the prevailing price&mdash;your existing data and configuration remain unchanged. Above 5,000 users &mdash; <b>custom quotation</b>. All prices exclusive of 18% GST.</div>
+    <div class="pr-foot"><b>Cloud setup is free.</b> For <b>Perpetual (On-premises)</b>, optional Remote Assisted Setup &amp; Onboarding is charged once on the first paid order: <b>&#8377;5,000</b> (covers 30 users) + &#8377;100 per additional user. Perpetual is a lifetime licence for your chosen capacity; <b>AMC optional</b> at 15&ndash;20%/year on prevailing prices. Upgrade your licensed user capacity at any time by paying the applicable difference at the prevailing price&mdash;your existing data and configuration remain unchanged. Above the top band &mdash; <b>custom quotation</b>. All prices exclusive of 18% GST.</div>
   </div>
 </section>
 
@@ -752,12 +752,12 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
 /* ===== pricing (v2: single product, priced by user scale) ===== */
 /* ===== live pricing v6 — model-first + drag-bar + custom-zone Contact; ANY zero/blank band = custom (never shows ₹0) ===== */
 let NPX_CLOUD = [
-  {min:1,max:30,label:'Up to 30',rate:45},{min:31,max:100,label:'31–100',rate:28},{min:101,max:250,label:'101–250',rate:20},
-  {min:251,max:500,label:'251–500',rate:15},{min:501,max:1000,label:'501–1,000',rate:12},{min:1001,max:2000,label:'1,001–2,000',rate:9},{min:2001,max:5000,label:'2,001–5,000',rate:6}
+  {min:10,max:10,label:'10',rate:100},{min:11,max:25,label:'11–25',rate:90},{min:26,max:50,label:'26–50',rate:85},
+  {min:51,max:100,label:'51–100',rate:80},{min:101,max:250,label:'101–250',rate:75},{min:251,max:500,label:'251–500',rate:70}
 ];
 let NPX_PERP = [
-  {min:1,max:30,label:'Up to 30',price:25000},{min:31,max:100,label:'31–100',price:50000},{min:101,max:250,label:'101–250',price:85000},
-  {min:251,max:500,label:'251–500',price:125000},{min:501,max:1000,label:'501–1,000',price:200000},{min:1001,max:2000,label:'1,001–2,000',price:325000},{min:2001,max:5000,label:'2,001–5,000',price:500000}
+  {min:1,max:15,label:'Up to 15',price:15000},{min:16,max:30,label:'16–30',price:25000},{min:31,max:50,label:'31–50',price:40000},{min:51,max:75,label:'51–75',price:50000},
+  {min:76,max:100,label:'76–100',price:60000},{min:101,max:150,label:'101–150',price:75000},{min:151,max:200,label:'151–200',price:100000}
 ];
 const NPX_FEATURES = ['Attendance & shift adherence','Productive vs idle time','App & website usage','Screenshots (policy-driven)','Webcam presence photos','Live status & live screen','Meetings & scheduling','Productivity scoring','AI-tool usage insights','Reports, exports & payroll pack','Restrictions & USB controls','Biometric gate-to-PC','Multi-office & departments','Role-based access & SSO','Unlimited manager accounts','Full API access','Screen recording','Employee data archive & backup'];
 const NPX_WA='919000098877';
@@ -767,7 +767,7 @@ const npxINR = n => '₹'+Number(n).toLocaleString('en-IN');
 function npxRate(annual,c){ const base=annual/Math.max(0.1,1-npxAnnualDisc); if(c==='annual') return annual; if(c==='half_yearly') return Math.round(base*(1-npxHalfDisc)*100)/100; return Math.round(base*100)/100; }
 function npxSetup(cap){ return npxSetupBase+Math.max(0,(cap||0)-npxSetupIncl)*npxSetupPer; }
 function npxFmtGB(g){ return (Math.round(g*10)/10).toString(); }
-function npxLabel(min,max){ if(max==null) return Number(min).toLocaleString('en-IN')+'+'; if(min==null||min<=1) return 'Up to '+Number(max).toLocaleString('en-IN'); return Number(min).toLocaleString('en-IN')+'–'+Number(max).toLocaleString('en-IN'); }
+function npxLabel(min,max){ if(max==null) return Number(min).toLocaleString('en-IN')+'+'; if(min===max) return Number(min).toLocaleString('en-IN'); if(min==null||min<=1) return 'Up to '+Number(max).toLocaleString('en-IN'); return Number(min).toLocaleString('en-IN')+'–'+Number(max).toLocaleString('en-IN'); }
 function npxBuildBands(rows,key){
   const r=(rows||[]).filter(x=>x&&x.min!=null).slice().sort((a,b)=>a.min-b.min);
   if(!r.length) return [];
@@ -813,14 +813,14 @@ function npxRender(){
     const camt=document.getElementById('npxCloudAmt'), cper=document.getElementById('npxCloudPer'), crun=document.getElementById('npxCloudRun'), cset=document.getElementById('npxCloudSetup'), cstore=document.getElementById('npxCloudStorage');
     const cyclbl={quarterly:'quarterly',half_yearly:'half-yearly',annual:'annually'}[npxCycle];
     if(custom){
-      camt.textContent='Custom'; if(cper)cper.textContent=' quotation'; crun.textContent='For '+nStr+' users we tailor the best per-user rate — talk to us.'; cset.innerHTML='Volume Cloud pricing + setup, quoted for you.'; if(cstore)cstore.textContent='';
+      camt.textContent='Custom'; if(cper)cper.textContent=' quotation'; crun.textContent='For '+nStr+' users we tailor the best per-user rate — talk to us.'; cset.innerHTML='Volume Cloud pricing quoted for you \u2014 setup is free.'; if(cstore)cstore.textContent='';
     } else {
       const rate=npxRate(val,npxCycle); const total=Math.round(rate*n);
       camt.textContent=Number(total).toLocaleString('en-IN');
       if(cper) cper.textContent='/ month · '+nStr+' users';
       crun.textContent=npxINR(rate)+' / user / month × '+nStr+' users · billed '+cyclbl;
       if(cstore)cstore.textContent='Included pooled cloud storage: '+npxFmtGB(n*0.5)+' GB';
-      cset.innerHTML='+ <b>'+npxINR(npxSetup(n))+'</b> one-time Remote Assisted Setup (optional)';
+      cset.innerHTML='<b style="color:#0A9464">\u2713 Free setup &amp; onboarding included</b>';
     }
     npxBtns('npxCloud',custom,'cloud');
   } else {
