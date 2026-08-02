@@ -503,15 +503,17 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
    .npx-deploy button span{font-size:12px;color:var(--ink3)}
    .npx-deploy button.on{border-color:var(--accent);background:var(--accent-weak);box-shadow:0 8px 22px rgba(14,124,143,.14)}
    .npx-deploy button.on b{color:var(--accent)}
-   .npx-slabhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;width:100%}
-   .npx-usercount{font-size:14px;color:var(--ink2)}
+   .npx-slabhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;width:100%;max-width:460px}
+   .npx-usercount{font-size:14px;color:var(--ink2);text-align:center;margin-bottom:12px}
    .npx-usercount b{font-size:21px;color:var(--accent);font-weight:800}
    .npx-slabtag{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--accent-weak);color:var(--deep);font-size:12px;font-weight:700;vertical-align:middle}
    .npx-slabtag.is-custom{background:#FBEFD9;color:#B4791F}
-   .npx-range{width:100%;-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));outline:none;cursor:pointer;margin:2px 0}
+   .npx-slider{max-width:440px;margin:24px auto 4px}
+   .npx-drag{text-align:center;font-size:12.5px;color:var(--ink3);margin-top:8px}
+   .npx-range{width:100%;max-width:460px;-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));outline:none;cursor:pointer;margin:2px 0}
    .npx-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 3px 10px rgba(14,124,143,.35);cursor:grab}
    .npx-range::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 3px 10px rgba(14,124,143,.35);cursor:grab}
-   .npx-ticks{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:var(--ink3);width:100%}
+   .npx-ticks{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:var(--ink3);width:100%;max-width:460px}
    .npx-ticks #npxBandLbl{font-weight:700;color:var(--deep)}
   </style>
   <div class="wrap">
@@ -524,10 +526,11 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
       <button data-m="cloud"><b>&#9729; Cloud Hosting</b><span>Rent per user / month &middot; we host it</span></button>
     </div>
 
-    <div class="npx-scale">
-      <div class="npx-slabhead"><span class="l" id="npxScaleLbl">Now, drag the bar to your team size</span><span class="npx-usercount">&#128100; <b id="npxUsersNum">30</b> users <span id="npxBandLbl" class="npx-slabtag">Up to 30</span></span></div>
+    <div class="npx-slider">
+      <div class="npx-usercount">&#128100; <b id="npxUsersNum">30</b> users <span id="npxBandLbl" class="npx-slabtag">Up to 30</span></div>
       <input type="range" id="npxUsers" class="npx-range" min="1" max="5000" step="1" value="30">
       <div class="npx-ticks"><span id="npxTickMin">1</span><span id="npxTickMax">5,000+</span></div>
+      <div class="npx-drag" id="npxScaleLbl">Drag to your team size</div>
     </div>
 
     <div class="npx-cards">
@@ -747,24 +750,14 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
   window.addEventListener('resize', function(){ if(window.innerWidth>960) shut(); });
 })();
 /* ===== pricing (v2: single product, priced by user scale) ===== */
-/* ===== live pricing v5 — MODEL-FIRST + drag-bar slider + custom-zone Contact button ===== */
+/* ===== live pricing v6 — model-first + drag-bar + custom-zone Contact; ANY zero/blank band = custom (never shows ₹0) ===== */
 let NPX_CLOUD = [
-  {min:1,max:30,label:'Up to 30',rate:45},
-  {min:31,max:100,label:'31–100',rate:28},
-  {min:101,max:250,label:'101–250',rate:20},
-  {min:251,max:500,label:'251–500',rate:15},
-  {min:501,max:1000,label:'501–1,000',rate:12},
-  {min:1001,max:2000,label:'1,001–2,000',rate:9},
-  {min:2001,max:5000,label:'2,001–5,000',rate:6}
+  {min:1,max:30,label:'Up to 30',rate:45},{min:31,max:100,label:'31–100',rate:28},{min:101,max:250,label:'101–250',rate:20},
+  {min:251,max:500,label:'251–500',rate:15},{min:501,max:1000,label:'501–1,000',rate:12},{min:1001,max:2000,label:'1,001–2,000',rate:9},{min:2001,max:5000,label:'2,001–5,000',rate:6}
 ];
 let NPX_PERP = [
-  {min:1,max:30,label:'Up to 30',price:25000},
-  {min:31,max:100,label:'31–100',price:50000},
-  {min:101,max:250,label:'101–250',price:85000},
-  {min:251,max:500,label:'251–500',price:125000},
-  {min:501,max:1000,label:'501–1,000',price:200000},
-  {min:1001,max:2000,label:'1,001–2,000',price:325000},
-  {min:2001,max:5000,label:'2,001–5,000',price:500000}
+  {min:1,max:30,label:'Up to 30',price:25000},{min:31,max:100,label:'31–100',price:50000},{min:101,max:250,label:'101–250',price:85000},
+  {min:251,max:500,label:'251–500',price:125000},{min:501,max:1000,label:'501–1,000',price:200000},{min:1001,max:2000,label:'1,001–2,000',price:325000},{min:2001,max:5000,label:'2,001–5,000',price:500000}
 ];
 const NPX_FEATURES = ['Attendance & shift adherence','Productive vs idle time','App & website usage','Screenshots (policy-driven)','Webcam presence photos','Live status & live screen','Meetings & scheduling','Productivity scoring','AI-tool usage insights','Reports, exports & payroll pack','Restrictions & USB controls','Biometric gate-to-PC','Multi-office & departments','Role-based access & SSO','Unlimited manager accounts','Full API access','Screen recording','Employee data archive & backup'];
 const NPX_WA='919000098877';
@@ -781,13 +774,14 @@ function npxBuildBands(rows,key){
   return r.map(x=>{const o={min:x.min,max:x.max,label:npxLabel(x.min,x.max)};o[key]=x[key];return o;});
 }
 function npxActiveBands(){ return npxMode==='perp'?NPX_PERP:NPX_CLOUD; }
+function npxKey(){ return npxMode==='perp'?'price':'rate'; }
 function npxBottomMin(b){ return b.length?Math.min.apply(null,b.map(x=>x.min)):1; }
 function npxTopMax(b){ let m=0; b.forEach(x=>{ const v=(x.max==null?x.min:x.max); if(v>m)m=v; }); return m||5000; }
-function npxBandFor(b,n){ for(const x of b){ if(n>=x.min && (x.max==null||n<=x.max)) return x; } return (b.length&&n>npxTopMax(b))?null:(b[0]||null); }
+function npxBandFor(b,n){ for(const x of b){ if(n>=x.min && (x.max==null||n<=x.max)) return x; } return null; }
 function npxSyncSlider(){
   const sl=document.getElementById('npxUsers'); if(!sl) return;
   const b=npxActiveBands(); const lo=npxBottomMin(b), realTop=npxTopMax(b);
-  const hi=realTop+Math.max(Math.round(realTop*0.12),300);   // custom zone past the top band
+  const hi=realTop+Math.max(Math.round(realTop*0.12),300);
   sl.min=lo; sl.max=hi;
   if(npxUsers<lo) npxUsers=lo; if(npxUsers>hi) npxUsers=hi; sl.value=npxUsers;
   const tmin=document.getElementById('npxTickMin'), tmax=document.getElementById('npxTickMax');
@@ -798,7 +792,7 @@ function npxBtns(prefix,custom,mode){
   const buy=document.getElementById(prefix+'BuyBtn'), con=document.getElementById(prefix+'Contact');
   if(buy) buy.style.display=custom?'none':'';
   if(con){ con.style.display=custom?'':'none';
-    if(custom){ const msg=(mode==='perp'?'Hi Ametecs, I would like a custom SmartEPT On-premises (Perpetual) quote for 5,000+ users.':'Hi Ametecs, I would like a custom SmartEPT Cloud quote for 5,000+ users.'); con.href='https://wa.me/'+NPX_WA+'?text='+encodeURIComponent(msg); }
+    if(custom){ const msg=(mode==='perp'?'Hi Ametecs, I would like a custom SmartEPT On-premises (Perpetual) quote.':'Hi Ametecs, I would like a custom SmartEPT Cloud quote.'); con.href='https://wa.me/'+NPX_WA+'?text='+encodeURIComponent(msg); }
   }
 }
 function npxRender(){
@@ -808,19 +802,23 @@ function npxRender(){
   if(perpCard) perpCard.style.display=isPerp?'':'none';
   document.querySelectorAll('#npxDeploy button').forEach(x=>x.classList.toggle('on',x.dataset.m===npxMode));
   const n=npxUsers; const bands=npxActiveBands(); const band=npxBandFor(bands,n);
-  const realTop=npxTopMax(bands); const custom=!band; const topStr=Number(realTop).toLocaleString('en-IN');
-  const num=document.getElementById('npxUsersNum'); if(num) num.textContent=custom?(topStr+'+'):Number(n).toLocaleString('en-IN');
-  const bl=document.getElementById('npxBandLbl'); if(bl){ bl.textContent=custom?(topStr+'+ · custom'):band.label; bl.classList.toggle('is-custom',custom); }
+  const realTop=npxTopMax(bands); const topStr=Number(realTop).toLocaleString('en-IN');
+  const val=band?Number(band[npxKey()]):NaN;
+  const past=n>realTop;                         // dragged beyond the top band
+  const custom = past || !band || !(val>0);      // no band, or a zero/blank band → custom quote
+  const num=document.getElementById('npxUsersNum'); if(num) num.textContent=past?(topStr+'+'):Number(n).toLocaleString('en-IN');
+  const bl=document.getElementById('npxBandLbl'); if(bl){ bl.textContent=custom?(past?(topStr+'+ · custom'):'custom quote'):band.label; bl.classList.toggle('is-custom',custom); }
+  const nStr=past?(topStr+'+'):Number(n).toLocaleString('en-IN');
   if(!isPerp){
     const camt=document.getElementById('npxCloudAmt'), cper=document.getElementById('npxCloudPer'), crun=document.getElementById('npxCloudRun'), cset=document.getElementById('npxCloudSetup'), cstore=document.getElementById('npxCloudStorage');
     const cyclbl={quarterly:'quarterly',half_yearly:'half-yearly',annual:'annually'}[npxCycle];
     if(custom){
-      camt.textContent='Custom'; if(cper)cper.textContent=' quotation'; crun.textContent='For '+topStr+'+ users we tailor the best per-user rate.'; cset.innerHTML='Talk to our team for volume Cloud pricing + setup.'; if(cstore)cstore.textContent='';
+      camt.textContent='Custom'; if(cper)cper.textContent=' quotation'; crun.textContent='For '+nStr+' users we tailor the best per-user rate — talk to us.'; cset.innerHTML='Volume Cloud pricing + setup, quoted for you.'; if(cstore)cstore.textContent='';
     } else {
-      const rate=npxRate(band.rate,npxCycle); const total=Math.round(rate*n);
+      const rate=npxRate(val,npxCycle); const total=Math.round(rate*n);
       camt.textContent=Number(total).toLocaleString('en-IN');
-      if(cper) cper.textContent='/ month · '+Number(n).toLocaleString('en-IN')+' users';
-      crun.textContent=npxINR(rate)+' / user / month × '+Number(n).toLocaleString('en-IN')+' users · billed '+cyclbl;
+      if(cper) cper.textContent='/ month · '+nStr+' users';
+      crun.textContent=npxINR(rate)+' / user / month × '+nStr+' users · billed '+cyclbl;
       if(cstore)cstore.textContent='Included pooled cloud storage: '+npxFmtGB(n*0.5)+' GB';
       cset.innerHTML='+ <b>'+npxINR(npxSetup(n))+'</b> one-time Remote Assisted Setup (optional)';
     }
@@ -828,10 +826,10 @@ function npxRender(){
   } else {
     const pamt=document.getElementById('npxPerpAmt'), pper=document.getElementById('npxPerpPer'), pset=document.getElementById('npxPerpSetup'), pamc=document.getElementById('npxPerpAmc');
     if(custom){
-      pamt.textContent='Custom'; pper.textContent=' quotation · '+topStr+'+ users'; pset.innerHTML='Talk to our team for volume licence + setup.'; pamc.innerHTML='+ Optional AMC '+npxAmc+'%/year on prevailing prices.';
+      pamt.textContent='Custom'; pper.textContent=' quotation · '+nStr+' users'; pset.innerHTML='Volume licence + setup, quoted for you.'; pamc.innerHTML='+ Optional AMC '+npxAmc+'%/year on prevailing prices.';
     } else {
-      pamt.textContent=Number(band.price).toLocaleString('en-IN');
-      pper.textContent='one-time · '+Number(n).toLocaleString('en-IN')+' users ('+band.label.toLowerCase()+')';
+      pamt.textContent=Number(val).toLocaleString('en-IN');
+      pper.textContent='one-time · '+nStr+' users ('+band.label.toLowerCase()+')';
       pset.innerHTML='+ <b>'+npxINR(npxSetup(n))+'</b> one-time Remote Assisted Setup (optional)';
       pamc.innerHTML='+ Optional AMC <b>'+npxAmc+'%/year</b> (updates & support), on prevailing prices.';
     }
@@ -840,7 +838,7 @@ function npxRender(){
   document.querySelectorAll('#npxCyc button').forEach(x=>x.classList.toggle('on',x.dataset.c===npxCycle));
 }
 function npxSetMode(m){ npxMode=m; npxSyncSlider(); npxRender(); }
-function npxUpdateHero(){ const b=NPX_PERP[0]; if(!b||b.price==null) return; const pe=document.querySelector('.ps-price'); if(pe) pe.textContent='₹'+Number(b.price).toLocaleString('en-IN'); }
+function npxUpdateHero(){ const b=NPX_PERP[0]; if(!b||!(Number(b.price)>0)) return; const pe=document.querySelector('.ps-price'); if(pe) pe.textContent='₹'+Number(b.price).toLocaleString('en-IN'); }
 (function npxInit(){
   const sl=document.getElementById('npxUsers'); if(!sl) return;
   const dep=document.getElementById('npxDeploy'); if(dep) dep.querySelectorAll('button').forEach(btn=>btn.onclick=()=>npxSetMode(btn.dataset.m));
@@ -854,8 +852,8 @@ function npxUpdateHero(){ const b=NPX_PERP[0]; if(!b||b.price==null) return; con
   fetch('/api/v1/public/plans',{headers:{Accept:'application/json'}}).then(r=>r.ok?r.json():null).then(d=>{
     if(!d||!d.plans) return;
     const p=d.plans.find(x=>x.code==='smartept')||d.plans[0]; if(!p) return;
-    const cb=npxBuildBands(p.volume_tiers,'rate'); if(cb.length){ NPX_CLOUD.length=0; cb.forEach(x=>NPX_CLOUD.push(x)); }
-    const pb=npxBuildBands(p.perpetual_bands,'price'); if(pb.length){ NPX_PERP.length=0; pb.forEach(x=>NPX_PERP.push(x)); }
+    const cb=npxBuildBands(p.volume_tiers,'rate').filter(x=>Number(x.rate)>0); if(cb.length){ NPX_CLOUD.length=0; cb.forEach(x=>NPX_CLOUD.push(x)); }
+    const pb=npxBuildBands(p.perpetual_bands,'price').filter(x=>Number(x.price)>0); if(pb.length){ NPX_PERP.length=0; pb.forEach(x=>NPX_PERP.push(x)); }
     if(d.cycles){ if(d.cycles.annual_discount!=null) npxAnnualDisc=+d.cycles.annual_discount; if(d.cycles.half_yearly_discount!=null) npxHalfDisc=+d.cycles.half_yearly_discount; }
     if(d.setup){ if(d.setup.base) npxSetupBase=+d.setup.base; if(d.setup.included) npxSetupIncl=+d.setup.included; if(d.setup.per_extra) npxSetupPer=+d.setup.per_extra; }
     if(d.amc_pct) npxAmc=(''+d.amc_pct).replace(/\.0+$/,'');
