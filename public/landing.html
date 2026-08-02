@@ -470,8 +470,8 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
    .npx-scale .l{width:100%;text-align:center;color:var(--ink3);font-size:13px;margin-bottom:4px}
    .npx-chip{border:1.5px solid var(--border2);background:#fff;border-radius:999px;padding:8px 16px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit}
    .npx-chip.on{background:linear-gradient(135deg,var(--accent),#1899AE);color:#fff;border-color:var(--accent)}
-   .npx-cards{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:24px}
-   .npx-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:26px;position:relative;display:flex;flex-direction:column;overflow:hidden}
+   .npx-cards{display:flex;justify-content:center;gap:22px;margin-top:24px}
+   .npx-card{background:#fff;border:1.5px solid var(--border);border-radius:18px;padding:26px;position:relative;display:flex;flex-direction:column;overflow:hidden;max-width:520px;width:100%}
    .npx-card.npx-pop{background:#0E7C8F;border:none;color:#fff;box-shadow:0 18px 44px rgba(14,124,143,.30)}
    .npx-card.npx-pop .npx-t,.npx-card.npx-pop .npx-price .amt{color:#fff}
    .npx-card.npx-pop .npx-s,.npx-card.npx-pop .npx-price .per,.npx-card.npx-pop .npx-run,.npx-card.npx-pop .npx-amc{color:rgba(255,255,255,.86)}
@@ -497,16 +497,41 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
    .npx-fi b{color:var(--accent);font-weight:800}
    @media(max-width:820px){.npx-cards{grid-template-columns:1fr}.npx-fg{grid-template-columns:1fr 1fr}}
    @media(max-width:520px){.npx-fg{grid-template-columns:1fr}}
+   .npx-deploy{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:26px 0 6px}
+   .npx-deploy button{flex:0 1 300px;display:flex;flex-direction:column;gap:3px;align-items:center;background:#fff;border:1.6px solid var(--border2);border-radius:14px;padding:14px 20px;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s,box-shadow .15s;color:var(--ink2)}
+   .npx-deploy button b{font-size:16px;color:var(--deep)}
+   .npx-deploy button span{font-size:12px;color:var(--ink3)}
+   .npx-deploy button.on{border-color:var(--accent);background:var(--accent-weak);box-shadow:0 8px 22px rgba(14,124,143,.14)}
+   .npx-deploy button.on b{color:var(--accent)}
+   .npx-slabhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;width:100%}
+   .npx-usercount{font-size:14px;color:var(--ink2)}
+   .npx-usercount b{font-size:21px;color:var(--accent);font-weight:800}
+   .npx-slabtag{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:var(--accent-weak);color:var(--deep);font-size:12px;font-weight:700;vertical-align:middle}
+   .npx-slabtag.is-custom{background:#FBEFD9;color:#B4791F}
+   .npx-range{width:100%;-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));outline:none;cursor:pointer;margin:2px 0}
+   .npx-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 3px 10px rgba(14,124,143,.35);cursor:grab}
+   .npx-range::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 3px 10px rgba(14,124,143,.35);cursor:grab}
+   .npx-ticks{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:var(--ink3);width:100%}
+   .npx-ticks #npxBandLbl{font-weight:700;color:var(--deep)}
   </style>
   <div class="wrap">
     <div style="text-align:center"><span class="kicker">Simple, Transparent Pricing</span>
     <h2 class="sec">One product. Every feature. Two ways to buy.</h2>
-    <p class="sec-sub" style="margin:0 auto">No tiers, no locked features. Rent it on the SmartEPT Cloud, or own it forever on your own servers. You only choose your scale.</p></div>
+    <p class="sec-sub" style="margin:0 auto">First, choose how you want SmartEPT — owned on your own servers, or hosted by us on the Cloud. Then pick your scale.</p></div>
 
-    <div class="npx-scale"><div class="l">How many users do you need?</div><div id="npxChips"></div></div>
+    <div class="npx-deploy" id="npxDeploy">
+      <button data-m="perp" class="on"><b>&#127970; On-premises</b><span>Buy once &middot; own it on your servers</span></button>
+      <button data-m="cloud"><b>&#9729; Cloud Hosting</b><span>Rent per user / month &middot; we host it</span></button>
+    </div>
+
+    <div class="npx-scale">
+      <div class="npx-slabhead"><span class="l" id="npxScaleLbl">Now, drag the bar to your team size</span><span class="npx-usercount">&#128100; <b id="npxUsersNum">30</b> users <span id="npxBandLbl" class="npx-slabtag">Up to 30</span></span></div>
+      <input type="range" id="npxUsers" class="npx-range" min="1" max="5000" step="1" value="30">
+      <div class="npx-ticks"><span id="npxTickMin">1</span><span id="npxTickMax">5,000+</span></div>
+    </div>
 
     <div class="npx-cards">
-      <div class="npx-card">
+      <div class="npx-card" id="npxCardCloud">
         <div class="npx-t">SmartEPT Cloud</div>
         <div class="npx-s">We host it. Rent monthly, pay in advance to save. Managed hosting and automatic updates included.</div>
         <div class="npx-cyc" id="npxCyc">
@@ -514,7 +539,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
           <button data-c="half_yearly">Half-yearly</button>
           <button data-c="annual" class="on">Annual</button>
         </div>
-        <div class="npx-price"><span class="amt">&#8377;<span id="npxCloudAmt">45</span></span><span class="per">/ user / month</span></div>
+        <div class="npx-price"><span class="amt">&#8377;<span id="npxCloudAmt">45</span></span><span class="per" id="npxCloudPer">/ user / month</span></div>
         <div class="npx-run" id="npxCloudRun"></div>
         <div class="npx-storage" id="npxCloudStorage" style="margin-top:8px;font-size:13px;font-weight:700;color:#0B6373"></div>
         <div class="npx-setup" id="npxCloudSetup"></div>
@@ -526,9 +551,9 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
           <li>&#10003; Standard retention configurable up to three months</li>
           <li>&#10003; Updates &amp; standard support included during subscription</li>
         </ul>
-        <div class="npx-buy"><a class="btn btn-primary" href="/client/signup?buy=cloud">Start on Cloud</a></div>
+        <div class="npx-buy"><a class="btn btn-primary" id="npxCloudBuyBtn" href="/client/signup?buy=cloud">Start on Cloud</a><a class="btn btn-primary" id="npxCloudContact" style="display:none" target="_blank" href="https://wa.me/919000098877">&#128241; Contact us for a custom quote</a></div>
       </div>
-      <div class="npx-card npx-pop">
+      <div class="npx-card npx-pop" id="npxCardPerp">
         <div class="npx-t">SmartEPT Perpetual</div>
         <div class="npx-s">Buy once, host it yourself. A lifetime licence for your user capacity &mdash; the software is yours.</div>
         <div class="npx-price"><span class="amt">&#8377;<span id="npxPerpAmt">25,000</span></span><span class="per" id="npxPerpPer">one-time &middot; up to 30 users</span></div>
@@ -543,7 +568,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
           <li>&#10003; Optional AMC from Year 2</li>
           <li>&#10003; Capacity can be upgraded</li>
         </ul>
-        <div class="npx-buy"><a class="btn btn-light" href="/client/signup?buy=perpetual">Buy a licence</a></div>
+        <div class="npx-buy"><a class="btn btn-light" id="npxPerpBuyBtn" href="/client/signup?buy=perpetual">Buy a licence</a><a class="btn btn-light" id="npxPerpContact" style="display:none" target="_blank" href="https://wa.me/919000098877">&#128241; Contact us for a custom quote</a></div>
       </div>
     </div>
 
@@ -722,82 +747,119 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
   window.addEventListener('resize', function(){ if(window.innerWidth>960) shut(); });
 })();
 /* ===== pricing (v2: single product, priced by user scale) ===== */
-const NPX_BANDS = [
-  {cap:30,   label:'Up to 30',    cloud:45, perp:25000},
-  {cap:100,  label:'Up to 100',   cloud:28, perp:50000},
-  {cap:250,  label:'Up to 250',   cloud:20, perp:85000},
-  {cap:500,  label:'Up to 500',   cloud:15, perp:125000},
-  {cap:1000, label:'Up to 1,000', cloud:12, perp:200000},
-  {cap:2000, label:'Up to 2,000', cloud:9,  perp:325000},
-  {cap:5000, label:'Up to 5,000', cloud:6,  perp:500000},
-  {cap:null, label:'5,000+',      custom:true}
+/* ===== live pricing v5 — MODEL-FIRST + drag-bar slider + custom-zone Contact button ===== */
+let NPX_CLOUD = [
+  {min:1,max:30,label:'Up to 30',rate:45},
+  {min:31,max:100,label:'31–100',rate:28},
+  {min:101,max:250,label:'101–250',rate:20},
+  {min:251,max:500,label:'251–500',rate:15},
+  {min:501,max:1000,label:'501–1,000',rate:12},
+  {min:1001,max:2000,label:'1,001–2,000',rate:9},
+  {min:2001,max:5000,label:'2,001–5,000',rate:6}
+];
+let NPX_PERP = [
+  {min:1,max:30,label:'Up to 30',price:25000},
+  {min:31,max:100,label:'31–100',price:50000},
+  {min:101,max:250,label:'101–250',price:85000},
+  {min:251,max:500,label:'251–500',price:125000},
+  {min:501,max:1000,label:'501–1,000',price:200000},
+  {min:1001,max:2000,label:'1,001–2,000',price:325000},
+  {min:2001,max:5000,label:'2,001–5,000',price:500000}
 ];
 const NPX_FEATURES = ['Attendance & shift adherence','Productive vs idle time','App & website usage','Screenshots (policy-driven)','Webcam presence photos','Live status & live screen','Meetings & scheduling','Productivity scoring','AI-tool usage insights','Reports, exports & payroll pack','Restrictions & USB controls','Biometric gate-to-PC','Multi-office & departments','Role-based access & SSO','Unlimited manager accounts','Full API access','Screen recording','Employee data archive & backup'];
-let npxSel=0, npxCycle='annual';
-let npxAnnualDisc=0.25, npxHalfDisc=0.10, npxSetupBase=5000, npxSetupIncl=30, npxSetupPer=100, npxAmc='15\u201320';
-const npxINR = n => '\u20B9'+Number(n).toLocaleString('en-IN');
+const NPX_WA='919000098877';
+let npxMode='perp', npxUsers=30, npxCycle='annual';
+let npxAnnualDisc=0.25, npxHalfDisc=0.10, npxSetupBase=5000, npxSetupIncl=30, npxSetupPer=100, npxAmc='15–20';
+const npxINR = n => '₹'+Number(n).toLocaleString('en-IN');
 function npxRate(annual,c){ const base=annual/Math.max(0.1,1-npxAnnualDisc); if(c==='annual') return annual; if(c==='half_yearly') return Math.round(base*(1-npxHalfDisc)*100)/100; return Math.round(base*100)/100; }
-function npxSetup(cap){ return npxSetupBase+Math.max(0,cap-npxSetupIncl)*npxSetupPer; }
+function npxSetup(cap){ return npxSetupBase+Math.max(0,(cap||0)-npxSetupIncl)*npxSetupPer; }
 function npxFmtGB(g){ return (Math.round(g*10)/10).toString(); }
-function npxRender(){
-  const b=NPX_BANDS[npxSel];
-  const camt=document.getElementById('npxCloudAmt'), crun=document.getElementById('npxCloudRun'), cset=document.getElementById('npxCloudSetup'), cstore=document.getElementById('npxCloudStorage');
-  const pamt=document.getElementById('npxPerpAmt'), pper=document.getElementById('npxPerpPer'), pset=document.getElementById('npxPerpSetup'), pamc=document.getElementById('npxPerpAmc');
-  const cyclbl={quarterly:'quarterly',half_yearly:'half-yearly',annual:'annually'}[npxCycle];
-  if(b.custom){
-    camt.textContent='\u2014'; crun.textContent='Custom quotation for 5,000+ users'; cset.innerHTML='Talk to sales for volume setup.'; if(cstore)cstore.textContent='Included pooled cloud storage: sized to your user count';
-    pamt.textContent='Custom'; pper.textContent='quotation \u00B7 5,000+ users'; pset.innerHTML='Volume setup quoted with the licence.'; pamc.innerHTML='+ Optional AMC '+npxAmc+'%/year on prevailing prices.';
-  } else {
-    const r=npxRate(b.cloud,npxCycle);
-    camt.textContent=(r%1===0)?r:r.toFixed(2);
-    crun.textContent='for '+b.label.toLowerCase()+' users \u00B7 billed '+cyclbl;
-    if(cstore)cstore.textContent='Included pooled cloud storage: '+npxFmtGB(b.cap*0.5)+' GB';
-    cset.innerHTML='+ <b>'+npxINR(npxSetup(b.cap))+'</b> one-time Remote Assisted Setup (optional)';
-    pamt.textContent=Number(b.perp).toLocaleString('en-IN');
-    pper.textContent='one-time \u00B7 '+b.label.toLowerCase()+' users';
-    pset.innerHTML='+ <b>'+npxINR(npxSetup(b.cap))+'</b> one-time Remote Assisted Setup (optional)';
-    pamc.innerHTML='+ Optional AMC <b>'+npxAmc+'%/year</b> (updates & support), on prevailing prices.';
+function npxLabel(min,max){ if(max==null) return Number(min).toLocaleString('en-IN')+'+'; if(min==null||min<=1) return 'Up to '+Number(max).toLocaleString('en-IN'); return Number(min).toLocaleString('en-IN')+'–'+Number(max).toLocaleString('en-IN'); }
+function npxBuildBands(rows,key){
+  const r=(rows||[]).filter(x=>x&&x.min!=null).slice().sort((a,b)=>a.min-b.min);
+  if(!r.length) return [];
+  return r.map(x=>{const o={min:x.min,max:x.max,label:npxLabel(x.min,x.max)};o[key]=x[key];return o;});
+}
+function npxActiveBands(){ return npxMode==='perp'?NPX_PERP:NPX_CLOUD; }
+function npxBottomMin(b){ return b.length?Math.min.apply(null,b.map(x=>x.min)):1; }
+function npxTopMax(b){ let m=0; b.forEach(x=>{ const v=(x.max==null?x.min:x.max); if(v>m)m=v; }); return m||5000; }
+function npxBandFor(b,n){ for(const x of b){ if(n>=x.min && (x.max==null||n<=x.max)) return x; } return (b.length&&n>npxTopMax(b))?null:(b[0]||null); }
+function npxSyncSlider(){
+  const sl=document.getElementById('npxUsers'); if(!sl) return;
+  const b=npxActiveBands(); const lo=npxBottomMin(b), realTop=npxTopMax(b);
+  const hi=realTop+Math.max(Math.round(realTop*0.12),300);   // custom zone past the top band
+  sl.min=lo; sl.max=hi;
+  if(npxUsers<lo) npxUsers=lo; if(npxUsers>hi) npxUsers=hi; sl.value=npxUsers;
+  const tmin=document.getElementById('npxTickMin'), tmax=document.getElementById('npxTickMax');
+  if(tmin) tmin.textContent=Number(lo).toLocaleString('en-IN');
+  if(tmax) tmax.textContent=Number(realTop).toLocaleString('en-IN')+'+';
+}
+function npxBtns(prefix,custom,mode){
+  const buy=document.getElementById(prefix+'BuyBtn'), con=document.getElementById(prefix+'Contact');
+  if(buy) buy.style.display=custom?'none':'';
+  if(con){ con.style.display=custom?'':'none';
+    if(custom){ const msg=(mode==='perp'?'Hi Ametecs, I would like a custom SmartEPT On-premises (Perpetual) quote for 5,000+ users.':'Hi Ametecs, I would like a custom SmartEPT Cloud quote for 5,000+ users.'); con.href='https://wa.me/'+NPX_WA+'?text='+encodeURIComponent(msg); }
   }
-  document.querySelectorAll('#npxChips .npx-chip').forEach((c,i)=>c.classList.toggle('on',i===npxSel));
+}
+function npxRender(){
+  const isPerp=npxMode==='perp';
+  const cloudCard=document.getElementById('npxCardCloud'), perpCard=document.getElementById('npxCardPerp');
+  if(cloudCard) cloudCard.style.display=isPerp?'none':'';
+  if(perpCard) perpCard.style.display=isPerp?'':'none';
+  document.querySelectorAll('#npxDeploy button').forEach(x=>x.classList.toggle('on',x.dataset.m===npxMode));
+  const n=npxUsers; const bands=npxActiveBands(); const band=npxBandFor(bands,n);
+  const realTop=npxTopMax(bands); const custom=!band; const topStr=Number(realTop).toLocaleString('en-IN');
+  const num=document.getElementById('npxUsersNum'); if(num) num.textContent=custom?(topStr+'+'):Number(n).toLocaleString('en-IN');
+  const bl=document.getElementById('npxBandLbl'); if(bl){ bl.textContent=custom?(topStr+'+ · custom'):band.label; bl.classList.toggle('is-custom',custom); }
+  if(!isPerp){
+    const camt=document.getElementById('npxCloudAmt'), cper=document.getElementById('npxCloudPer'), crun=document.getElementById('npxCloudRun'), cset=document.getElementById('npxCloudSetup'), cstore=document.getElementById('npxCloudStorage');
+    const cyclbl={quarterly:'quarterly',half_yearly:'half-yearly',annual:'annually'}[npxCycle];
+    if(custom){
+      camt.textContent='Custom'; if(cper)cper.textContent=' quotation'; crun.textContent='For '+topStr+'+ users we tailor the best per-user rate.'; cset.innerHTML='Talk to our team for volume Cloud pricing + setup.'; if(cstore)cstore.textContent='';
+    } else {
+      const rate=npxRate(band.rate,npxCycle); const total=Math.round(rate*n);
+      camt.textContent=Number(total).toLocaleString('en-IN');
+      if(cper) cper.textContent='/ month · '+Number(n).toLocaleString('en-IN')+' users';
+      crun.textContent=npxINR(rate)+' / user / month × '+Number(n).toLocaleString('en-IN')+' users · billed '+cyclbl;
+      if(cstore)cstore.textContent='Included pooled cloud storage: '+npxFmtGB(n*0.5)+' GB';
+      cset.innerHTML='+ <b>'+npxINR(npxSetup(n))+'</b> one-time Remote Assisted Setup (optional)';
+    }
+    npxBtns('npxCloud',custom,'cloud');
+  } else {
+    const pamt=document.getElementById('npxPerpAmt'), pper=document.getElementById('npxPerpPer'), pset=document.getElementById('npxPerpSetup'), pamc=document.getElementById('npxPerpAmc');
+    if(custom){
+      pamt.textContent='Custom'; pper.textContent=' quotation · '+topStr+'+ users'; pset.innerHTML='Talk to our team for volume licence + setup.'; pamc.innerHTML='+ Optional AMC '+npxAmc+'%/year on prevailing prices.';
+    } else {
+      pamt.textContent=Number(band.price).toLocaleString('en-IN');
+      pper.textContent='one-time · '+Number(n).toLocaleString('en-IN')+' users ('+band.label.toLowerCase()+')';
+      pset.innerHTML='+ <b>'+npxINR(npxSetup(n))+'</b> one-time Remote Assisted Setup (optional)';
+      pamc.innerHTML='+ Optional AMC <b>'+npxAmc+'%/year</b> (updates & support), on prevailing prices.';
+    }
+    npxBtns('npxPerp',custom,'perp');
+  }
   document.querySelectorAll('#npxCyc button').forEach(x=>x.classList.toggle('on',x.dataset.c===npxCycle));
 }
+function npxSetMode(m){ npxMode=m; npxSyncSlider(); npxRender(); }
+function npxUpdateHero(){ const b=NPX_PERP[0]; if(!b||b.price==null) return; const pe=document.querySelector('.ps-price'); if(pe) pe.textContent='₹'+Number(b.price).toLocaleString('en-IN'); }
 (function npxInit(){
-  const chips=document.getElementById('npxChips'); if(!chips) return;
-  NPX_BANDS.forEach((b,i)=>{ const el=document.createElement('button'); el.className='npx-chip'+(i===0?' on':''); el.textContent=b.custom?'5,000+':b.label.replace('Up to ',''); el.onclick=()=>{npxSel=i;npxRender();}; chips.appendChild(el); });
+  const sl=document.getElementById('npxUsers'); if(!sl) return;
+  const dep=document.getElementById('npxDeploy'); if(dep) dep.querySelectorAll('button').forEach(btn=>btn.onclick=()=>npxSetMode(btn.dataset.m));
   document.querySelectorAll('#npxCyc button').forEach(btn=>btn.onclick=()=>{npxCycle=btn.dataset.c;npxRender();});
-  const fg=document.getElementById('npxFeatures');
-  NPX_FEATURES.forEach(f=>{ const d=document.createElement('div'); d.className='npx-fi'; d.innerHTML='<b>\u2713</b> <span>'+f+'</span>'; fg.appendChild(d); });
-  npxRender();
+  sl.addEventListener('input',()=>{ npxUsers=parseInt(sl.value,10)||1; npxRender(); });
+  const fg=document.getElementById('npxFeatures'); if(fg){ NPX_FEATURES.forEach(f=>{ const d=document.createElement('div'); d.className='npx-fi'; d.innerHTML='<b>✓</b> <span>'+f+'</span>'; fg.appendChild(d); }); }
+  npxSyncSlider(); npxRender();
 })();
-/* ===== live pricing: wire calculator + hero to admin bands (Cloud + Lifetime) ===== */
-function npxMerge(p){
-  const vts=(p.volume_tiers||[]).slice().sort((a,b)=>a.min-b.min);
-  const pbs=(p.perpetual_bands||[]).slice().sort((a,b)=>a.min-b.min);
-  if(!vts.length && !pbs.length) return [];
-  const bounds=[...new Set([].concat(vts,pbs).map(x=>x.max))].filter(x=>x!=null).sort((a,b)=>a-b);
-  const cloudFor=cap=>{const t=vts.find(t=>(t.max==null||cap<=t.max)&&cap>=t.min);return t?t.rate:(p.inr_annual||0);};
-  const perpFor=cap=>{const b=pbs.find(b=>(b.max==null||cap<=b.max)&&cap>=b.min);return b?b.price:null;};
-  const bands=bounds.map(cap=>({cap:cap,label:'Up to '+Number(cap).toLocaleString('en-IN'),cloud:cloudFor(cap),perp:perpFor(cap)}));
-  if(vts.some(t=>t.max==null)||pbs.some(b=>b.max==null)){const top=bounds.length?bounds[bounds.length-1]:0;bands.push({cap:null,label:(top?Number(top).toLocaleString('en-IN'):'5,000')+'+',custom:true});}
-  return bands;
-}
-function npxUpdateHero(entry){
-  if(!entry||entry.custom||entry.perp==null) return;
-  const pe=document.querySelector('.ps-price'); if(pe) pe.textContent='₹'+Number(entry.perp).toLocaleString('en-IN');
-}
 (function npxLive(){
-  const chips=document.getElementById('npxChips'); if(!chips || location.protocol==='file:') return;
+  const sl=document.getElementById('npxUsers'); if(!sl || location.protocol==='file:') return;
   fetch('/api/v1/public/plans',{headers:{Accept:'application/json'}}).then(r=>r.ok?r.json():null).then(d=>{
     if(!d||!d.plans) return;
     const p=d.plans.find(x=>x.code==='smartept')||d.plans[0]; if(!p) return;
-    const nb=npxMerge(p); if(!nb.length) return;
-    NPX_BANDS.length=0; nb.forEach(x=>NPX_BANDS.push(x));
+    const cb=npxBuildBands(p.volume_tiers,'rate'); if(cb.length){ NPX_CLOUD.length=0; cb.forEach(x=>NPX_CLOUD.push(x)); }
+    const pb=npxBuildBands(p.perpetual_bands,'price'); if(pb.length){ NPX_PERP.length=0; pb.forEach(x=>NPX_PERP.push(x)); }
     if(d.cycles){ if(d.cycles.annual_discount!=null) npxAnnualDisc=+d.cycles.annual_discount; if(d.cycles.half_yearly_discount!=null) npxHalfDisc=+d.cycles.half_yearly_discount; }
     if(d.setup){ if(d.setup.base) npxSetupBase=+d.setup.base; if(d.setup.included) npxSetupIncl=+d.setup.included; if(d.setup.per_extra) npxSetupPer=+d.setup.per_extra; }
     if(d.amc_pct) npxAmc=(''+d.amc_pct).replace(/\.0+$/,'');
-    npxSel=0; chips.innerHTML='';
-    NPX_BANDS.forEach((b,i)=>{ const el=document.createElement('button'); el.className='npx-chip'+(i===0?' on':''); el.textContent=b.custom?(b.label||'5,000+'):b.label.replace('Up to ',''); el.onclick=()=>{npxSel=i;npxRender();}; chips.appendChild(el); });
-    npxRender(); npxUpdateHero(NPX_BANDS[0]);
+    npxSyncSlider(); npxRender(); npxUpdateHero();
   }).catch(()=>{});
 })();
 /* ===== FAQ ===== */
