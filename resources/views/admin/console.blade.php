@@ -410,6 +410,20 @@ const HELP_KB_CENTRAL = [
       +'<p><b>How to check:</b> Open the <b>Application log</b> below and load the last 100 lines — the newest ERROR line names the file and line.</p>'
       +'<p><b>How to fix:</b> If it points at the database, use the first card. Otherwise use “Copy for developer” and send the log to Ametecs.</p>'
       +'<p class="hkb-esc"><b>When to call the developer:</b> Any error that isn’t the database — WhatsApp '+WA+'.</p>' },
+  { id:'c-pricing', tag:'Billing', cls:'p-dang', title:'Cannot create a quote or order - "plan code is invalid" / clients see "Request failed"',
+    kw:'plan code invalid quote order request failed pricing smartept pay now raise quotation seed migrate',
+    body:'<p><b>What you see:</b> The New Order / Quote screen shows "The selected plan code is invalid", and on the client portal the <b>Pay now</b> and <b>Raise quotation</b> buttons show "Request failed".</p>'
+      +'<p><b>Likely cause:</b> The main SmartEPT pricing plan was never added to this database. A past update created the price tables, but the plan itself needs a one-time seed that had not been run here.</p>'
+      +'<p><b>How to check:</b> Run System Health above - the <b>Pricing plan</b> row will be red.</p>'
+      +'<p><b>How to fix:</b> Run <code>migrate.bat</code> in the Central app folder (it now adds the plan automatically), then hard-refresh and try the order again. Advanced: in Laragon Terminal you can instead run <code>php artisan db:seed --class=PricingV2Seeder --force</code>.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If the Pricing plan row is still red after running migrate.bat - WhatsApp '+WA+'.</p>' },
+  { id:'c-logstuck', tag:'Application log', cls:'p-warn', title:'The log is not updating / shows an old date',
+    kw:'log not updating old date stale stuck validation error 422 laravel log today last written',
+    body:'<p><b>What you see:</b> The Application log newest line is from days ago even though something just went wrong on screen.</p>'
+      +'<p><b>Likely cause:</b> This is usually normal. Everyday form problems (an invalid plan code, a missing field, a rejected login) are shown to the user but are <b>not</b> written to the log - only genuine server crashes are. A quiet log usually means no crashes, not a broken log.</p>'
+      +'<p><b>How to check:</b> The log panel shows the file <b>Last written</b> time and size. If that time updates when a real error happens, the log is healthy.</p>'
+      +'<p><b>How to fix:</b> Nothing to fix if only form/validation messages are appearing. If you expected a real crash to be recorded and it is not, do a full Laragon <b>Stop All then Start All</b> and reproduce it once more.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> If a screen shows a 500 error but no new log line appears - WhatsApp '+WA+'.</p>' },
 ];
 const HELP_KB_CLIENT = [
   { id:'p-agent-db', tag:'Client · data', cls:'p-dang', title:'A client’s agent data / screenshots stopped arriving',
@@ -514,7 +528,7 @@ async function loadHelpLog() {
     const r = await api('logs?lines=' + n); if (!r) return;
     if (!r.exists) { out.textContent = r.note || 'No log file yet.'; return; }
     out.textContent = r.text || '(the log is empty)';
-    if (meta) meta.textContent = r.path + ' · ' + r.size_human + ' · last ' + r.lines + ' lines';
+    if (meta) meta.textContent = r.path + ' · ' + r.size_human + (r.modified ? ' · last written ' + r.modified : '') + ' · showing last ' + r.lines + ' lines';
     out.scrollTop = out.scrollHeight;
   } catch (e) { out.textContent = 'Could not load the log: ' + String(e); }
 }

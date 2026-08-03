@@ -10,6 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             PlanSeeder::class,
+            PricingV2Seeder::class,
             SettingSeeder::class,
             AdminUserSeeder::class,
             DemoSeeder::class,

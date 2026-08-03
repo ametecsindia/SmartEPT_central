@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Plan;
 use App\Models\Setting;
 use App\Services\WaService;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,7 @@ class DiagnosticsController extends Controller
             $this->checkWhatsApp(),
             $this->checkPayments(),
             $this->checkProductLink(),
+            $this->checkPricingPlan(),
             $this->checkLicenceSigning(),
             $this->checkRecentErrors(),
         ];
@@ -66,10 +68,14 @@ class DiagnosticsController extends Controller
             ]);
         }
 
+        clearstatcache(true, $path);
+        $mtime = @filemtime($path);
+
         return response()->json([
             'exists'     => true,
             'path'       => 'storage/logs/laravel.log',
             'size_human' => $this->human((int) filesize($path)),
+            'modified'   => $mtime ? date('Y-m-d H:i:s', $mtime) : null,
             'lines'      => $lines,
             'text'       => $this->tail($path, $lines),
         ]);
@@ -312,6 +318,41 @@ class DiagnosticsController extends Controller
     }
 
     /** The link to the SmartEPT product app: cloud provisioning, SSO, suspend/enable. */
+    private function checkPricingPlan(): array
+    {
+        try {
+            $plan = Plan::where('code', 'smartept')->first();
+
+            if (! $plan) {
+                return $this->row('pricing', 'Pricing plan', 'down',
+                    'The main SmartEPT pricing plan is missing from the database, so no quote or order can '
+                    . 'be created: the New Order screen shows "plan code is invalid" and clients get '
+                    . '"Request failed". Run migrate.bat to add it.',
+                    'c-pricing');
+            }
+
+            if (! $plan->active) {
+                return $this->row('pricing', 'Pricing plan', 'warn',
+                    'The SmartEPT pricing plan exists but is switched off, so new quotes and orders will fail.',
+                    'c-pricing');
+            }
+
+            $bands = $plan->volumeTiers()->count() + $plan->perpetualBands()->count();
+            if ($bands === 0) {
+                return $this->row('pricing', 'Pricing plan', 'warn',
+                    'The SmartEPT plan has no price bands yet, so quotes may come out as custom. Run migrate.bat.',
+                    'c-pricing');
+            }
+
+            return $this->row('pricing', 'Pricing plan', 'ok',
+                'The SmartEPT pricing plan is present and priced.');
+        } catch (\Throwable $e) {
+            return $this->row('pricing', 'Pricing plan', 'warn',
+                'Could not check the pricing plan (the database may be unreachable).',
+                'c-db');
+        }
+    }
+
     private function checkProductLink(): array
     {
         $url    = (string) config('services.product.provision_url');
@@ -367,6 +408,7 @@ class DiagnosticsController extends Controller
 
     private function tail(string $path, int $lines): string
     {
+        clearstatcache(true, $path);
         $size = filesize($path);
         if ($size === 0) {
             return '';

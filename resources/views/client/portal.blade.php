@@ -236,7 +236,7 @@ async function api(path, opts={}) {
   });
   const body = await res.json().catch(() => ({}));
   if (res.status === 401) { location.href = '/client/login'; throw new Error('signed out'); }
-  if (!res.ok) throw new Error(body.error || (body.errors ? Object.values(body.errors).flat().join(' ') : 'Request failed'));
+  if (!res.ok) throw new Error(body.error || (body.errors ? Object.values(body.errors).flat().join(' ') : (body.message || 'Request failed')));
   return body;
 }
 
