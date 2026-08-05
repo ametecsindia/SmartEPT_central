@@ -110,7 +110,44 @@ class LandingAdminController extends Controller
     // ---------- Media library ----------
     public function media()
     {
-        return LandingMedia::orderByDesc('id')->get();
+        $secs = LandingSection::orderBy('sort')->get(['title', 'html']);
+        return LandingMedia::orderByDesc('id')->get()->map(function ($m) use ($secs) {
+            $url = (string) $m->url;
+            $bn  = $url !== '' ? basename((string) (parse_url($url, PHP_URL_PATH) ?: $url)) : '';
+            $used = $secs->filter(function ($s) use ($url, $bn) {
+                return ($url !== '' && str_contains((string) $s->html, $url))
+                    || ($bn !== '' && str_contains((string) $s->html, $bn));
+            })->pluck('title')->values();
+            $a = $m->toArray();
+            $a['used_in'] = $used;
+            return $a;
+        });
+    }
+
+    /** Pull images already referenced in the page HTML into the media library (skips embedded data: images). */
+    public function mediaScan()
+    {
+        $existing = LandingMedia::pluck('url')->all();
+        $added = 0;
+        foreach (LandingSection::get(['html']) as $s) {
+            if (preg_match_all('#<img\b[^>]*\bsrc="([^"]+)"#i', (string) $s->html, $mm)) {
+                foreach ($mm[1] as $src) {
+                    if (str_starts_with($src, 'data:')) { continue; }
+                    if (in_array($src, $existing, true)) { continue; }
+                    LandingMedia::create([
+                        'disk' => 'public',
+                        'path' => ltrim((string) (parse_url($src, PHP_URL_PATH) ?: $src), '/'),
+                        'url'  => $src,
+                        'kind' => stripos($src, 'logo') !== false ? 'logo' : 'image',
+                        'alt'  => '',
+                        'uploaded_by' => auth('admin')->id(),
+                    ]);
+                    $existing[] = $src;
+                    $added++;
+                }
+            }
+        }
+        return ['ok' => true, 'added' => $added];
     }
 
     public function mediaUpload(Request $r)

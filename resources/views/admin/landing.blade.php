@@ -149,7 +149,7 @@ textarea{min-height:340px;font-family:ui-monospace,Menlo,Consolas,monospace;font
     <label style="display:flex;align-items:center;justify-content:center;flex-direction:column;border:2px dashed #b9ccd1;border-radius:12px;padding:22px;color:#0B6373;font-weight:800;cursor:pointer;background:#f6fafb;margin-bottom:16px">
       <input type="file" accept="image/*,.svg" multiple style="display:none" onchange="uploadMedia(this)"> &#8593; Click to upload (PNG &middot; JPG &middot; SVG &middot; WebP &middot; GIF)
     </label>
-    <div id="mediaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><button class="small" onclick="scanMedia()">Scan page for existing images</button><span class="hint">Pulls images already on the page into this library and shows which section each is used in. (The hero background is embedded in the page and is edited in that section.)</span></div><div id="mediaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"></div>
   </div>
 </div>
 
@@ -266,6 +266,7 @@ async function loadMedia(){
     d.innerHTML=`<div style="height:110px;background:#0d1b1f url('${m.url}') center/contain no-repeat"></div>
       <div style="padding:9px 10px">
         <div style="font-size:11px;color:#8a94a0">${m.kind}${m.width?(' - '+m.width+'x'+m.height):''}</div>
+        <div style="font-size:11px;color:#0B6373;margin-top:2px;font-weight:700">${(m.used_in&&m.used_in.length)?('Used in: '+m.used_in.map(escapeHtml).join(', ')):'Not used on the page'}</div>
         <input type="text" value="${escapeAttr(m.alt||'')}" placeholder="alt text" onchange="saveAlt(${m.id},this.value)" style="width:100%;margin:6px 0;border:1px solid #d7dee1;border-radius:7px;padding:5px 7px;font-size:12px">
         <div style="display:flex;gap:6px">
           <button class="small" onclick="copyUrl('${m.url}')">Copy URL</button>
@@ -283,6 +284,7 @@ async function uploadMedia(inp){
   }
   inp.value=''; loadMedia(); msg('Uploaded');
 }
+async function scanMedia(){ msg('Scanning the page...'); const r=await fetch(API+'/media/scan',{method:'POST',headers:headers()}); const d=await r.json().catch(()=>({})); if(r.ok){ msg('Found '+(d.added||0)+' image(s) on the page'); loadMedia(); } else { msg('Scan failed'); } }
 function copyUrl(u){ const full=location.origin+u; navigator.clipboard.writeText(full).then(()=>msg('URL copied - paste into a section')); }
 async function saveAlt(id,val){ await fetch(API+'/media/'+id,{method:'PUT',headers:headers(),body:JSON.stringify({alt:val})}); msg('Alt saved'); }
 async function delMedia(id){ if(!confirm('Delete this media file?'))return; const r=await fetch(API+'/media/'+id,{method:'DELETE',headers:headers()}); if(r.ok){ loadMedia(); msg('Deleted'); } else msg('Delete failed'); }
