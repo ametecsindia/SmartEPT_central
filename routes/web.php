@@ -147,6 +147,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::get('landing/media', [Admin\LandingAdminController::class, 'media']);
             Route::post('landing/media', [Admin\LandingAdminController::class, 'mediaUpload']);
             Route::post('landing/media/scan', [Admin\LandingAdminController::class, 'mediaScan']);
+            Route::post('landing/media/extract', [Admin\LandingAdminController::class, 'mediaExtract']);
             Route::put('landing/media/{media}', [Admin\LandingAdminController::class, 'mediaUpdate']);
             Route::delete('landing/media/{media}', [Admin\LandingAdminController::class, 'mediaDelete']);
             Route::get('landing/seo', [Admin\LandingAdminController::class, 'seo']);

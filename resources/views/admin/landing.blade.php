@@ -150,7 +150,7 @@ textarea{min-height:340px;font-family:ui-monospace,Menlo,Consolas,monospace;font
     <label style="display:flex;align-items:center;justify-content:center;flex-direction:column;border:2px dashed #b9ccd1;border-radius:12px;padding:22px;color:#0B6373;font-weight:800;cursor:pointer;background:#f6fafb;margin-bottom:16px">
       <input type="file" accept="image/*,.svg" multiple style="display:none" onchange="uploadMedia(this)"> &#8593; Click to upload (PNG &middot; JPG &middot; SVG &middot; WebP &middot; GIF)
     </label>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><button class="small" onclick="scanMedia()">Scan page for existing images</button><span class="hint">Pulls images already on the page into this library and shows which section each is used in. (The hero background is embedded in the page and is edited in that section.)</span></div><div id="mediaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><button class="small" onclick="scanMedia()">Scan page for existing images</button> <button class="small" onclick="extractMedia()">Extract embedded images to files</button><span class="hint">Pulls images already on the page into this library and shows which section each is used in. (The hero background is embedded in the page and is edited in that section.)</span></div><div id="mediaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px"></div>
   </div>
 </div>
 
@@ -285,6 +285,7 @@ async function uploadMedia(inp){
   }
   inp.value=''; loadMedia(); msg('Uploaded');
 }
+async function extractMedia(){ if(!confirm('Extract embedded (base64) images into files? This updates the sections; Publish to apply live.')) return; msg('Extracting...'); const r=await fetch(API+'/media/extract',{method:'POST',headers:headers()}); const d=await r.json().catch(()=>({})); if(r.ok){ msg('Extracted '+(d.extracted||0)+' image(s) to files'); loadMedia(); } else { msg('Extract failed'); } }
 async function scanMedia(){ msg('Scanning the page...'); const r=await fetch(API+'/media/scan',{method:'POST',headers:headers()}); const d=await r.json().catch(()=>({})); if(r.ok){ msg('Found '+(d.added||0)+' image(s) on the page'); loadMedia(); } else { msg('Scan failed'); } }
 function copyUrl(u){ const full=location.origin+u; navigator.clipboard.writeText(full).then(()=>msg('URL copied - paste into a section')); }
 async function saveAlt(id,val){ await fetch(API+'/media/'+id,{method:'PUT',headers:headers(),body:JSON.stringify({alt:val})}); msg('Alt saved'); }

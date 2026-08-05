@@ -200,4 +200,41 @@ class LandingAdminController extends Controller
         }
         return ['ok' => true];
     }
+
+    /** Decode base64 images embedded in the page into real files + register them; replaces the data URI with the file URL. */
+    public function mediaExtract()
+    {
+        $extracted = 0; $n = 0;
+        $extMap = ['jpeg'=>'jpg','jpg'=>'jpg','png'=>'png','gif'=>'gif','webp'=>'webp','svg+xml'=>'svg'];
+        foreach (LandingSection::orderBy('sort')->get() as $s) {
+            $html = (string) $s->html; $orig = $html; $uris = [];
+            if (preg_match_all('#src="(data:image/[^"]+)"#i', $html, $m)) { foreach ($m[1] as $u) { $uris[$u] = true; } }
+            if (preg_match_all('#url\(\s*[\'"]?(data:image/[^)\'"]+)[\'"]?\s*\)#i', $html, $m)) { foreach ($m[1] as $u) { $uris[$u] = true; } }
+            foreach (array_keys($uris) as $uri) {
+                if (! preg_match('#^data:image/([a-zA-Z0-9.+-]+);base64,(.*)$#s', $uri, $mm)) { continue; }
+                $mime = strtolower($mm[1]);
+                $ext = $extMap[$mime] ?? 'img';
+                $bin = base64_decode($mm[2], true);
+                if ($bin === false) { continue; }
+                $n++;
+                $path = 'landing/extracted-'.$s->id.'-'.$n.'.'.$ext;
+                \Storage::disk('public')->put($path, $bin);
+                $url = \Storage::disk('public')->url($path);
+                $w = $h = null;
+                if ($ext !== 'svg' && function_exists('getimagesizefromstring')) {
+                    $sz = @getimagesizefromstring($bin);
+                    if ($sz) { $w = $sz[0]; $h = $sz[1]; }
+                }
+                LandingMedia::create([
+                    'disk' => 'public', 'path' => $path, 'url' => $url, 'kind' => 'image',
+                    'alt' => '', 'width' => $w, 'height' => $h, 'bytes' => strlen($bin),
+                    'uploaded_by' => auth('admin')->id(),
+                ]);
+                $html = str_replace($uri, $url, $html);
+                $extracted++;
+            }
+            if ($html !== $orig) { $s->update(['html' => $html]); }
+        }
+        return ['ok' => true, 'extracted' => $extracted];
+    }
 }
