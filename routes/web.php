@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Route;
 
 // ---------- Public: landing ----------
 Route::get('/', fn () => response()->file(public_path('landing.html'), ['Cache-Control' => 'no-cache, no-store, must-revalidate']));
+Route::get('/cms-preview', [\App\Http\Controllers\LandingController::class, 'show']); // CMS draft preview (Task 4) — '/' stays static until publish
+Route::get('/thank-you', [\App\Http\Controllers\LandingController::class, 'thanks']); // conversion / thank-you page
 
 // ---------- Public: legal & contact (linked from landing + portal footers) ----------
 Route::view('/privacy', 'legal.privacy')->name('legal.privacy');
@@ -74,6 +76,7 @@ Route::post('/admin/logout', [Admin\AuthController::class, 'logout']);
 // ---------- Admin console ----------
 Route::middleware('admin.auth')->prefix('admin')->group(function () {
     Route::get('/', [Admin\ConsoleController::class, 'index']);
+    Route::get('/landing', [Admin\LandingAdminController::class, 'page'])->middleware('admin.role:super'); // Landing CMS editor
     Route::get('/invoices/{invoice}/print', [Admin\InvoicePrintController::class, 'show']);
     Route::get('/orders/{order}/quote-print', [Admin\InvoicePrintController::class, 'quote']);
 
@@ -134,6 +137,19 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::put('plans/{plan}/perpetual-bands', [Admin\ConfigApiController::class, 'savePerpetualBands']);
             Route::get('settings', [Admin\ConfigApiController::class, 'settings']);
             Route::put('settings', [Admin\ConfigApiController::class, 'updateSettings']);
+            // ----- Landing CMS (super only) -----
+            Route::get('landing/sections', [Admin\LandingAdminController::class, 'sections']);
+            Route::put('landing/sections/{section}', [Admin\LandingAdminController::class, 'updateSection']);
+            Route::post('landing/reorder', [Admin\LandingAdminController::class, 'reorder']);
+            Route::post('landing/publish', [Admin\LandingAdminController::class, 'publish']);
+            Route::get('landing/versions', [Admin\LandingAdminController::class, 'versions']);
+            Route::post('landing/versions/{version}/rollback', [Admin\LandingAdminController::class, 'rollback']);
+            Route::get('landing/media', [Admin\LandingAdminController::class, 'media']);
+            Route::post('landing/media', [Admin\LandingAdminController::class, 'mediaUpload']);
+            Route::put('landing/media/{media}', [Admin\LandingAdminController::class, 'mediaUpdate']);
+            Route::delete('landing/media/{media}', [Admin\LandingAdminController::class, 'mediaDelete']);
+            Route::get('landing/seo', [Admin\LandingAdminController::class, 'seo']);
+            Route::put('landing/seo', [Admin\LandingAdminController::class, 'saveSeo']);
         Route::post('config/test-email', [Admin\ConfigApiController::class, 'testEmail']);
         Route::get('wa-templates', [Admin\WaTemplateController::class, 'index']);
         Route::post('wa-templates', [Admin\WaTemplateController::class, 'store']);

@@ -1,0 +1,173 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\LandingSection;
+use App\Models\Setting;
+
+class LandingRenderer
+{
+    public static function html(): string
+    {
+        $out = LandingSection::orderBy('sort')->get()
+            ->filter(fn ($r) => $r->is_layout || $r->is_visible)
+            ->pluck('html')->implode('');
+
+        return self::decorate($out);
+    }
+
+    public static function decorate(string $html): string
+    {
+        $g = fn ($k) => trim((string) Setting::get($k, ''));
+
+        $title  = $g('seo_title');
+        $desc   = $g('seo_description');
+        $canon  = $g('seo_canonical');
+        $robots = $g('seo_robots');
+        $ogimg  = $g('seo_og_image');
+        $site   = $g('seo_site_name');
+        $tw     = $g('seo_twitter_handle');
+        $fav    = $g('seo_favicon');
+        $logo   = $g('seo_logo');
+        $ga4    = $g('track_ga4');
+        $gtm    = $g('track_gtm');
+        $fbp    = $g('track_fb_pixel');
+        $ads    = $g('track_google_ads');
+        $chead  = (string) Setting::get('track_head_html', '');
+        $cbody  = (string) Setting::get('track_body_html', '');
+
+        $anything = ($title || $desc || $canon || $robots || $ogimg || $site || $tw || $fav || $logo
+            || $ga4 || $gtm || $fbp || $ads || trim($chead) !== '' || trim($cbody) !== '');
+        if (! $anything) {
+            return $html;
+        }
+
+        $base = rtrim((string) config('app.url'), '/');
+        $abs = function ($u) use ($base) {
+            $u = trim($u);
+            if ($u === '') return '';
+            if (preg_match('#^https?://#i', $u)) return $u;
+            return $base.'/'.ltrim($u, '/');
+        };
+
+        $html = preg_replace('/<!--CMS_HEAD_START-->.*?<!--CMS_HEAD_END-->\s*/s', '', $html);
+        $html = preg_replace('/<!--CMS_BODY_START-->.*?<!--CMS_BODY_END-->\s*/s', '', $html);
+
+        if ($title !== '') {
+            $html = preg_replace('/<title>.*?<\/title>/s', '<title>'.self::esc($title).'</title>', $html, 1);
+        } elseif (preg_match('/<title>(.*?)<\/title>/s', $html, $m)) {
+            $title = trim($m[1]);
+        }
+        if ($desc === '' && preg_match('/<meta\s+name="description"\s+content="(.*?)"/is', $html, $m)) {
+            $desc = $m[1];
+        }
+
+        $ogimgAbs = $abs($ogimg);
+        $canonAbs = $canon !== '' ? $abs($canon) : $base;
+
+        $html = preg_replace('#\s*<meta\s+name="description"[^>]*>#i', '', $html);
+        $html = preg_replace('#\s*<meta\s+property="og:[^"]*"[^>]*>#i', '', $html);
+        $html = preg_replace('#\s*<meta\s+name="twitter:[^"]*"[^>]*>#i', '', $html);
+        $html = preg_replace('#\s*<link\s+rel="canonical"[^>]*>#i', '', $html);
+        $html = preg_replace('#\s*<meta\s+name="robots"[^>]*>#i', '', $html);
+        if ($fav !== '') {
+            $html = preg_replace('#\s*<link\s[^>]*rel="(?:shortcut icon|icon|apple-touch-icon)"[^>]*>#i', '', $html);
+        }
+
+        $b = "<!--CMS_HEAD_START-->\n";
+        if ($fav !== '') {
+            $favAbs = $abs($fav);
+            $b .= '<link rel="icon" href="'.self::esc($favAbs).'">'."\n";
+            $b .= '<link rel="apple-touch-icon" href="'.self::esc($favAbs).'">'."\n";
+        }
+        if ($desc !== '')     $b .= '<meta name="description" content="'.self::esc($desc).'">'."\n";
+        if ($canonAbs !== '') $b .= '<link rel="canonical" href="'.self::esc($canonAbs).'">'."\n";
+        if ($robots !== '')   $b .= '<meta name="robots" content="'.self::esc($robots).'">'."\n";
+        $b .= '<meta property="og:type" content="website">'."\n";
+        if ($site !== '')     $b .= '<meta property="og:site_name" content="'.self::esc($site).'">'."\n";
+        if ($title !== '')    $b .= '<meta property="og:title" content="'.self::esc($title).'">'."\n";
+        if ($desc !== '')     $b .= '<meta property="og:description" content="'.self::esc($desc).'">'."\n";
+        if ($canonAbs !== '') $b .= '<meta property="og:url" content="'.self::esc($canonAbs).'">'."\n";
+        if ($ogimgAbs !== '') {
+            $b .= '<meta property="og:image" content="'.self::esc($ogimgAbs).'">'."\n";
+            $b .= '<meta property="og:image:width" content="1200">'."\n";
+            $b .= '<meta property="og:image:height" content="630">'."\n";
+        }
+        $b .= '<meta property="og:locale" content="en_IN">'."\n";
+        $b .= '<meta name="twitter:card" content="'.($ogimgAbs !== '' ? 'summary_large_image' : 'summary').'">'."\n";
+        if ($tw !== '') {
+            $handle = str_starts_with($tw, '@') ? $tw : '@'.$tw;
+            $b .= '<meta name="twitter:site" content="'.self::esc($handle).'">'."\n";
+        }
+        if ($title !== '')    $b .= '<meta name="twitter:title" content="'.self::esc($title).'">'."\n";
+        if ($desc !== '')     $b .= '<meta name="twitter:description" content="'.self::esc($desc).'">'."\n";
+        if ($ogimgAbs !== '') $b .= '<meta name="twitter:image" content="'.self::esc($ogimgAbs).'">'."\n";
+
+        if ($gtm !== '')                { $b .= self::gtmHead($gtm); }
+        if ($ga4 !== '' || $ads !== '') { $b .= self::gtag($ga4, $ads); }
+        if ($fbp !== '')                { $b .= self::fbPixel($fbp); }
+        if (trim($chead) !== '')        { $b .= $chead."\n"; }
+        $b .= "<!--CMS_HEAD_END-->";
+
+        $html = preg_replace('#</head>#i', $b."\n</head>", $html, 1);
+
+        $bb = '';
+        if ($gtm !== '') {
+            $bb .= '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id='.self::esc($gtm).'" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>'."\n";
+        }
+        if (trim($cbody) !== '') {
+            $bb .= $cbody."\n";
+        }
+        if (trim($bb) !== '') {
+            $block = "<!--CMS_BODY_START-->\n".$bb."<!--CMS_BODY_END-->";
+            $html = preg_replace('#</body>#i', $block."\n</body>", $html, 1);
+        }
+
+        // Global logo swap — replaces any <img> whose src references the SmartEPT logo.
+        if ($logo !== '') {
+            $logoAbs = self::esc($abs($logo));
+            $html = preg_replace('#(<img\b[^>]*\bsrc=")[^"]*smartept-logo[^"]*(")#i', '${1}'.$logoAbs.'${2}', $html);
+        }
+
+        return $html;
+    }
+
+    private static function gtmHead(string $id): string
+    {
+        return <<<GTM
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','{$id}');</script>
+<!-- End Google Tag Manager -->
+
+GTM;
+    }
+
+    private static function gtag(string $ga4, string $ads): string
+    {
+        $load = $ga4 !== '' ? $ga4 : $ads;
+        $cfg = '';
+        if ($ga4 !== '') { $cfg .= "gtag('config','{$ga4}');"; }
+        if ($ads !== '') { $cfg .= "gtag('config','{$ads}');"; }
+        return <<<GA
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={$load}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());{$cfg}</script>
+
+GA;
+    }
+
+    private static function fbPixel(string $id): string
+    {
+        return <<<FB
+<!-- Meta Pixel -->
+<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','{$id}');fbq('track','PageView');</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={$id}&ev=PageView&noscript=1"/></noscript>
+
+FB;
+    }
+
+    private static function esc($s): string
+    {
+        return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+    }
+}
