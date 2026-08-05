@@ -184,7 +184,7 @@ class LandingAdminController extends Controller
     }
 
     // ---------- SEO & tracking ----------
-    private const SEO_KEYS = ['seo_title','seo_description','seo_canonical','seo_robots','seo_og_image','seo_site_name','seo_twitter_handle','seo_favicon','seo_logo','track_ga4','track_gtm','track_fb_pixel','track_google_ads','track_head_html','track_body_html','track_conversion_html','thankyou_headline','thankyou_message'];
+    private const SEO_KEYS = ['seo_title','seo_description','seo_keywords','seo_canonical','seo_robots','seo_og_image','seo_site_name','seo_twitter_handle','seo_favicon','seo_logo','track_ga4','track_gtm','track_fb_pixel','track_google_ads','track_head_html','track_body_html','track_conversion_html','thankyou_headline','thankyou_message'];
 
     public function seo()
     {

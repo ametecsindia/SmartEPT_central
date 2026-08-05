@@ -22,6 +22,7 @@ class LandingRenderer
 
         $title  = $g('seo_title');
         $desc   = $g('seo_description');
+        $kw     = $g('seo_keywords');
         $canon  = $g('seo_canonical');
         $robots = $g('seo_robots');
         $ogimg  = $g('seo_og_image');
@@ -36,7 +37,7 @@ class LandingRenderer
         $chead  = (string) Setting::get('track_head_html', '');
         $cbody  = (string) Setting::get('track_body_html', '');
 
-        $anything = ($title || $desc || $canon || $robots || $ogimg || $site || $tw || $fav || $logo
+        $anything = ($title || $desc || $kw || $canon || $robots || $ogimg || $site || $tw || $fav || $logo
             || $ga4 || $gtm || $fbp || $ads || trim($chead) !== '' || trim($cbody) !== '');
         if (! $anything) {
             return $html;
@@ -70,9 +71,8 @@ class LandingRenderer
         $html = preg_replace('#\s*<meta\s+name="twitter:[^"]*"[^>]*>#i', '', $html);
         $html = preg_replace('#\s*<link\s+rel="canonical"[^>]*>#i', '', $html);
         $html = preg_replace('#\s*<meta\s+name="robots"[^>]*>#i', '', $html);
-        if ($fav !== '') {
-            $html = preg_replace('#\s*<link\s[^>]*rel="(?:shortcut icon|icon|apple-touch-icon)"[^>]*>#i', '', $html);
-        }
+        if ($kw !== '')  { $html = preg_replace('#\s*<meta\s+name="keywords"[^>]*>#i', '', $html); }
+        if ($fav !== '') { $html = preg_replace('#\s*<link\s[^>]*rel="(?:shortcut icon|icon|apple-touch-icon)"[^>]*>#i', '', $html); }
 
         $b = "<!--CMS_HEAD_START-->\n";
         if ($fav !== '') {
@@ -81,6 +81,7 @@ class LandingRenderer
             $b .= '<link rel="apple-touch-icon" href="'.self::esc($favAbs).'">'."\n";
         }
         if ($desc !== '')     $b .= '<meta name="description" content="'.self::esc($desc).'">'."\n";
+        if ($kw !== '')       $b .= '<meta name="keywords" content="'.self::esc($kw).'">'."\n";
         if ($canonAbs !== '') $b .= '<link rel="canonical" href="'.self::esc($canonAbs).'">'."\n";
         if ($robots !== '')   $b .= '<meta name="robots" content="'.self::esc($robots).'">'."\n";
         $b .= '<meta property="og:type" content="website">'."\n";
@@ -115,15 +116,12 @@ class LandingRenderer
         if ($gtm !== '') {
             $bb .= '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id='.self::esc($gtm).'" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>'."\n";
         }
-        if (trim($cbody) !== '') {
-            $bb .= $cbody."\n";
-        }
+        if (trim($cbody) !== '') { $bb .= $cbody."\n"; }
         if (trim($bb) !== '') {
             $block = "<!--CMS_BODY_START-->\n".$bb."<!--CMS_BODY_END-->";
             $html = preg_replace('#</body>#i', $block."\n</body>", $html, 1);
         }
 
-        // Global logo swap — replaces any <img> whose src references the SmartEPT logo.
         if ($logo !== '') {
             $logoAbs = self::esc($abs($logo));
             $html = preg_replace('#(<img\b[^>]*\bsrc=")[^"]*smartept-logo[^"]*(")#i', '${1}'.$logoAbs.'${2}', $html);

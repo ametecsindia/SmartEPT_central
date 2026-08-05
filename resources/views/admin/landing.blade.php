@@ -115,6 +115,7 @@ textarea{min-height:340px;font-family:ui-monospace,Menlo,Consolas,monospace;font
   <div class="card"><h3 style="margin:0 0 4px">Search</h3>
     <label>Page title</label><input type="text" id="seo_title" oninput="updateSeoPreview()">
     <label>Meta description</label><textarea id="seo_description" style="min-height:70px" oninput="updateSeoPreview()"></textarea>
+    <label>Keywords (comma-separated) <span class="hint">- minor SEO weight; title &amp; description matter most</span></label><textarea id="seo_keywords" style="min-height:50px"></textarea>
     <div class="row"><div style="flex:1"><label>Canonical URL</label><input type="text" id="seo_canonical" placeholder="https://smartept.in/" oninput="updateSeoPreview()"></div><div style="width:190px"><label>Robots</label><input type="text" id="seo_robots" placeholder="index, follow"></div></div>
   </div>
   <div class="card"><h3 style="margin:0 0 4px">Social (Open Graph + Twitter/X)</h3>
@@ -289,7 +290,7 @@ function copyUrl(u){ const full=location.origin+u; navigator.clipboard.writeText
 async function saveAlt(id,val){ await fetch(API+'/media/'+id,{method:'PUT',headers:headers(),body:JSON.stringify({alt:val})}); msg('Alt saved'); }
 async function delMedia(id){ if(!confirm('Delete this media file?'))return; const r=await fetch(API+'/media/'+id,{method:'DELETE',headers:headers()}); if(r.ok){ loadMedia(); msg('Deleted'); } else msg('Delete failed'); }
 
-const SEO_KEYS=['seo_title','seo_description','seo_canonical','seo_robots','seo_og_image','seo_site_name','seo_twitter_handle','seo_favicon','seo_logo','track_ga4','track_gtm','track_fb_pixel','track_google_ads','track_head_html','track_body_html','track_conversion_html','thankyou_headline','thankyou_message'];
+const SEO_KEYS=['seo_title','seo_description','seo_keywords','seo_canonical','seo_robots','seo_og_image','seo_site_name','seo_twitter_handle','seo_favicon','seo_logo','track_ga4','track_gtm','track_fb_pixel','track_google_ads','track_head_html','track_body_html','track_conversion_html','thankyou_headline','thankyou_message'];
 async function loadSeo(){ const r=await fetch(API+'/seo',{headers:{'Accept':'application/json'}}); if(!r.ok){ msg('SEO load failed ('+r.status+')'); return; } const d=await r.json(); SEO_KEYS.forEach(k=>{ const el=document.getElementById(k); if(el) el.value=d[k]||''; }); updateSeoPreview(); }
 async function saveSeoAll(){ const body={}; SEO_KEYS.forEach(k=>{ const el=document.getElementById(k); body[k]=el?el.value:''; }); const r=await fetch(API+'/seo',{method:'PUT',headers:headers(),body:JSON.stringify(body)}); if(r.ok){ msg('SEO saved - Publish to apply to the live site'); refreshPrev(); } else msg('Save failed'); }
 function updateSeoPreview(){
