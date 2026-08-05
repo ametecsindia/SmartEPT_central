@@ -113,6 +113,9 @@ class ConfigApiController extends Controller
         'sales_email',
         // SmartEPT Cloud — default hosted console URL prefilled into new Cloud clients.
         'default_console_url',
+        // SmartEPT Product connection (replaces .env) — the hosted product address the
+        // Central uses to provision consoles + SSO. Enter the base URL only.
+        'product_base_url', 'product_provision_secret', 'product_sso_secret',
         // Pricing, billing cycles & cloud — Central -> Settings -> Pricing & Cloud
         'pricing_annual_discount_pct', 'pricing_half_yearly_discount_pct', 'pricing_cloud_multiplier',
         'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr', 'pricing_amc_pct',
@@ -122,6 +125,7 @@ class ConfigApiController extends Controller
     private const SECRET_SETTINGS = [
         'razorpay_key_secret', 'razorpay_webhook_secret', 'stripe_secret_key', 'stripe_webhook_secret',
         'mail_password', 'interakt_api_key',
+        'product_provision_secret', 'product_sso_secret',
     ];
 
     /** Effective defaults surfaced in the Settings form when a pricing knob is unset. */

@@ -60,10 +60,17 @@ class TenantApiController extends Controller
             'currency' => ['nullable', 'in:INR,USD'],
             'deployment' => ['required', 'in:client_hosted,cloud'],
             'console_url' => ['nullable', 'url', 'max:255'],
+            // Branded console URL slug (admin.smartept.com/<slug>). Blank = auto from name.
+            'console_slug' => ['nullable', 'string', 'max:40', 'regex:/^[a-z0-9][a-z0-9-]*$/', 'unique:tenants,console_slug'],
             'ecosystem_customer' => ['boolean'],
             'notes' => ['nullable', 'string'],
             'start_trial' => ['boolean'],
         ]);
+
+        // Auto-suggest a clean slug from the company name when none was entered.
+        if (empty($data['console_slug'])) {
+            $data['console_slug'] = $this->autoSlug($data['company_name']);
+        }
 
         // GSTIN ↔ state cross-check (blueprint §2): the first two GSTIN digits
         // are the state code — stop mismatches before they reach a tax document.
@@ -120,6 +127,11 @@ class TenantApiController extends Controller
             );
         }
 
+        // Stand up the hosted console immediately for cloud tenants (idempotent).
+        if ($tenant->deployment === 'cloud') {
+            app(\App\Services\ProductProvisioner::class)->ensureFor($tenant->fresh());
+        }
+
         AuditLog::write('tenant.created', $tenant);
 
         // Tenant fields stay top-level (existing console + tests read them);
@@ -145,6 +157,7 @@ class TenantApiController extends Controller
             'currency' => ['sometimes', 'in:INR,USD'],
             'deployment' => ['sometimes', 'in:client_hosted,cloud'],
             'console_url' => ['nullable', 'url', 'max:255'],
+            'console_slug' => ['nullable', 'string', 'max:40', 'regex:/^[a-z0-9][a-z0-9-]*$/', 'unique:tenants,console_slug,' . $tenant->id],
             'status' => ['sometimes', 'in:trial,active,suspended,expired,churned'],
             'ecosystem_customer' => ['boolean'],
             'notes' => ['nullable', 'string'],
@@ -157,8 +170,27 @@ class TenantApiController extends Controller
             app(\App\Services\ProductProvisioner::class)->setStatus($tenant->fresh(), $data['status']);
         }
 
+        // Push the branded slug (and console URL) to the hosted product now — so a
+        // slug edit takes effect on Save, without waiting for a payment. Idempotent.
+        if ($tenant->fresh()->deployment === 'cloud') {
+            app(\App\Services\ProductProvisioner::class)->ensureFor($tenant->fresh());
+        }
+
         AuditLog::write('tenant.updated', $tenant, ['fields' => array_keys($data)]);
 
         return response()->json($tenant->fresh());
+    }
+
+    /** A clean, unique console slug from the company name (admin.smartept.com/<slug>). */
+    private function autoSlug(string $name): string
+    {
+        $base = substr(trim(\Illuminate\Support\Str::slug($name, ''), '-'), 0, 38) ?: 'client';
+        $slug = $base;
+        $i = 1;
+        while (Tenant::where('console_slug', $slug)->exists()) {
+            $slug = substr($base, 0, 34) . '-' . $i++;
+        }
+
+        return $slug;
     }
 }

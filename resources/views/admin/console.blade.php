@@ -1091,6 +1091,12 @@ async settings() {
   <div class="card"><h3>SmartEPT Cloud</h3>
   <label>Default hosted console URL <span style="font-weight:400;color:#7A8B90">(prefilled into a new Cloud client's "Hosted console URL" — your shared Ametecs-hosted admin address)</span></label>
   <input id="set_default_console_url" value="${esc(s.default_console_url||'')}" placeholder="https://client.smartept.cloud/admin"></div>
+  <div class="card"><h3>SmartEPT Product connection <span style="font-weight:400;color:#7A8B90">(the hosted product this Central provisions consoles into — replaces the .env)</span></h3>
+  <label>Product URL <span style="font-weight:400;color:#7A8B90">(base address only — local: http://smartept.test · live: https://admin.smartept.com)</span></label>
+  <input id="set_product_base_url" value="${esc(s.product_base_url||'')}" placeholder="https://admin.smartept.com">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;margin-top:8px">
+  ${f('product_provision_secret','Provisioning secret (must match the product)','password')}${f('product_sso_secret','SSO shared secret (must match the product)','password')}</div>
+  <div class="mini" style="margin-top:4px">Enter just the product's web address — Central adds the rest automatically. The two secrets must match the product server's values. Leave a secret blank to keep the current one.</div></div>
   <div class="card"><h3>Razorpay (INR) — test keys work; paste live keys when ready</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
   ${f('razorpay_key_id','Key ID (rzp_test_… / rzp_live_…)')}${f('razorpay_key_secret','Key Secret','password')}${f('razorpay_webhook_secret','Webhook Secret','password')}</div>
   <div class="mini">Webhook URL for the Razorpay dashboard: <b>${location.origin}/webhooks/razorpay</b> · event: payment.captured</div></div>
@@ -1222,6 +1228,8 @@ function tenantForm(t = {}) {
   <div><label>Ecosystem customer (SmartDCM/PRS)</label><select id="f_eco"><option value="0" ${!t.ecosystem_customer?'selected':''}>No</option><option value="1" ${t.ecosystem_customer?'selected':''}>Yes — 10% ecosystem discount</option></select></div>
   </div><label>Hosted console URL <span style="font-weight:400;color:#7A8B90">(SmartEPT-Cloud clients only — the address of their Ametecs-hosted admin console; the client portal links to it)</span></label>
   <input id="f_console" placeholder="https://client.smartept.cloud/admin" value="${esc(t.console_url||'')}">
+  <label>Console URL slug <span style="font-weight:400;color:#7A8B90">(SmartEPT-Cloud only — the client's branded address: admin.smartept.com/<b>slug</b>. Leave blank to auto-make it from the company name; lowercase letters, numbers and hyphens only)</span></label>
+  <input id="f_console_slug" placeholder="e.g. abcdindia" value="${esc(t.console_slug||'')}">
   <label>Address</label><textarea id="f_addr" rows="2">${esc(t.address||'')}</textarea>
   <label>Billing address (printed on GST invoices — leave blank to use address above)</label><textarea id="f_billaddr" rows="2">${esc(t.billing_address||'')}</textarea>
   <label>Notes</label><textarea id="f_notes" rows="2">${esc(t.notes||'')}</textarea>`;
@@ -1231,6 +1239,7 @@ function readTenantForm() {
     phone: f_phone.value, gstin: f_gstin.value, state_code: f_state.value, currency: f_currency.value,
     deployment: f_deploy.value, ecosystem_customer: f_eco.value === '1',
     console_url: f_console.value || null,
+    console_slug: (f_console_slug.value || '').trim().toLowerCase() || null,
     address: f_addr.value, billing_address: f_billaddr.value, notes: f_notes.value };
 }
 function newTenant() {
