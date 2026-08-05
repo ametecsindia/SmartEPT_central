@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => response()->file(public_path('landing.html'), ['Cache-Control' => 'no-cache, no-store, must-revalidate']));
 Route::get('/cms-preview', [\App\Http\Controllers\LandingController::class, 'show']); // CMS draft preview (Task 4) — '/' stays static until publish
 Route::get('/thank-you', [\App\Http\Controllers\LandingController::class, 'thanks']); // conversion / thank-you page
+Route::get('/robots.txt', [\App\Http\Controllers\LandingController::class, 'robots']);
+Route::get('/sitemap.xml', [\App\Http\Controllers\LandingController::class, 'sitemap']);
+Route::get('/llms.txt', [\App\Http\Controllers\LandingController::class, 'llms']);
 
 // ---------- Public: legal & contact (linked from landing + portal footers) ----------
 Route::view('/privacy', 'legal.privacy')->name('legal.privacy');

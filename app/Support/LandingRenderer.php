@@ -108,6 +108,8 @@ class LandingRenderer
         if ($ga4 !== '' || $ads !== '') { $b .= self::gtag($ga4, $ads); }
         if ($fbp !== '')                { $b .= self::fbPixel($fbp); }
         if (trim($chead) !== '')        { $b .= $chead."\n"; }
+                $ld = self::jsonLd($site !== '' ? $site : 'SmartEPT', $desc, $base, $logo !== '' ? $abs($logo) : '');
+        if ($ld !== '') { $b .= $ld; }
         $b .= "<!--CMS_HEAD_END-->";
 
         $html = preg_replace('#</head>#i', $b."\n</head>", $html, 1);
@@ -162,6 +164,32 @@ GA;
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={$id}&ev=PageView&noscript=1"/></noscript>
 
 FB;
+    }
+
+    private static function jsonLd(string $name, string $desc, string $url, string $logo): string
+    {
+        $org = array_filter([
+            '@type' => 'Organization',
+            'name'  => 'Ametecs India Private Limited',
+            'url'   => $url ?: null,
+            'logo'  => $logo ?: null,
+        ], fn ($v) => $v !== null && $v !== '');
+
+        $app = array_filter([
+            '@context'            => 'https://schema.org',
+            '@type'               => 'SoftwareApplication',
+            'name'                => $name,
+            'applicationCategory' => 'BusinessApplication',
+            'operatingSystem'     => 'Windows, Web',
+            'description'         => $desc ?: null,
+            'url'                 => $url ?: null,
+            'publisher'           => $org ?: null,
+        ], fn ($v) => $v !== null && $v !== '' && $v !== []);
+
+        $json = json_encode($app, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($json === false) { return ''; }
+
+        return '<script type="application/ld+json">'.$json.'</script>'."\n";
     }
 
     private static function esc($s): string

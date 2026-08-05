@@ -53,4 +53,43 @@ class LandingController extends Controller
             ->header('Content-Type', 'text/html; charset=UTF-8')
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
+
+    /** robots.txt — welcomes search + AI crawlers, points to the sitemap. */
+    public function robots()
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $bots = ['GPTBot','OAI-SearchBot','ChatGPT-User','ClaudeBot','Claude-Web','anthropic-ai','PerplexityBot','Perplexity-User','Google-Extended','Applebot-Extended','CCBot','meta-externalagent'];
+        $txt = "User-agent: *\nAllow: /\n\n";
+        foreach ($bots as $b) { $txt .= "User-agent: {$b}\nAllow: /\n\n"; }
+        $txt .= "Sitemap: {$base}/sitemap.xml\n";
+        return response($txt)->header('Content-Type', 'text/plain; charset=UTF-8');
+    }
+
+    /** sitemap.xml */
+    public function sitemap()
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $paths = ['/', '/privacy', '/terms', '/refunds', '/security', '/system-requirements'];
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
+        foreach ($paths as $p) { $xml .= '  <url><loc>'.htmlspecialchars($base.$p, ENT_QUOTES).'</loc></url>'."\n"; }
+        $xml .= '</urlset>'."\n";
+        return response($xml)->header('Content-Type', 'application/xml; charset=UTF-8');
+    }
+
+    /** llms.txt — a concise brief for AI answer engines (ChatGPT, Claude, Perplexity, Google AI). */
+    public function llms()
+    {
+        $g = fn ($k, $d = '') => (trim((string) \App\Models\Setting::get($k, '')) ?: $d);
+        $base = rtrim((string) config('app.url'), '/');
+        $name = $g('seo_site_name', 'SmartEPT');
+        $desc = $g('seo_description', 'Employee Productivity Tracking & Intelligence.');
+        $email = $g('landing_contact_email', 'sales@ametecsindia.com');
+        $md  = "# {$name}\n\n> {$desc}\n\n";
+        $md .= "{$name} is an Employee Productivity Tracking & Intelligence system by Ametecs India Private Limited. It measures productive vs idle time, attendance, app & website usage, breaks, meetings and shift adherence, with Gate-to-PC access control (a PC unlocks for work only after the employee punches in at the gate). Deployment is client-hosted or managed cloud; tracking is transparent and policy-based, with no stealth mode.\n\n";
+        $md .= "## Key pages\n";
+        $md .= "- [Home]({$base}/)\n- [Security & Data]({$base}/security)\n- [System Requirements]({$base}/system-requirements)\n- [Privacy]({$base}/privacy)\n- [Terms]({$base}/terms)\n\n";
+        $md .= "## Contact\nAmetecs India Private Limited - {$email}\n";
+        return response($md)->header('Content-Type', 'text/plain; charset=UTF-8');
+    }
 }
