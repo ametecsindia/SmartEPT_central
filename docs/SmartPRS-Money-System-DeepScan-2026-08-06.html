@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartPRS Money System — As-Is Deep Scan (6 Aug 2026)</title>
+<style>
+:root{--navy:#0c1929;--navy2:#14253c;--accent:#f97316;--green:#10b981;--red:#ef4444;--bg:#f1f5f9;--border:#e2e8f0;--t2:#475569;--t3:#94a3b8}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:#0f172a;font-size:14.5px;line-height:1.65}
+.page{max-width:980px;margin:0 auto;padding:0 20px 80px}
+.cover{background:linear-gradient(160deg,var(--navy),var(--navy2));color:#fff;padding:46px 40px;border-radius:0 0 18px 18px;margin-bottom:30px}
+.cover .k{display:inline-block;background:rgba(249,115,22,.18);color:#fb923c;font-weight:800;font-size:12px;letter-spacing:1.5px;padding:6px 14px;border-radius:20px;margin-bottom:14px;text-transform:uppercase}
+.cover h1{font-size:30px;line-height:1.25;margin-bottom:10px}
+.cover p{color:#9fb2c8;font-size:14px;max-width:720px}
+.cover .meta{margin-top:18px;font-size:12.5px;color:#7e93ac}
+h2{font-size:21px;margin:44px 0 6px;color:var(--navy);border-bottom:3px solid var(--accent);padding-bottom:8px}
+h3{font-size:16.5px;margin:26px 0 8px;color:var(--navy)}
+h4{font-size:14.5px;margin:18px 0 6px;color:#1e293b}
+p{margin:8px 0}
+.sub{color:var(--t2);font-size:13.5px;margin-bottom:14px}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:14px 0;box-shadow:0 2px 10px rgba(12,25,41,.05)}
+.note{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:#7c2d12}
+.good{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:#065f46}
+.warn{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:#991b1b}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;background:#fff}
+th{background:#f8fafc;text-align:left;padding:9px 10px;border:1px solid var(--border);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)}
+td{padding:8px 10px;border:1px solid var(--border);vertical-align:top}
+code{background:#eef2f7;border-radius:5px;padding:1px 6px;font-size:12.5px;color:#0c4a6e;font-family:Consolas,monospace}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
+.fb{background:var(--navy);color:#fff;border-radius:9px;padding:9px 14px;font-size:12.5px;font-weight:600}
+.fb.o{background:var(--accent)}
+.fb.g{background:#059669}
+.fa{color:var(--t3);font-weight:800}
+.pill{display:inline-block;border-radius:20px;padding:2px 10px;font-size:11.5px;font-weight:700}
+.pgreen{background:#dcfce7;color:#166534}.pamber{background:#fef3c7;color:#92400e}.pred{background:#fee2e2;color:#b91c1c}.pgrey{background:#e2e8f0;color:#475569}
+.toc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 24px;column-count:2;column-gap:40px;font-size:13.5px}
+.toc a{color:#0c4a6e;text-decoration:none;display:block;padding:3px 0}
+.toc a:hover{color:var(--accent)}
+ul{margin:8px 0 8px 22px}
+li{margin:4px 0}
+.tag{font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+@media(max-width:700px){.toc{column-count:1}.cover{padding:30px 22px}}
+@media print{body{background:#fff}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="k">Ametecs Internal · Reference Document</div>
+  <h1>SmartPRS — The Complete Money System<br>As-Is Deep Scan: Front Side + Backend Logic</h1>
+  <p>Everything about how SmartPRS turns a website visitor into a paying customer and manages the money afterwards — documented exactly as it exists in the live code at <code>C:\laragon\www\smartprs2</code>. Nothing added, nothing improved — this is the faithful record.</p>
+  <div class="meta">Prepared 6 August 2026 · Scanned from the live tree · For: SmartEPT money-flow rework reference · Requested by Ejaz Hussain</div>
+</div>
+<div class="page">
+
+<div class="toc">
+<b>Contents</b>
+<a href="#s1">1. The whole money concept in one picture</a>
+<a href="#s2">2. Front side — the public website</a>
+<a href="#s2a">&nbsp;&nbsp;2.1 Landing page &amp; pricing section</a>
+<a href="#s2b">&nbsp;&nbsp;2.2 Lead form (demo request)</a>
+<a href="#s2c">&nbsp;&nbsp;2.3 Live demo passkey gate</a>
+<a href="#s2d">&nbsp;&nbsp;2.4 The /signup cart page (heart of the system)</a>
+<a href="#s2e">&nbsp;&nbsp;2.5 Public quotation pay page</a>
+<a href="#s2f">&nbsp;&nbsp;2.6 After payment — arrival experience</a>
+<a href="#s3">3. Backend logic — how the money engine works</a>
+<a href="#s3a">&nbsp;&nbsp;3.1 The pricing formula</a>
+<a href="#s3b">&nbsp;&nbsp;3.2 Tables &amp; statuses</a>
+<a href="#s3c">&nbsp;&nbsp;3.3 What happens the moment payment succeeds</a>
+<a href="#s3d">&nbsp;&nbsp;3.4 Quotations</a>
+<a href="#s3e">&nbsp;&nbsp;3.5 Invoices, numbering &amp; GST</a>
+<a href="#s3f">&nbsp;&nbsp;3.6 Coupons &amp; exclusive offers</a>
+<a href="#s3g">&nbsp;&nbsp;3.7 Webhook safety net</a>
+<a href="#s4">4. Logged-in money screens</a>
+<a href="#s4a">&nbsp;&nbsp;4.1 My Subscription (tenant)</a>
+<a href="#s4b">&nbsp;&nbsp;4.2 Expiry, grace &amp; lock behaviour</a>
+<a href="#s4c">&nbsp;&nbsp;4.3 Reminder (dunning) engine</a>
+<a href="#s5">5. Admin desks (Ametecs staff)</a>
+<a href="#s5a">&nbsp;&nbsp;5.1 Quotations desk + offline payments</a>
+<a href="#s5b">&nbsp;&nbsp;5.2 Leads desk</a>
+<a href="#s5c">&nbsp;&nbsp;5.3 Coupons desk</a>
+<a href="#s5d">&nbsp;&nbsp;5.4 On-Prem licence sales desk</a>
+<a href="#s5e">&nbsp;&nbsp;5.5 Super-admin billing screens</a>
+<a href="#s6">6. The printed documents (PDFs)</a>
+<a href="#s7">7. Rules &amp; constants — quick reference</a>
+<a href="#s8">8. Rough edges found (as-is observations)</a>
+<a href="#s9">9. Decision recorded for SmartEPT</a>
+</div>
+
+<h2 id="s1">1. The whole money concept in one picture</h2>
+<p>SmartPRS has <b>one golden rule</b>: <b>money first, account after</b>. A workspace (account) is created only after verified payment — or after Ametecs staff deliberately records an offline payment or approves credit. There is <b>no free trial</b>; evaluation happens in a shared passkey-protected demo that wipes itself.</p>
+
+<div class="card">
+<p><span class="tag">Path A — Self-serve buy (primary)</span></p>
+<div class="flow"><span class="fb">Landing pricing</span><span class="fa">→</span><span class="fb">/signup cart<br>(plan+price on one page)</span><span class="fa">→</span><span class="fb o">Razorpay pays</span><span class="fa">→</span><span class="fb g">Workspace created + invoice PAID + receipt</span><span class="fa">→</span><span class="fb">Auto-login → set password</span></div>
+<p><span class="tag">Path B — Quotation (finance team)</span></p>
+<div class="flow"><span class="fb">/signup → “Send me a Quotation”</span><span class="fa">→</span><span class="fb">Email: PDF + pay link</span><span class="fa">→</span><span class="fb o">Finance pays /quote/{token}<br>(no login needed)</span><span class="fa">→</span><span class="fb g">Same result as Path A</span></div>
+<p><span class="tag">Path C — Offline / credit (admin)</span></p>
+<div class="flow"><span class="fb">Money via NEFT/UPI/cheque/cash — or credit promise</span><span class="fa">→</span><span class="fb o">Admin → Quotations → Record payment<br>Paid / Partial / Due</span><span class="fa">→</span><span class="fb g">Workspace live immediately;<br>balance tracked till zero</span></div>
+<p><span class="tag">Path D — Renewal / upgrade (existing customer)</span></p>
+<div class="flow"><span class="fb">/app → My Subscription</span><span class="fa">→</span><span class="fb o">Renew (full period) or Upgrade (pro-rata difference)</span><span class="fa">→</span><span class="fb g">Invoice + receipt automatic</span></div>
+<p><span class="tag">Path E — On-premises perpetual licence (admin-driven)</span></p>
+<div class="flow"><span class="fb">Admin records client + price</span><span class="fa">→</span><span class="fb">Email invoice + public pay link</span><span class="fa">→</span><span class="fb o">Pay online or record offline</span><span class="fa">→</span><span class="fb g">Full payment auto-issues the licence key / .lic file</span></div>
+</div>
+
+<div class="good"><b>Why it feels smooth:</b> at every entry point the visitor sees the exact final price (including GST) before paying, pays without creating anything first, and the system builds everything automatically the second the money is verified — account, subscription, GST invoice marked PAID, receipt email with PDF, WhatsApp confirmation, and auto sign-in.</div>
+
+<h2 id="s2">2. Front side — the public website</h2>
+
+<h3 id="s2a">2.1 Landing page &amp; pricing section</h3>
+<div class="card">
+<p>The landing page (navy + orange design, CMS-editable at <code>/admin/landing</code>) sells the demo first: the main hero button is <b>“Request a Demo”</b> (scrolls to the lead form) and the nav highlights <b>“Live Demo”</b> in orange.</p>
+<p><b>Pricing section (“Simple, scalable plans”):</b></p>
+<ul>
+<li>3 plan cards from the CMS — <b>Starter ₹1,000/mo</b> (up to 25 employees), <b>Growth ₹2,500/mo</b> (75, marked “★ Most popular” with orange border), <b>Professional ₹5,000/mo</b> (150). All show “+ GST”. Bullets list the extra-employee rate (₹60/₹50/₹40 per month), extra company ₹1000/mo, and the discount ladder: minimum 3 months advance 0%, 6 months 10% off, 12 months 25% off.</li>
+<li>Every card has one button — <b>“Get started”</b> → <code>/signup?plan={name}</code>. The chosen plan arrives pre-selected on the cart page.</li>
+<li><b>No calculator on the landing page.</b> All live pricing maths happens on /signup. Landing prices are simple CMS text.</li>
+<li>Below the grid, a navy <b>On-premise band</b>: “Prefer to own it outright?” with 3 edition chips (Basic / Advance / Collection DNA) and a “Talk to sales →” button to the contact form. <b>No on-prem prices are published.</b></li>
+</ul>
+</div>
+
+<h3 id="s2b">2.2 Lead form (demo request) — the funnel entry</h3>
+<div class="card">
+<p>Bottom of the landing page: <b>“Book a live demo”</b>. Fields: Full Name*, Company*, Designation, City*, Mobile*, Official Email*, Employees (size band dropdown: 1-25 / 26-75 / 76-150 / More than 150), Challenges (free text). Hidden honeypot field blocks bots.</p>
+<ul>
+<li><b>“Schedule My Demo”</b> — validates, then opens WhatsApp with all the details pre-filled AND saves the lead via <code>POST /lead</code> in the background. The visitor is told “tap Send on WhatsApp to confirm”.</li>
+<li><b>“Chat on WhatsApp”</b> — refuses to open until the form is filled (“Please fill your details first so we receive them on WhatsApp”), then opens wa.me/919000098877 with the details.</li>
+<li>Every saved lead instantly emails sales (<code>sales@ametecsindia.com</code>) and fires a WhatsApp alert to Ametecs — recipients configurable in the Landing CMS.</li>
+<li>Lead statuses: <span class="pill pgrey">new</span> → <span class="pill pamber">contacted</span> → <span class="pill pgreen">closed</span>, worked at /admin/leads. A demo-passkey request also auto-creates a lead (source “live_demo”).</li>
+</ul>
+<div class="note"><b>Important as-is fact:</b> leads and purchases are completely separate — there is no automatic lead→customer conversion. Sales works the lead by hand and points the prospect at /signup or raises a quotation for them.</div>
+</div>
+
+<h3 id="s2c">2.3 Live demo passkey gate (/demo) — evaluation without accounts</h3>
+<div class="card">
+<ul>
+<li>Visitor enters name, WhatsApp number, email, company → a <b>6-digit passkey</b> arrives by email + WhatsApp (never shown in the browser). Same page has the passkey box → enters a fully-loaded shared demo workspace with a guided tour.</li>
+<li>Passkey validity: Super-Admin setting, <b>default 2 hours</b> (1–72 allowed). When it lapses: auto-logout and the demo wipes itself (15-min scheduler + daily 03:30 full reset).</li>
+<li>Edition-specific gates exist at /app1 /app2 /app3 /teamdemo for sales staff to demonstrate L1/L2/L3/full editions.</li>
+<li>Admin register (in-app → Demo Requests): sees requests, can read the PIN, resend, revoke, change validity hours.</li>
+<li>Every new demo request also lands as a <b>lead</b> so sales follows up.</li>
+</ul>
+</div>
+
+<h3 id="s2d">2.4 The /signup cart page — the heart of the system</h3>
+<div class="card">
+<p>One page does everything. Headline: <b>“Start your SmartPRS workspace”</b> — “All 16 modules in every plan · pay only for headcount · GST invoice emailed instantly”. Two columns:</p>
+<h4>Left — “Your organisation”</h4>
+<ul>
+<li>Company/group name*, Your name*, Work email* (this becomes the login), Mobile.</li>
+<li><b>State*</b> (36-state dropdown — “decides GST on your invoice: Telangana = CGST+SGST, other states = IGST, same total either way”), <b>GSTIN</b> (optional, 15 chars, printed on the tax invoice; first 2 digits must match the state).</li>
+<li><b>Web address</b> (optional): smartprs.com/c/______ — 3–10 letters, becomes the client’s branded login page; auto-generated from the company name if left blank.</li>
+<li><b>Total employees</b> (default 25) and <b>Companies in group</b> (default 1) — both re-price the summary live on every keystroke.</li>
+</ul>
+<h4>Right — “Plan &amp; billing”</h4>
+<ul>
+<li>3 plan tiles (from the plans DB table — price, included employees, extra-employee rate). Clicking re-prices.</li>
+<li>3 billing-cycle tiles: <b>Quarterly (standard)</b> · <b>Half-yearly (10% off)</b> · <b>Annual (25% off)</b>. Default quarterly.</li>
+<li><b>Coupon box</b> (shown only if any public coupon exists) with Apply button. Plus the <b>“exclusive-offer catch”</b>: the moment the email field is filled, the page silently asks the server whether a personal offer was sent to that email and auto-applies it — “🎁 Your exclusive offer was applied automatically”.</li>
+<li><b>Live price summary</b>, always visible: plan line, extra-employee line, extra-company line (₹1,000/mo each), billing period, advance discount (green), coupon (green), Subtotal, GST 18%, and a navy <b>“Payable now ₹X”</b> pill.</li>
+<li>Terms checkbox — opens a full Terms &amp; Refund modal (7-day money-back guarantee, minimum 3 months billing, DPDP data terms) with an <b>“I Accept”</b> button that ticks the box.</li>
+<li><b>Action 1 (solid orange): “Pay securely &amp; create workspace”</b> — server re-prices everything (browser numbers are never trusted), creates a pending signup record + Razorpay order, opens the Razorpay modal (UPI/card/netbanking), verifies the payment signature, then provisions everything and auto-signs the buyer in. Success pane: “Welcome aboard!” with “Open my workspace →” (auto-redirects after 2.5 s).</li>
+<li><b>Action 2 (outline): “Send me a Quotation”</b> — same details become a formal quotation instead: PDF emailed with a secure pay link, valid 15 days. Fine print: “Need approval from your finance team first?”. The terms checkbox is <b>not</b> required for a quotation.</li>
+</ul>
+<div class="note"><b>As-is detail worth knowing:</b> there is no OTP or email verification anywhere in signup — the payment itself is the proof of intent. OTP exists only on the demo gate.</div>
+</div>
+
+<h3 id="s2e">2.5 Public quotation pay page — /quote/{token}</h3>
+<div class="card">
+<p>Token-secured, no login. Shows “Quotation PRS-Q-2026-27-08-0001 · Prepared for {company}”. The page has four automatic states:</p>
+<table>
+<tr><th>State</th><th>What the visitor sees</th></tr>
+<tr><td><b>Fresh quote</b></td><td>Full price breakdown (plan, companies, cycle, coupon discount if locked in, GST, Total payable in orange) + <b>“Pay securely &amp; create workspace”</b> + “Download quotation PDF”. “Valid until {date}”.</td></tr>
+<tr><td><b>Expired</b> (15 days)</td><td>Red notice: “This quotation expired on {date} — request a fresh one or start again on the signup page.” No pay button.</td></tr>
+<tr><td><b>Paid in full</b></td><td>Green: “Already paid and the workspace is live — please sign in.”</td></tr>
+<tr><td><b>Balance due</b> (credit client)</td><td>The same link turns into a <b>balance-payment page</b>: “Your workspace is already live. Balance ₹X remains — payable by {date}”, rows Total / Received (green) / Balance (orange), button <b>“Pay balance ₹X”</b>. Receipt goes out automatically when the balance hits zero.</td></tr>
+</table>
+<p>Paying a fresh quote runs the identical provisioning as a direct signup — including auto sign-in for whoever paid.</p>
+</div>
+
+<h3 id="s2f">2.6 After payment — the arrival experience</h3>
+<div class="card">
+<ul>
+<li><b>Auto sign-in</b> happens in the paying browser → redirected into the app → forced to <b>“Create password &amp; open my workspace”</b> (first-password screen; the emailed temporary password is only the backup).</li>
+<li>Backup channels regardless: a welcome email (temporary password + 72-hour set-password link + “Your branded sign-in page: /c/{slug} — bookmark it!”) and the payment-receipt email with the GST tax-invoice PDF attached.</li>
+<li>WhatsApp (Interakt, best-effort): a welcome template and a payment-confirmation template.</li>
+<li>Branded login: every client gets <code>/c/{slug}</code> — their own login page URL.</li>
+</ul>
+</div>
+
+<h2 id="s3">3. Backend logic — how the money engine works</h2>
+
+<h3 id="s3a">3.1 The pricing formula (single source of truth)</h3>
+<div class="card">
+<p>One function — <code>BillingController::priceFor(plan, seats, cycle, companies)</code> — is used by the signup page, quotations, renewals, upgrades, admin screens and PDFs. Browser numbers are never trusted; every order is re-priced server-side.</p>
+<table>
+<tr><th>Step</th><th>Rule</th></tr>
+<tr><td>Per-month price</td><td>plan base price + (extra employees beyond the plan’s included count × per-employee rate) + ₹1,000 × each additional company</td></tr>
+<tr><td>Period</td><td>quarterly = 3 months (0% off) · half-yearly = 6 months (10% off) · annual = 12 months (25% off). Monthly exists only for legacy records.</td></tr>
+<tr><td>Amount</td><td>per-month × months × (1 − discount)</td></tr>
+<tr><td>Coupon</td><td>applied after the cycle discount (they stack), before GST</td></tr>
+<tr><td>GST</td><td>flat 18% on the post-discount amount</td></tr>
+</table>
+</div>
+
+<h3 id="s3b">3.2 Tables &amp; statuses (the order model)</h3>
+<div class="card">
+<p>There is <b>no “orders” table</b>. The pending record that owns the Razorpay order id depends on the purchase kind:</p>
+<table>
+<tr><th>Purchase</th><th>Record</th><th>Status journey</th><th>Razorpay receipt</th></tr>
+<tr><td>New signup, pay now</td><td>signups</td><td>pending → provisioned</td><td>SIGNUP-{id}</td></tr>
+<tr><td>Quotation</td><td>signups</td><td>quoted → provisioned</td><td>QUOTE-{id}</td></tr>
+<tr><td>Quote balance (credit)</td><td>signups (already provisioned)</td><td>— (balance computed)</td><td>QUOTE-{id}-BAL</td></tr>
+<tr><td>Renewal / upgrade</td><td>renewals</td><td>pending → done</td><td>RENEW-{id}</td></tr>
+<tr><td>Admin invoice collection</td><td>invoices</td><td>due → paid</td><td>invoice number</td></tr>
+<tr><td>On-prem licence</td><td>onprem_clients + onprem_payments</td><td>derived from paid_total</td><td>LIC-{id}</td></tr>
+</table>
+<div class="note"><b>Golden accounting rule:</b> “partial” is <b>never a stored status</b> anywhere. Invoice statuses are only <b>due</b> and <b>paid</b>. The balance is always computed live: total − sum of the payments ledger. That is why the books can never disagree with the money.</div>
+</div>
+
+<h3 id="s3c">3.3 What happens the moment payment succeeds (provisioning chain)</h3>
+<div class="card">
+<p>After Razorpay signature verification (or an admin offline entry), one function builds everything, in this order:</p>
+<ul>
+<li>1. Tenant record + first company + admin user created (admin user is flagged “must set own password”).</li>
+<li>2. Subscription row written as <b>active</b> at the <b>full</b> price (a coupon discounts only the first invoice — renewals bill full rate).</li>
+<li>3. Tenant’s monthly-revenue figure (MRR) updated.</li>
+<li>4. GST invoice created (due) → payment recorded against it → flips to <b>paid</b>.</li>
+<li>5. Coupon redemption counted — only now, after confirmed money.</li>
+<li>6. Receipt email with tax-invoice PDF; welcome email with credentials + branded login link.</li>
+<li>7. Auto sign-in for the paying browser; WhatsApp welcome + payment templates.</li>
+</ul>
+<p>Everything customer-facing is fail-soft: a broken email or WhatsApp never rolls back the money or the workspace.</p>
+<p><b>Offline variant (admin “Record payment”):</b> same chain minus Razorpay and minus auto sign-in. Paid = full entry · Partial = part now, balance on credit · Due = ₹0 now, all on credit. <b>All three provision the workspace immediately</b> — credit is a commercial judgement; the client never waits for the last rupee. The credit due date becomes the invoice due date.</p>
+</div>
+
+<h3 id="s3d">3.4 Quotations</h3>
+<div class="card">
+<ul>
+<li>A quotation is a signups row with status <b>quoted</b> — number series <code>PRS-Q-{FY}-{MM}-{NNNN}</code> (own series, resets each 1 April; quotes are not tax documents).</li>
+<li>Raised from the public signup page by the prospect themselves — or by staff filling the same form on the client’s behalf. No pre-created account needed.</li>
+<li>The coupon (typed or exclusive) is <b>locked into the quote</b> — the pay link honours it even if the code expires later.</li>
+<li>Email goes out instantly: quotation PDF attached, “valid 15 days”, CTA “Pay securely &amp; create workspace” → /quote/{token}.</li>
+<li>There is no approval workflow — approval is expressed by paying. Statuses: quoted → provisioned, nothing else.</li>
+<li>Validity is display-only: an expired quote’s pay link still technically accepts payment at the locked price.</li>
+</ul>
+</div>
+
+<h3 id="s3e">3.5 Invoices, numbering &amp; GST</h3>
+<div class="card">
+<ul>
+<li><b>Number format:</b> <code>PRS-{FY}-{MM}-{NNNN}</code> e.g. PRS-2026-27-08-0001. Indian financial year (Apr–Mar), one consecutive series, resets 1 April. Generated as MAX(existing)+1 so deletions can never duplicate — and the series is <b>shared between SaaS invoices and on-prem licence invoices</b>.</li>
+<li><b>GST split:</b> 18% total always. Buyer GSTIN’s first 2 digits (or state name) vs seller state 36-Telangana: match → CGST 9% + SGST 9%; else IGST 18%. Seller profile (name, GSTIN 36AAHCT0971F1ZB, address, SAC 998314) env-overridable.</li>
+<li>Invoice statuses: <b>due</b> / <b>paid</b> only. Auto invoices are due in 7 days.</li>
+<li>Two recording functions with strict separation: full-settlement (writes the whole invoice amount, used by gateway paths) and partial-aware (writes the exact amount, settles only when the ledger covers the total ± 1 paisa — used by credit/balance paths).</li>
+<li>Payments ledger: every payment row keeps gateway, method, transaction reference; idempotent per gateway transaction id (a payment can never record twice).</li>
+</ul>
+</div>
+
+<h3 id="s3f">3.6 Coupons &amp; exclusive offers</h3>
+<div class="card">
+<ul>
+<li>Coupon fields: code (uppercase, unique), percent or flat, value, valid-till, max uses, minimum cycle, plan restriction, once-per-customer (default on), applies to signup/renewal/both, status active/disabled, internal note.</li>
+<li><b>Exclusive offers:</b> a coupon locked to one email. Admin fills “Send an exclusive offer by email” → the client receives it → when that email is typed on signup/renewal/quote, the discount applies automatically with no code typing.</li>
+<li>Discount maths: applied to the pre-GST amount after the cycle discount; flat capped at the amount; GST recomputed.</li>
+<li>Redemption counted <b>only after confirmed payment</b>; every redemption logged (who, context, amount discounted).</li>
+<li>The subscription row always keeps the full price — a coupon discounts only that first invoice.</li>
+</ul>
+</div>
+
+<h3 id="s3g">3.7 Webhook safety net</h3>
+<div class="card">
+<p><code>POST /webhooks/razorpay</code> (signature-verified) handles payment.captured / order.paid: matches the invoice by gateway order id (or notes), records the payment and emails the receipt — so a buyer who closed the browser mid-payment still gets everything. If no invoice matches, it checks the renewals table and completes an interrupted renewal. Unknown events return 200 (stop retries); processing errors return 500 (Razorpay retries).</p>
+</div>
+
+<h2 id="s4">4. Logged-in money screens</h2>
+
+<h3 id="s4a">4.1 My Subscription (tenant admin only)</h3>
+<div class="card">
+<ul>
+<li>Plan card: plan name + status pill, employees subscribed (across all companies), included limits, employees actually in the workspace, companies subscribed vs in use (red “OVER LIMIT — upgrade on renewal” if exceeded), billing period, period amount, active-until date with days left. Alert bars when expiring ≤15 days or expired.</li>
+<li>Invoices card: last 24 invoices with status and tax-invoice PDF download.</li>
+<li><b>“Renew / Upgrade”</b> modal: choose mode —
+  <ul>
+  <li><b>Renew/extend:</b> full period; “renewing early never loses days” — new period starts when the current one ends. Coupon box with the same exclusive-offer auto-apply.</li>
+  <li><b>Upgrade now:</b> pay only the pro-rata difference for the remaining days; limits increase immediately; the expiry date does not move; future renewals bill the new rate. No coupons on upgrades.</li>
+  </ul></li>
+<li>Strict guards: renewal must cover at least the companies and active employees currently in use (“exited employees free their seat”). Downgrades apply at renewal only.</li>
+<li>Razorpay in the modal → verified → toast “Payment received — your subscription is active until {date}. The tax invoice has been emailed.”</li>
+</ul>
+</div>
+
+<h3 id="s4b">4.2 Expiry, grace &amp; lock behaviour</h3>
+<div class="card">
+<table>
+<tr><th>State</th><th>When</th><th>What happens</th></tr>
+<tr><td><span class="pill pgreen">active</span></td><td>Within period</td><td>Normal. If ≤15 days left: navy bottom bar “expires in N days” + Renew link (admin only; employees never see money bars).</td></tr>
+<tr><td><span class="pill pamber">grace</span></td><td>Up to 7 days past expiry</td><td>App fully usable; amber bottom bar “expired on {date} — workspace suspends after the grace period”.</td></tr>
+<tr><td><span class="pill pred">locked</span></td><td>Past grace, or subscription cancelled/suspended</td><td>Employees blocked; the admin can still sign in but every navigation is forced to My Subscription to renew. Red bar: “workspace is suspended for your team”.</td></tr>
+<tr><td><span class="pill pgrey">none</span></td><td>No subscription record</td><td>Never gated (legacy/manual tenants). Any billing-code error also fails to “none” — a billing bug must never brick a paying customer.</td></tr>
+</table>
+<p>Renewal instantly clears an auto-suspend. Manual suspension by staff (Tenants screen) additionally disables all the tenant’s user logins.</p>
+</div>
+
+<h3 id="s4c">4.3 Reminder (dunning) engine — daily 08:00</h3>
+<div class="card">
+<ul>
+<li>Email + WhatsApp reminders at <b>15, 7, 3, 1 and 0 days</b> before expiry, then <b>daily through the 7-day grace</b>. Each has warm copy ending “Renew in a minute from Administration → My Subscription”.</li>
+<li>After grace with no renewal: tenant flagged suspended (dashboard flag; the real lock is the middleware — the admin can still log in to renew).</li>
+<li>Every alert is logged (kind, channel, sent/failed) and shown to the Super Admin under Subscriptions → “Expiry alert log”. Idempotent — each reminder goes once per period per channel.</li>
+<li>A second daily job raises renewal invoices for subscriptions past their renewal date and emails them.</li>
+</ul>
+</div>
+
+<h2 id="s5">5. Admin desks (Ametecs staff — Super Admin)</h2>
+
+<h3 id="s5a">5.1 Quotations desk — /admin/quotations (the offline money door)</h3>
+<div class="card">
+<p>Two tables on one page:</p>
+<p><b>A. Open quotations</b> — quote #, company/contact, plan, employees, total, sent date, valid-until (red “Expired” pill when past), and per row: <b>“Record payment”</b> button + links to the public Pay page and PDF.</p>
+<p><b>B. Credit clients — balance outstanding</b> — workspaces created on credit: invoice, total, received (green), balance (orange; <b>red when overdue</b> with a warning pill), payable-by date, <b>“Record balance”</b> button + the client’s balance pay link. Caption says it plainly: “Overdue balances show in red — follow up personally; <b>nothing locks automatically</b>.”</p>
+<p><b>The Record-payment modal:</b></p>
+<table>
+<tr><th>Field</th><th>Detail</th></tr>
+<tr><td>Payment status</td><td>Paid — full amount received · Partial — part received, balance on credit · Due — full amount on credit period</td></tr>
+<tr><td>Amount received (₹)</td><td>auto-filled full total when Paid; must be &gt;0 and &lt; total when Partial</td></tr>
+<tr><td>How was it received?</td><td>Bank transfer / UPI / Cheque / Cash / Razorpay (offline entry) / Other</td></tr>
+<tr><td>Reference no.</td><td>UTR / cheque no. (optional; becomes the ledger transaction id)</td></tr>
+<tr><td>Balance payable by</td><td>credit due date — required for Partial and Due</td></tr>
+</table>
+<p>Helper text under the form explains each mode in plain words (e.g. Due: “Nothing received yet — full amount on credit period. The workspace is created immediately; the client (or you) pays by the due date.”). Save button: <b>“Save &amp; create workspace”</b>. Balance instalments use the same modal in a reduced form and cannot exceed the outstanding balance.</p>
+</div>
+
+<h3 id="s5b">5.2 Leads desk — /admin/leads</h3>
+<div class="card">
+<p>Filter chips All / New / Contacted / Closed with counts. Each row: when, name/company/designation, phone (tap-to-call + WhatsApp deep link), email, city, employees band, challenges + internal note, and an inline status+note save. Every lead was already emailed/WhatsApped to sales the moment it arrived.</p>
+</div>
+
+<h3 id="s5c">5.3 Coupons desk — /admin/coupons</h3>
+<div class="card">
+<p>“New coupon” form (code, %/flat, value, valid till, max uses, minimum cycle, applies-to, plan ticks, once-per-customer, campaign note) · “Send an exclusive offer by email” form (email, name, %/flat, value, valid days default 10 — creates the locked coupon and emails it) · coupon list with EXCLUSIVE badges, usage counts, Enable/Disable/Delete · redemption log (latest 100: when, code, context, company/email, workspace, discount given).</p>
+</div>
+
+<h3 id="s5d">5.4 On-Prem licence sales desk — /admin/onprem</h3>
+<div class="card">
+<p>The perpetual-licence pipeline, per client card:</p>
+<ul>
+<li><b>Record the client:</b> company, contact, GSTIN/state, edition (L1/L2/L3), employee band, <b>licence price</b>, AMC % (default 18), validity (term or exact date), on-expiry behaviour (renew field vs notice only).</li>
+<li><b>Money strip:</b> Price (+GST total) · Paid (green when full, amber when partial) · Balance · AMC % · invoice number + public pay link. Toggle: <b>“Allow activation on partial payment”</b> (audited in the notes).</li>
+<li><b>Actions:</b> Record payment (amount + NEFT/cheque/UPI/gateway/cash + reference) · <b>Email invoice + pay link</b> (GST invoice PDF, shared PRS number series; public page /licence/{token} collects the balance by Razorpay) · <b>Generate licence key</b> — <b>blocked until fully paid</b> unless the partial-activation tick is on (“Key NOT generated: payment is partial (₹X of ₹Y incl. GST)…”) · Generate/re-download node-locked <b>.lic file</b> (fingerprint + seat cap) · Renew licence (AMC extension) · Release server binding · Revoke · Delete.</li>
+<li><b>Auto-issue:</b> when an online payment on the public pay page completes the full amount, the licence key is generated and emailed automatically — no staff action.</li>
+</ul>
+</div>
+
+<h3 id="s5e">5.5 Super-admin billing screens (in-app → /app/billing)</h3>
+<div class="card">
+<ul>
+<li><b>Subscriptions:</b> every tenant’s plan/seats/companies/cycle/amount/status/renewal/expiry (LOCKED red, GRACE amber, ≤15 days orange) + edit modal (can also set trialing/suspended/cancelled manually — the only place “trialing” can ever be set). Below: the Expiry alert log.</li>
+<li><b>Invoices:</b> generate for a tenant, PDF, email, <b>“Mark paid (test)”</b> (manual settlement), or drive a live Razorpay checkout while sitting with the client.</li>
+<li><b>Payments:</b> read-only ledger of the last 500 payments (invoice, tenant, amount, gateway, method, txn).</li>
+<li><b>Payment Gateways:</b> Razorpay Test/Live keys + webhook secret (encrypted at rest; blank keeps stored), with the webhook URL to paste into the Razorpay dashboard and a “Live mode not ready” warning until everything is set.</li>
+<li><b>Tenants / Plans:</b> tenant GST profile (state datalist + GSTIN, “printed on invoices”), suspend (blocks all logins), plans CRUD (base price, per-employee rate, included employees, default cycle, module groups; delete refused while any tenant references it).</li>
+</ul>
+</div>
+
+<h2 id="s6">6. The printed documents (PDFs)</h2>
+<div class="card">
+<table>
+<tr><th>Document</th><th>Look &amp; content</th></tr>
+<tr><td><b>Quotation PDF</b></td><td>Navy header “QUOTATION {number} · Valid until {date}” · From (Ametecs + GSTIN) / Prepared for · an About-SmartPRS paragraph + 16-module grid (it sells while it quotes) · line table with coupon discount in green · GST split (CGST 9%+SGST 9% or IGST 18%) · navy “Total payable” bar · an orange “To proceed” box with the pay link · footer “minimum 3 months in advance”.</td></tr>
+<tr><td><b>SaaS Tax Invoice PDF</b></td><td>Navy header “TAX INVOICE {number}” + status pill (green PAID / amber DUE) · From / Bill To (buyer state + GSTIN snapshot) · line with SAC 998314, seats, cycle · GST split · navy Total bar · “computer-generated, no signature required”.</td></tr>
+<tr><td><b>On-prem Tax Invoice PDF</b></td><td>Orange-rule header · perpetual licence line (edition + employee band, “Includes first-year AMC; renewal {AMC}%/year”) · GST split · TOTAL · and when part-paid: “Received till date” + “BALANCE DUE” rows · pay-link box · SAC 997331.</td></tr>
+</table>
+</div>
+
+<h2 id="s7">7. Rules &amp; constants — quick reference</h2>
+<div class="card">
+<table>
+<tr><th>Rule</th><th>Value</th></tr>
+<tr><td>GST</td><td>18% flat (CGST 9+SGST 9 intra-Telangana, else IGST 18)</td></tr>
+<tr><td>Billing cycles</td><td>Quarterly 3 mo (0%) · Half-yearly 6 mo (10% off) · Annual 12 mo (25% off) — minimum sellable period 3 months</td></tr>
+<tr><td>Extra company</td><td>₹1,000/month flat, every plan (1 included)</td></tr>
+<tr><td>Quotation validity</td><td>15 days (display-enforced)</td></tr>
+<tr><td>Invoice due terms</td><td>7 days (auto/renewal); same-day for pro-rata upgrades</td></tr>
+<tr><td>Refund promise</td><td>7-day money-back on first payment (Terms modal + policy page)</td></tr>
+<tr><td>Grace after expiry</td><td>7 days (bar only) → then locked (admin can still renew)</td></tr>
+<tr><td>Reminders</td><td>15/7/3/1/0 days before expiry + daily through grace · email + WhatsApp · daily 08:00</td></tr>
+<tr><td>Demo passkey</td><td>6 digits, default 2 h validity (1–72), demo self-wipes</td></tr>
+<tr><td>Numbers</td><td>Invoices PRS-{FY}-{MM}-{NNNN} (shared SaaS+on-prem series) · Quotes PRS-Q-{FY}-{MM}-{NNNN} · both reset 1 April, MAX+1 generation</td></tr>
+<tr><td>Settlement tolerance</td><td>1 paisa (paid ≥ total − 0.01)</td></tr>
+<tr><td>Gateway</td><td>Razorpay only · keys in admin UI, encrypted · webhook as safety net · theme #f97316</td></tr>
+<tr><td>Trust anchors</td><td>WhatsApp 90000 98877 · sales@ametecsindia.com · GSTIN 36AAHCT0971F1ZB shown on every money page</td></tr>
+</table>
+</div>
+
+<h2 id="s8">8. Rough edges found (as-is observations — nothing was changed)</h2>
+<div class="card">
+<ul>
+<li>An apostrophe in the buyer’s name can break the pay button on the public quote page (name is printed raw into the payment script).</li>
+<li>An expired quotation’s pay link still accepts payment (expiry is display-only).</li>
+<li>The SaaS invoice PDF never shows Received/Balance rows — a 99%-paid invoice prints the same amber DUE as an unpaid one (only the on-prem invoice PDF shows balance).</li>
+<li>On-prem manual payments have no overpayment guard, and the auto-issue email can state a different AMC date than the licence actually gets.</li>
+<li>The signup page’s plan/cycle tiles stay 3-across on small phones (tight), and the first-password screen lacks the mobile-stacking fix the login page has.</li>
+<li>Generating a .lic file is not payment-gated (unlike the licence key button).</li>
+</ul>
+</div>
+
+<h2 id="s9">9. Decision recorded for SmartEPT (Ejaz, 6 Aug 2026)</h2>
+<div class="card">
+<p><b>The 7-day free trial becomes its own separate path — captured as a LEAD, not mixed into buying.</b> Buy buttons must lead to payment; the trial is a sales-nurtured evaluation request, like SmartPRS treats demo requests (every demo request lands in the Leads desk for follow-up). Detailed mapping of this SmartPRS system onto SmartEPT will be presented separately for approval before anything is built.</p>
+</div>
+
+<p style="margin-top:40px;font-size:12px;color:var(--t3);text-align:center">SmartPRS Money System — As-Is Deep Scan · Prepared 6 August 2026 · Ametecs India Private Limited · Internal reference document</p>
+</div>
+</body>
+</html>
