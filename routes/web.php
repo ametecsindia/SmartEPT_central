@@ -92,7 +92,10 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
     Route::get('/orders/{order}/quote-print', [Admin\InvoicePrintController::class, 'quote']);
     Route::get('/orders/{order}/proforma', [Admin\InvoicePrintController::class, 'proforma']); // 6-Aug: proforma invoice for payment-pending orders
 
-    Route::prefix('api')->group(function () {
+    // 7-Aug: whole api surface goes through the permissions matrix (module-level,
+    // editable in Users & Roles). Inner admin.role:... lists remain as fallback
+    // for any path the matrix does not map.
+    Route::prefix('api')->middleware('admin.role')->group(function () {
         // Read endpoints — all roles
         Route::get('dashboard', [Admin\DashboardApiController::class, 'stats']);
         Route::get('tenants', [Admin\TenantApiController::class, 'index']);
@@ -197,6 +200,9 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::put('admin-users/{adminUser}', [Admin\AdminUserController::class, 'update']);
             Route::post('admin-users/{adminUser}/reset-password', [Admin\AdminUserController::class, 'resetPassword']);
             Route::delete('admin-users/{adminUser}', [Admin\AdminUserController::class, 'destroy']);
+            // 7-Aug: editable role-permissions matrix (custom roles, module level)
+            Route::get('role-permissions', [Admin\AdminUserController::class, 'rolePermissions']);
+            Route::put('role-permissions', [Admin\AdminUserController::class, 'saveRolePermissions']);
         });
     });
 });

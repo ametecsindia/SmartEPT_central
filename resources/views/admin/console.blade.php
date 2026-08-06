@@ -126,7 +126,7 @@ tr:hover td{background:var(--card2)}
 @media(max-width:520px){.stats{grid-template-columns:1fr}}
 </style>
 </head>
-<body data-role="{{ $user->role }}" data-default-console-url="{{ \App\Models\Setting::get('default_console_url','') }}">
+<body data-role="{{ $user->role }}" data-perms="{{ json_encode(\App\Services\PermissionService::mapFor($user->role)) }}" data-default-console-url="{{ \App\Models\Setting::get('default_console_url','') }}">
 
 <aside>
   <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT Central" style="width:150px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CENTRAL &middot; SUPER ADMIN</small></div>
@@ -199,7 +199,12 @@ tr:hover td{background:var(--card2)}
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
 const ROLE = document.body.dataset.role;
 const DEFAULT_CONSOLE_URL = document.body.dataset.defaultConsoleUrl || '';
-const CAN_WRITE = ROLE === 'super' || ROLE === 'sales';
+// 7-Aug permissions matrix: per-module levels from PermissionService (editable in Users & Roles).
+const PERMS = JSON.parse(document.body.dataset.perms || '{}');
+const PAGE_MODULE = { cms: 'landing' }; // console page ids match module keys except this one
+const permOf = p => ROLE === 'super' ? 'manage' : (PERMS[PAGE_MODULE[p] || p] || 'none');
+// CAN_WRITE now follows the CURRENT screen's module level (existing call sites unchanged).
+Object.defineProperty(window, 'CAN_WRITE', { get: () => permOf(PAGE) === 'manage' });
 const fmtMoney = (n, c='INR') => (c==='INR'?'₹':'$') + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2});
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const toast = m => { const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none', 3200); };
@@ -230,10 +235,13 @@ help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports'
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
-  if (el.dataset.super && ROLE !== 'super') { el.style.display = 'none'; return; }
-  el.onclick = () => go(el.dataset.page);
+  const pg = el.dataset.page;
+  if (!pg) { if (el.dataset.super && ROLE !== 'super') el.style.display = 'none'; return; } // e.g. Landing Editor link (super-only page)
+  if (permOf(pg) === 'none') { el.style.display = 'none'; return; }
+  el.onclick = () => go(pg);
 });
 function go(page) {
+  if (permOf(page) === 'none') { toast('Your role does not have access to that screen.'); return; }
   document.body.classList.remove('nav-open');
   PAGE = page;
   document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('on', e.dataset.page === page));
@@ -715,7 +723,7 @@ async function tkSave(id) {
 
 // ---- Admin users & roles ----
 let AU_ROWS = {};
-const AU_ROLES = [['super', 'Super admin — full access'], ['sales', 'Sales — business & money'], ['support', 'Support — read + tickets']];
+let AU_ROLES = [['super', 'Super admin — full access'], ['sales', 'Sales'], ['support', 'Support']]; // refreshed from the live matrix in users()
 const AU_V = (id) => (document.getElementById(id) || {}).value || '';
 function auAdd() { auForm(null); }
 function auEdit(id) { auForm(AU_ROWS[id]); }
@@ -755,23 +763,61 @@ async function auDelete(id, name) {
   try { await api('admin-users/' + id, { method: 'DELETE' }); toast('Removed'); go('users'); }
   catch (e) { toast('Error: ' + e); }
 }
-function auMatrixCard() {
-  const M = [
-    ['Dashboard', 'view', 'view', 'view'], ['Clients / Tenants', 'manage', 'manage', 'view'],
-    ['Trials', 'manage', 'manage', 'view'], ['Leads', 'manage', 'manage', 'view'],
-    ['Support tickets', 'manage', 'manage', 'manage'], ['Licences', 'manage', 'manage', 'view'],
-    ['Plans & Pricing', 'manage', 'view', '—'], ['Orders & Payments', 'manage', 'manage', '—'],
-    ['Credit & Invoices', 'manage', 'manage', '—'], ['Cloud Storage', 'manage', 'manage', '—'],
-    ['Coupons', 'manage', 'manage', '—'], ['Accountant Reports', 'manage', 'manage', '—'],
-    ['Downloads', 'manage', '—', '—'], ['Landing CMS', 'manage', '—', '—'],
-    ['WhatsApp Templates', 'manage', '—', '—'], ['Settings', 'manage', '—', '—'],
-    ['Users & Roles', 'manage', '—', '—'], ['Audit Log', 'view', 'view', 'view'],
-  ];
-  const cell = (v) => v === 'manage' ? '<span class="pill p-ok">manage</span>' : (v === 'view' ? '<span class="pill p-info">view</span>' : '<span class="mini">—</span>');
-  const rows = M.map((m) => '<tr><td><b>' + esc(m[0]) + '</b></td><td>' + cell(m[1]) + '</td><td>' + cell(m[2]) + '</td><td>' + cell(m[3]) + '</td></tr>').join('');
-  return '<div class="card"><h3>Permission matrix <span class="mini">what each role can do — enforced on the server</span></h3>'
-    + '<table><tr><th>Module</th><th>Super admin</th><th>Sales</th><th>Support</th></tr>' + rows + '</table>'
-    + '<div class="mini" style="margin-top:8px"><b>manage</b> = view + create/edit · <b>view</b> = read only · <b>—</b> = no access</div></div>';
+// ---- Editable permissions matrix (7-Aug: custom roles + module level, server-enforced) ----
+let RM = null; // {modules:{key:label}, roles:[{key,label,builtin,perms,users}], super_users}
+function rmCard() {
+  if (!RM) return '';
+  const roleHead = RM.roles.map(r =>
+    '<th style="text-align:center">' + esc(r.label) + '<div class="mini" style="font-weight:400">' + esc(r.key) + ' · ' + r.users + ' user' + (r.users === 1 ? '' : 's')
+    + (!r.builtin && !r.users ? ' · <button class="link" style="color:var(--danger)" onclick="rmDelRole(\'' + esc(r.key) + '\')">remove</button>' : '')
+    + '</div></th>').join('');
+  const rows = Object.entries(RM.modules).map(([m, label]) =>
+    '<tr><td><b>' + esc(label) + '</b></td><td style="text-align:center"><span class="pill p-ok">manage</span></td>'
+    + RM.roles.map(r => {
+      const v = r.perms[m] || 'none';
+      return '<td style="text-align:center"><select id="rm-' + esc(r.key) + '-' + esc(m) + '" style="width:auto;padding:3px 6px">'
+        + ['none', 'view', 'manage'].map(o => '<option value="' + o + '"' + (o === v ? ' selected' : '') + '>' + (o === 'none' ? '—' : o) + '</option>').join('')
+        + '</select></td>';
+    }).join('') + '</tr>').join('');
+  return '<div class="card"><h3>Permission matrix <span class="mini">what each role can do — enforced on the server, applies on next page load</span></h3>'
+    + '<div style="overflow:auto"><table><tr><th>Module</th><th style="text-align:center">Super admin<div class="mini" style="font-weight:400">locked · ' + (RM.super_users || 0) + ' user' + (RM.super_users === 1 ? '' : 's') + '</div></th>' + roleHead + '</tr>' + rows + '</table></div>'
+    + '<div class="row" style="margin-top:10px;align-items:center;gap:10px">'
+    + '<button class="btn btn-p" onclick="rmSave()">Save matrix</button>'
+    + '<button class="btn btn-l" onclick="rmAddRole()">+ Add role</button>'
+    + '<span class="mini"><b>manage</b> = view + create/edit · <b>view</b> = read only · <b>—</b> = no access · Super is always full access</span></div></div>';
+}
+function rmCollect() {
+  RM.roles.forEach(r => Object.keys(RM.modules).forEach(m => {
+    const el = document.getElementById('rm-' + r.key + '-' + m);
+    if (el) r.perms[m] = el.value;
+  }));
+}
+function rmAddRole() {
+  const name = (prompt('Name for the new role (e.g. Accounts, Manager):') || '').trim();
+  if (!name) return;
+  const key = name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+  if (key.length < 2 || !/^[a-z]/.test(key)) { toast('Role name must start with a letter and be at least 2 characters.'); return; }
+  if (key === 'super' || RM.roles.some(r => r.key === key)) { toast('That role already exists.'); return; }
+  rmCollect();
+  const perms = {}; Object.keys(RM.modules).forEach(m => perms[m] = 'none');
+  RM.roles.push({ key, label: name, builtin: false, perms, users: 0 });
+  document.getElementById('rmWrap').innerHTML = rmCard();
+  toast('Role "' + name + '" added — set its permissions, then Save matrix.');
+}
+function rmDelRole(key) {
+  const r = RM.roles.find(x => x.key === key);
+  if (!r || r.builtin || r.users) return;
+  if (!confirm('Remove role "' + r.label + '"?')) return;
+  rmCollect();
+  RM.roles = RM.roles.filter(x => x.key !== key);
+  document.getElementById('rmWrap').innerHTML = rmCard();
+}
+async function rmSave() {
+  rmCollect();
+  const roles = {};
+  RM.roles.forEach(r => { roles[r.key] = { label: r.label, perms: r.perms }; });
+  try { await api('role-permissions', { method: 'PUT', body: { roles } }); toast('Permission matrix saved — takes effect on next page load / sign-in.'); go('users'); }
+  catch (e) { toast('Error: ' + e); }
 }
 
 const RENDER = {
@@ -862,7 +908,9 @@ async reports() {
 async users() {
   ACTIONS.innerHTML = '<button class="btn btn-p" onclick="auAdd()">+ Add user</button>';
   P.innerHTML = '<div class="mini">Loading…</div>';
-  const d = await api('admin-users');
+  const [d, rp] = await Promise.all([api('admin-users'), api('role-permissions')]);
+  RM = rp.data;
+  AU_ROLES = [['super', 'Super admin — full access']].concat(RM.roles.map(r => [r.key, r.label]));
   AU_ROWS = {}; (d.data || []).forEach(u => { AU_ROWS[u.id] = u; });
   const RP = { super: 'p-ok', sales: 'p-info', support: 'p-mut' };
   const rows = (d.data || []).map(u => {
@@ -879,7 +927,7 @@ async users() {
   P.innerHTML = '<div class="card"><h3>Admin users <span class="mini">who can sign in to SmartEPT Central</span></h3>'
     + '<table><tr><th>User</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr>'
     + (rows || '<tr><td colspan="5" class="mini">No users.</td></tr>') + '</table></div>'
-    + auMatrixCard();
+    + '<div id="rmWrap">' + rmCard() + '</div>';
 },
 
 // ============ SUPPORT DESK ============
