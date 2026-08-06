@@ -36,6 +36,7 @@ class DiagnosticsController extends Controller
             $this->checkPayments(),
             $this->checkProductLink(),
             $this->checkPricingPlan(),
+            $this->checkBuyFlow(),
             $this->checkLicenceSigning(),
             $this->checkRecentErrors(),
         ];
@@ -350,6 +351,38 @@ class DiagnosticsController extends Controller
             return $this->row('pricing', 'Pricing plan', 'warn',
                 'Could not check the pricing plan (the database may be unreachable).',
                 'c-db');
+        }
+    }
+
+    /** Phase 6 (6-Aug-2026): the public Buy page's moving parts, in one row. */
+    private function checkBuyFlow(): array
+    {
+        try {
+            if (! view()->exists('buy')) {
+                return $this->row('buy', 'Public Buy page', 'down',
+                    'The /buy page template is missing — the website Buy buttons will show an error. '
+                    . 'Restore resources/views/buy.blade.php from git.',
+                    'c-buy');
+            }
+
+            $rzp = (bool) \App\Models\Setting::get('razorpay_key_id');
+            $stripe = (bool) \App\Models\Setting::get('stripe_secret_key');
+
+            if (! $rzp && ! $stripe) {
+                return $this->row('buy', 'Public Buy page', 'warn',
+                    'The Buy page works but NO payment gateway is configured (Razorpay/Stripe keys empty in '
+                    . 'Settings), so buyers see the NEFT/WhatsApp fallback instead of paying online.',
+                    'c-buy');
+            }
+
+            $usd = (float) \App\Models\Setting::get('usd_inr_rate', 88);
+
+            return $this->row('buy', 'Public Buy page', 'ok',
+                'Buy page live. Gateways: ' . ($rzp ? 'Razorpay ✓' : 'Razorpay —') . ' · '
+                . ($stripe ? 'Stripe ✓ (USD ready, rate ₹' . $usd . '/$)' : 'Stripe — (USD buyers see fallback)') . '.');
+        } catch (\Throwable $e) {
+            return $this->row('buy', 'Public Buy page', 'warn',
+                'Could not check the Buy page (the database may be unreachable).', 'c-buy');
         }
     }
 

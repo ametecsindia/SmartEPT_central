@@ -149,6 +149,9 @@ class BillingService
         // A freshly-created Tenant model may not have hydrated its DB default —
         // treat missing currency as INR so GST is never silently skipped.
         $currency = $tenant->currency ?: 'INR';
+        // Phase 4 (6-Aug-2026): international orders — INR pricing converted to
+        // USD at the admin-set rate; zero-GST export invoice downstream.
+        $this->convertCurrency($quote, $currency);
         $gstRate = $currency === 'INR' ? (float) Setting::get('gst_rate', 18) : 0.0;
         $tax = round($quote['subtotal'] * $gstRate / 100, 2);
 
@@ -252,6 +255,7 @@ class BillingService
         // A freshly-created Tenant model may not have hydrated its DB default —
         // treat missing currency as INR so GST is never silently skipped.
         $currency = $tenant->currency ?: 'INR';
+        $this->convertCurrency($quote, $currency);
         $gstRate = $currency === 'INR' ? (float) Setting::get('gst_rate', 18) : 0.0;
         $tax = round($quote['subtotal'] * $gstRate / 100, 2);
 
@@ -272,6 +276,102 @@ class BillingService
             'meta' => [
                 'renewal' => true, 'plan_id' => $plan->id, 'grandfather_migrated' => $grandfather,
                 'devices' => $licence->device_limit, 'kind' => $licence->kind,
+                'billing' => $licence->billing, 'deployment' => $licence->deployment,
+            ],
+        ]);
+    }
+
+    /**
+     * Phase 4 (6-Aug-2026): convert an INR-priced quote into the tenant's
+     * currency. INR is untouched (the pricing engine itself is never modified).
+     * USD uses the admin-set usd_inr_rate (Settings -> Pricing & Cloud).
+     */
+    private function convertCurrency(array &$quote, string $currency): void
+    {
+        if ($currency === 'INR' || empty($quote['lines'])) {
+            return;
+        }
+
+        $fx = max(1.0, (float) Setting::get('usd_inr_rate', 88));
+
+        foreach ($quote['lines'] as &$line) {
+            $line['unit'] = round(((float) $line['unit']) / $fx, 2);
+            $line['amount'] = round(((float) $line['amount']) / $fx, 2);
+            $line['description'] .= ' (USD)';
+        }
+        unset($line);
+
+        $quote['subtotal'] = round(array_sum(array_column($quote['lines'], 'amount')), 2);
+    }
+
+    /**
+     * Phase 5 (6-Aug-2026): PRO-RATA MID-PERIOD UPGRADE (SmartPRS pattern).
+     * The client adds users today and pays only the per-month difference for
+     * the days remaining in the current period. The expiry date does NOT move;
+     * on provisioning the licence's device_limit rises to the new count, so
+     * the next renewal bills the new size automatically.
+     */
+    public function createUpgradeOrder(Licence $licence, int $newLimit): Order
+    {
+        $tenant = $licence->tenant;
+        $plan = $licence->plan;
+
+        if ($licence->kind !== 'subscription' || $licence->status !== 'active') {
+            throw new \RuntimeException('Only an active Cloud subscription can be upgraded mid-period.');
+        }
+        if (! $licence->expires_at || ! $licence->expires_at->isFuture()) {
+            throw new \RuntimeException('This licence has no remaining period — use Renew instead.');
+        }
+        if ($newLimit <= $licence->device_limit) {
+            throw new \RuntimeException('Enter a user count higher than the current ' . $licence->device_limit
+                . ' — reductions apply at renewal, not mid-period.');
+        }
+
+        $eco = (bool) $tenant->ecosystem_customer;
+        $rateNew = $this->pricing->deviceRate($plan, $newLimit, $licence->billing, 'cloud', $eco);
+        $rateOld = $this->pricing->deviceRate($plan, $licence->device_limit, $licence->billing, 'cloud', $eco);
+
+        $remainingDays = (int) now()->startOfDay()->diffInDays($licence->expires_at->copy()->startOfDay());
+        $remainingDays = max(1, $remainingDays);
+        $months = $remainingDays / 30.44;
+
+        $diffPerMonth = round($newLimit * $rateNew - $licence->device_limit * $rateOld, 2);
+        if ($diffPerMonth <= 0) {
+            throw new \RuntimeException('Nothing extra to charge for that count — WhatsApp 90000 98877 and we will sort it manually.');
+        }
+
+        $amount = round($diffPerMonth * $months, 2);
+
+        $quote = ['lines' => [[
+            'type' => 'upgrade',
+            'description' => sprintf('Mid-period upgrade %d → %d users — pro-rata for %d remaining day(s) (till %s)',
+                $licence->device_limit, $newLimit, $remainingDays, $licence->expires_at->toDateString()),
+            'qty' => 1,
+            'unit' => $amount,
+            'amount' => $amount,
+        ]], 'subtotal' => $amount];
+
+        $currency = $tenant->currency ?: 'INR';
+        $this->convertCurrency($quote, $currency);
+        $gstRate = $currency === 'INR' ? (float) Setting::get('gst_rate', 18) : 0.0;
+        $tax = round($quote['subtotal'] * $gstRate / 100, 2);
+
+        return Order::create([
+            'number' => $this->nextOrderNumber(),
+            'tenant_id' => $tenant->id,
+            'licence_id' => $licence->id,
+            'valid_until' => now()->addDays((int) Setting::get('quote_validity_days', 7))->toDateString(),
+            'description' => sprintf('Upgrade — %s plan, %d → %d users (pro-rata)', $plan->name, $licence->device_limit, $newLimit),
+            'line_items' => $quote['lines'],
+            'subtotal' => $quote['subtotal'],
+            'tax_amount' => $tax,
+            'total' => round($quote['subtotal'] + $tax, 2),
+            'currency' => $currency,
+            'gateway' => 'manual',
+            'status' => 'created',
+            'meta' => [
+                'upgrade_new_limit' => $newLimit, 'plan_id' => $plan->id,
+                'devices' => $newLimit, 'kind' => $licence->kind,
                 'billing' => $licence->billing, 'deployment' => $licence->deployment,
             ],
         ]);
@@ -503,12 +603,18 @@ class BillingService
         $meta = $order->meta ?? [];
         $tenant = $order->tenant;
 
-        // 1. Issue or renew the licence.
+        // 1. Issue, renew or upgrade the licence.
         if ($order->licence_id) {
             $licence = $order->licence;
-            ($meta['renew_amc'] ?? false)
-                ? $this->licences->renewAmc($licence)
-                : $this->licences->renew($licence);
+            if (! empty($meta['upgrade_new_limit'])) {
+                // Phase 5: pro-rata mid-period upgrade — capacity rises NOW,
+                // the expiry date stays where it is (renewal bills the new size).
+                $licence->update(['device_limit' => (int) $meta['upgrade_new_limit'], 'status' => 'active']);
+            } elseif ($meta['renew_amc'] ?? false) {
+                $this->licences->renewAmc($licence);
+            } else {
+                $this->licences->renew($licence);
+            }
             if (($meta['grandfather_migrated'] ?? false) && $licence->pricing_model === 'legacy') {
                 $licence->update(['pricing_model' => 'v2', 'legacy_baseline_inr' => null]);
             }
@@ -528,6 +634,30 @@ class BillingService
             'status' => 'active',
             'setup_fee_paid' => $tenant->setup_fee_paid || $hasSetupLine,
         ]);
+
+        // 2b. Portal access guarantee (Phase 3, 6-Aug-2026): a client provisioned
+        // from an admin-raised prospect quote has no portal login yet — create the
+        // owner account now (random password; they set their own via the portal's
+        // "Forgot password" email-OTP flow). Fail-soft: never blocks provisioning.
+        if ($tenant->email) {
+            try {
+                if ($tenant->users()->count() === 0
+                    && ! \App\Models\TenantUser::where('email', $tenant->email)->exists()) {
+                    \App\Models\TenantUser::create([
+                        'tenant_id' => $tenant->id,
+                        'name' => $tenant->contact_name ?: $tenant->company_name,
+                        'email' => $tenant->email,
+                        'phone' => $tenant->phone,
+                        'password' => \Illuminate\Support\Str::random(40),
+                        'role' => 'owner',
+                        'active' => 1,
+                        'must_set_password' => true,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Owner portal-user auto-create failed: ' . $e->getMessage());
+            }
+        }
 
         // 3. Coupon redemption — counted once, on the order that provisioned.
         //    EPT-18: lock the coupon row and re-check the cap under the lock so a

@@ -129,6 +129,51 @@ class AuthController extends Controller
         $user->update(['last_login_at' => now()]);
         AuditLog::write('client.signup', $user->tenant, ['email' => $user->email]);
 
+        // Phase 2 (Ejaz, 6-Aug-2026): every trial signup is ALSO a sales LEAD —
+        // it lands in /admin -> Leads with an instant email + WhatsApp alert so
+        // sales follows up while the interest is hot. Fail-soft: a lead hiccup
+        // must never break the trial signup.
+        try {
+            $lead = \App\Models\Lead::create([
+                'name' => $data['contact_name'],
+                'company' => $data['company_name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'devices_interested' => $data['device_estimate'] ?? null,
+                'source' => 'trial',
+                'status' => 'NEW',
+                'message' => 'Started a 7-day self-service trial (auto-captured lead). Follow up before the trial ends.',
+                'tenant_id' => $user->tenant_id,
+            ]);
+            AuditLog::write('lead.created', $lead, ['source' => 'trial']);
+
+            app(\App\Services\MailService::class)->send(
+                \App\Models\Setting::get('sales_email', 'sales@ametecsindia.com'),
+                'New SmartEPT TRIAL started: ' . $data['company_name'] . ' — follow up!',
+                "A new 7-day trial just started from the website — this is a live sales lead.\n\n"
+                . 'Company : ' . $data['company_name'] . "\n"
+                . 'Contact : ' . $data['contact_name'] . "\n"
+                . 'Email   : ' . $data['email'] . "\n"
+                . 'Phone   : ' . ($data['phone'] ?? '—') . "\n"
+                . 'Devices : ' . ($data['device_estimate'] ?? '—') . "\n"
+                . 'Trial ends: ' . now()->addDays(7)->toDateString() . "\n\n"
+                . 'Work it from /admin -> Leads (source: trial).'
+                . \App\Services\MailService::signature()
+            );
+
+            if (! empty($data['phone'])) {
+                // Alert to the SALES WhatsApp uses the lead template — best-effort.
+                \App\Services\WaService::sendTemplate([
+                    'mobile' => \App\Models\Setting::get('whatsapp_number', '919000098877'),
+                    'purpose' => 'lead',
+                    'bodyValues' => [$data['contact_name'] . ' (' . $data['company_name'] . ') — TRIAL'],
+                    'kind' => 'lead',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Trial lead capture failed: ' . $e->getMessage());
+        }
+
         // 1.0 Interakt welcome — fire-and-forget; only sends when Interakt is
         // configured AND a 'welcome' template is approved. WaService never throws.
         if (! empty($data['phone'])) {

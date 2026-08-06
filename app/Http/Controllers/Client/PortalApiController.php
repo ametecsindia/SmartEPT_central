@@ -383,6 +383,35 @@ class PortalApiController extends Controller
         ], 201);
     }
 
+    /**
+     * Phase 5 (6-Aug-2026): pro-rata MID-PERIOD UPGRADE — add users today, pay
+     * only the difference for the remaining days; expiry date unchanged.
+     */
+    public function upgrade(Request $request, Licence $licence)
+    {
+        abort_unless($licence->tenant_id === $this->tenant()->id, 404);
+
+        $data = $request->validate([
+            'devices' => ['required', 'integer', 'min:2', 'max:100000'],
+        ]);
+
+        try {
+            $order = $this->billing->createUpgradeOrder($licence, (int) $data['devices']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        AuditLog::write('client.upgrade_order', $order, [
+            'by' => auth('client')->user()->email,
+            'from' => $licence->device_limit, 'to' => (int) $data['devices'],
+        ]);
+
+        return response()->json([
+            'order' => $order->only(['id', 'number', 'description', 'total', 'currency', 'status']),
+            'pay_url' => $this->payUrl($order),
+        ], 201);
+    }
+
     // ---------- Account ----------
 
     /**

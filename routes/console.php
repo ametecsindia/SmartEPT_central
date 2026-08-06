@@ -8,10 +8,13 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// R2-2: daily dunning & lifecycle — renewal reminders (T-30/7/1/0), trial
-// reminders (T-3/1/0) + trial→expired flip, lapsed-licence expiry, purge_after
-// close-out. Deduped via mail_logs; safe to run manually any time.
-Schedule::command('smartept:dunning')->dailyAt('08:00');
+// Money automation (upgraded 6-Aug-2026, Ejaz-approved): renewal reminders
+// (T-30/15/7/3/1/0 + daily grace ladder), trial reminders + expiry flips,
+// purge close-out, abandoned-buy rescue (~3h), quote-expiry chaser and the
+// MD daily money digest (first run after 07:00). EVERYTHING is deduped via
+// mail_logs subjects, so running hourly never double-sends — hourly is what
+// makes the abandoned-buy rescue timely.
+Schedule::command('smartept:dunning')->hourly();
 
 // Scheduler heartbeat (Ametecs troubleshooting standard): stamps a cache key every minute
 // so Help -> System Health can tell whether "php artisan schedule:run" is actually running.

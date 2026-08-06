@@ -172,6 +172,98 @@ class BillingApiController extends Controller
     }
 
     /**
+     * Phase 3 (6-Aug-2026): ONE-SCREEN quote/order for a NEW prospect — no
+     * pre-created client needed (the SmartPRS pattern). Creates the prospect
+     * tenant (status 'pending') and the quotation/order together; the tenant
+     * activates automatically when the pay link is paid, and the portal owner
+     * account is auto-created on provisioning.
+     */
+    public function prospectQuote(Request $request)
+    {
+        $data = $request->validate([
+            'company_name' => ['required', 'string', 'max:190'],
+            'contact_name' => ['required', 'string', 'max:190'],
+            'email' => ['required', 'email', 'max:190'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'state_code' => ['required', 'string', 'size:2',
+                'in:' . implode(',', array_keys(\App\Support\IndianStates::MAP))],
+            'gstin' => ['nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[0-9A-Z]{13}$/i'],
+            'currency' => ['nullable', 'in:INR,USD'],
+            'kind' => ['required', 'in:subscription,perpetual'],
+            'devices' => ['required', 'integer', 'min:1', 'max:100000'],
+            'billing' => ['nullable', 'in:annual,half_yearly,quarterly'],
+            'as_quote' => ['boolean'],
+            'coupon_code' => ['nullable', 'string', 'max:40'],
+            'include_setup' => ['nullable', 'boolean'],
+            'send_email' => ['nullable', 'boolean'],
+        ]);
+
+        if (\App\Models\Tenant::where('email', $data['email'])->exists()
+            || \App\Models\TenantUser::where('email', $data['email'])->exists()) {
+            return response()->json(['error' => 'A client with this email already exists — use "+ New Order / Quote" and pick them from the client list instead.'], 422);
+        }
+
+        $plan = Plan::where('code', 'smartept')->firstOrFail();
+        if ($data['kind'] === 'perpetual'
+            && $this->pricing->perpetualBandFor($plan, (int) $data['devices']) === null) {
+            return response()->json(['error' => 'For more than 5,000 users prepare a custom quotation.'], 422);
+        }
+
+        $tenant = \App\Models\Tenant::create([
+            'company_name' => $data['company_name'],
+            'contact_name' => $data['contact_name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'deployment' => $data['kind'] === 'perpetual' ? 'client_hosted' : 'cloud',
+            'status' => 'pending',
+            'currency' => $data['currency'] ?? 'INR',
+            'state_code' => $data['state_code'],
+            'gstin' => ! empty($data['gstin']) ? strtoupper($data['gstin']) : null,
+        ]);
+
+        $order = $this->billing->createOrder($tenant, $plan, (int) $data['devices'], [
+            'kind' => $data['kind'],
+            'billing' => $data['billing'] ?? 'annual',
+            'as_quote' => (bool) ($data['as_quote'] ?? true),
+            'include_setup' => (bool) ($data['include_setup'] ?? true),
+            'coupon_code' => $data['coupon_code'] ?? null,
+            'coupon_email' => $data['email'],
+            'requested_by' => auth('admin')->user()->name,
+        ]);
+
+        AuditLog::write('quote.prospect_created', $order, [
+            'company' => $data['company_name'], 'total' => $order->total,
+        ]);
+
+        $payUrl = url('/pay/' . $order->number . '/' . CheckoutController::token($order));
+        $printUrl = url('/pay/' . $order->number . '/' . CheckoutController::token($order) . '/quote');
+
+        // Optionally email the prospect straight away (default yes).
+        if ($data['send_email'] ?? true) {
+            $symbol = $order->currency === 'INR' ? 'Rs. ' : '$';
+            app(\App\Services\MailService::class)->send(
+                $data['email'],
+                'SmartEPT — ' . ($order->quote_number ? 'Quotation ' . $order->quote_number : 'Order ' . $order->number) . ' for ' . $data['company_name'],
+                "Hello {$data['contact_name']},\n\n"
+                . "Thank you for your interest in SmartEPT. As discussed, here is your "
+                . ($order->quote_number ? 'quotation' : 'order') . ":\n\n"
+                . ($order->quote_number ? "Quotation no. : {$order->quote_number}\n" : "Order no.     : {$order->number}\n")
+                . "{$order->description}\n"
+                . 'Total payable : ' . $symbol . number_format((float) $order->total, 2) . "\n\n"
+                . "View / print:\n{$printUrl}\n\n"
+                . "Approve and pay securely here — activation is instant:\n{$payUrl}"
+                . \App\Services\MailService::signature()
+            );
+        }
+
+        return response()->json([
+            'order' => $order->load('tenant:id,company_name,email'),
+            'pay_url' => $payUrl,
+            'print_url' => $printUrl,
+        ], 201);
+    }
+
+    /**
      * Raise a standalone Installation & Onboarding invoice for a client who did not
      * buy setup up front and later needs Ametecs to install/onboard. Returns a pay
      * link the admin sends to the client. Once paid, setup_fee_paid flips so future

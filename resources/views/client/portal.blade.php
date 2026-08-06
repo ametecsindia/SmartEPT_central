@@ -511,7 +511,19 @@ async function pgBuy() {
     <button class="btn btn-p" onclick="doRenew(${l.id})">Renew now →</button>
   </div>` : '';
 
-  el.innerHTML = renewCard + `
+  // Phase 5 (6-Aug-2026): pro-rata mid-period upgrade — pay only the difference
+  // for the remaining days; the expiry date does not move.
+  const upgradeCard = (l && l.kind === 'subscription' && l.status === 'active' && l.days_left !== null && l.days_left > 0) ? `
+  <div class="card">
+    <h3>Add users mid-period (pro-rata)</h3>
+    <p class="mini" style="margin-bottom:10px">Team growing? Increase your licence from <b>${l.device_limit} users</b> today — you pay only the difference for the <b>${Math.max(1,l.days_left)} day(s)</b> left in the current period. Your expiry date stays exactly where it is; renewals simply bill the new size.</p>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div><label>New total users</label><input type="number" id="upDevices" min="${l.device_limit + 1}" value="${l.device_limit + 5}" style="width:130px"></div>
+      <button class="btn btn-p" onclick="doUpgrade(${l.id})">Get pro-rata amount &amp; pay →</button>
+    </div>
+  </div>` : '';
+
+  el.innerHTML = renewCard + upgradeCard + `
   <div class="card">
     <h3>Price calculator — buy or upgrade</h3>
     <div class="plan-grid" id="buyTypeGrid"></div>
@@ -600,6 +612,13 @@ async function doRenew(id) {
   try {
     const out = await api('licences/' + id + '/renew', {method:'POST'});
     location.href = out.pay_url;
+  } catch (err) { toast(err.message); }
+}
+async function doUpgrade(id) {
+  try {
+    const devices = Math.max(1, parseInt(document.getElementById('upDevices').value || '0', 10));
+    const out = await api('licences/' + id + '/upgrade', {method:'POST', body:{devices}});
+    location.href = out.pay_url; // the pay page shows the exact pro-rata amount before any money moves
   } catch (err) { toast(err.message); }
 }
 

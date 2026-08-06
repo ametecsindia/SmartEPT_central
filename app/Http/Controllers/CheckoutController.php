@@ -108,6 +108,36 @@ class CheckoutController extends Controller
         return response()->json(['ok' => true, 'redirect' => "/pay/$number/$token?paid=1"]);
     }
 
+    /**
+     * Phase 3 (6-Aug-2026): PUBLIC printable quotation — same token security as
+     * the pay page, so the emailed link works for finance/management without
+     * any login. Reuses the existing quote-print template untouched.
+     */
+    public function quotePrint(string $number, string $token)
+    {
+        $order = $this->findOrder($number, $token);
+        abort_unless($order->quote_number, 404);
+
+        return view('quote-print', [
+            'order' => $order->load('tenant'),
+            'payUrl' => url('/pay/' . $order->number . '/' . $token),
+            'company' => [
+                'name' => \App\Models\Setting::get('company_name', 'Ametecs India Private Limited'),
+                'address' => \App\Models\Setting::get('company_address', ''),
+                'gstin' => \App\Models\Setting::get('company_gstin', ''),
+                'phone' => \App\Models\Setting::get('company_phone', ''),
+                'email' => \App\Models\Setting::get('company_email', ''),
+                'state' => \App\Support\IndianStates::placeOfSupply(\App\Models\Setting::get('seller_state_code', '36')),
+                'bank_account_name' => \App\Models\Setting::get('bank_account_name', ''),
+                'bank_name' => \App\Models\Setting::get('bank_name', ''),
+                'bank_branch' => \App\Models\Setting::get('bank_branch', ''),
+                'bank_account_no' => \App\Models\Setting::get('bank_account_no', ''),
+                'bank_ifsc' => \App\Models\Setting::get('bank_ifsc', ''),
+                'upi_id' => \App\Models\Setting::get('upi_id', ''),
+            ],
+        ]);
+    }
+
     public function stripeRedirect(string $number, string $token, StripeService $stripe)
     {
         $order = $this->findOrder($number, $token);

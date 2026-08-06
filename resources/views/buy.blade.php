@@ -67,6 +67,12 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
         <button type="button" data-kind="perpetual" id="kPerp">Own · Perpetual</button>
       </div>
     </div>
+    <div class="ctrl"><label>Currency</label>
+      <div class="seg" id="segCur">
+        <button type="button" class="on" id="curINR">₹ INR · India<span class="off">GST invoice</span></button>
+        <button type="button" id="curUSD">$ USD · International<span class="off">export invoice · card</span></button>
+      </div>
+    </div>
     <div class="ctrl"><label>Monitored users</label>
       <div class="dev"><button type="button" id="devMinus">&minus;</button><input id="devCount" type="number" min="1" value="25"><button type="button" id="devPlus">+</button></div>
     </div>
@@ -94,7 +100,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
       <div class="ln disc" id="ivDiscRow" style="display:none"><span id="ivDiscLbl">Advance discount</span><b id="ivDisc">—</b></div>
       <div class="ln" id="ivSetupRow" style="display:none"><span>Setup &amp; onboarding (one-time)</span><b id="ivSetup">—</b></div>
       <div class="ln disc" id="ivCoupRow" style="display:none"><span id="ivCoupLbl">Coupon</span><b id="ivCoup">—</b></div>
-      <div class="ln sub"><span>GST 18%</span><b id="ivGst">—</b></div>
+      <div class="ln sub"><span id="ivGstLbl">GST 18%</span><b id="ivGst">—</b></div>
       <div class="ln tot"><span id="ivTotLbl">Payable now</span><b id="ivTot">—</b></div>
       <div class="eff" id="ivEff"></div>
     </div>
@@ -122,7 +128,8 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
       <span>I agree to the <a href="/terms" target="_blank" style="color:#0B6373;font-weight:700">Terms</a> and <a href="/refunds" target="_blank" style="color:#0B6373;font-weight:700">Refund policy</a></span>
     </label>
     <button class="go" type="submit" id="buyBtn">Pay securely &amp; activate →</button>
-    <a class="quote" id="quoteCta" href="#" target="_blank">Prefer a formal quotation? Request one →</a>
+    <a class="quote" id="quoteCta" href="#" onclick="return doQuote()">Prefer a formal quotation? Email it to me with a pay link →</a>
+    <div style="text-align:center;margin-top:6px;font-size:11px"><a href="#" id="quoteWa" target="_blank" style="color:#878C99">…or discuss on WhatsApp instead</a></div>
     <div class="buy-note"><b>What happens after payment:</b> your licence key is issued, the workspace goes live, the GST tax invoice + receipt land in your inbox, and you are signed straight into your client portal. Already a customer? <a href="/client/login" style="color:#0B6373;font-weight:700">Sign in</a> and buy or renew from your portal.</div>
   </form>
   <div class="msg" id="msg"></div>
@@ -145,7 +152,11 @@ const PERIOD = {q:{m:3,d:0,label:'Quarterly (3 months)'}, h:{m:6,d:0.10,label:'6
 
 const STATES=[['37','Andhra Pradesh'],['12','Arunachal Pradesh'],['18','Assam'],['10','Bihar'],['22','Chhattisgarh'],['30','Goa'],['24','Gujarat'],['06','Haryana'],['02','Himachal Pradesh'],['20','Jharkhand'],['29','Karnataka'],['32','Kerala'],['23','Madhya Pradesh'],['27','Maharashtra'],['14','Manipur'],['17','Meghalaya'],['15','Mizoram'],['13','Nagaland'],['21','Odisha'],['03','Punjab'],['08','Rajasthan'],['11','Sikkim'],['33','Tamil Nadu'],['36','Telangana'],['16','Tripura'],['09','Uttar Pradesh'],['05','Uttarakhand'],['19','West Bengal'],['07','Delhi'],['04','Chandigarh'],['01','Jammu & Kashmir'],['26','Dadra & Nagar Haveli and Daman & Diu'],['31','Lakshadweep'],['35','Andaman & Nicobar'],['38','Ladakh'],['34','Puducherry']];
 
-function show(kind,text){const el=document.getElementById('msg');el.className='msg'+(kind?' '+kind:'');el.textContent=text;el.style.display=kind?'block':'none';}
+function show(kind,text){const el=document.getElementById('msg');el.className='msg'+(kind?' '+kind:'');el.innerHTML=text;el.style.display=kind?'block':'none';}
+let CUR='INR', USD_RATE=88;
+// Display helper: calculations stay in INR (the pricing engine is untouched);
+// USD is a display/settlement conversion at the admin-set rate, GST 0 for exports.
+function money(n){return CUR==='USD' ? '$'+(Math.round(n/USD_RATE*100)/100).toLocaleString('en-US',{maximumFractionDigits:2}) : '₹'+Math.round(n).toLocaleString('en-IN');}
 async function post(url,data){const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},body:JSON.stringify(data)});let body={};try{body=await res.json();}catch(e){}if(!res.ok)throw new Error(body.error||(body.errors?Object.values(body.errors).flat().join(' '):body.message)||(res.status===419?'Your session expired — please refresh the page and try again.':res.status===429?'Too many tries — please wait a minute.':'Something went wrong.'));return body;}
 const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
 function annualRate(dev){const p=PLANS[0]||null;if(!p)return{r:0,p:null};let r=p.inr_annual;(p.volume_tiers||[]).forEach(t=>{if(dev>=t.min&&(t.max===null||dev<=t.max))r=t.rate;});return{r,p};}
@@ -158,7 +169,7 @@ function render(){
   const cr=document.getElementById('ivCoupRow');
   const dr=document.getElementById('ivDiscRow');
   document.getElementById('ivSetupRow').style.display=wantSetup?'':'none';
-  document.getElementById('ivSetup').textContent=inr(setup);
+  document.getElementById('ivSetup').textContent=money(setup);
   const btn=document.getElementById('buyBtn');
 
   if(KIND==='perpetual'){
@@ -179,14 +190,15 @@ function render(){
     let taxable=band.price+setup, coupDisc=0;
     if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
       cr.style.display='';document.getElementById('ivCoupLbl').textContent='Coupon '+COUPON.code+(COUPON.type==='percent'?' ('+COUPON.value+'% off)':'');
-      document.getElementById('ivCoup').textContent='− '+inr(coupDisc);taxable-=coupDisc;}
+      document.getElementById('ivCoup').textContent='− '+money(coupDisc);taxable-=coupDisc;}
     else cr.style.display='none';
-    const gstAmt=taxable*GST/100, total=taxable+gstAmt;
+    const gstPct=(CUR==='USD')?0:GST, gstAmt=taxable*gstPct/100, total=taxable+gstAmt;
+    document.getElementById('ivGstLbl').textContent=(CUR==='USD')?'GST — export (0%)':'GST '+GST+'%';
     document.getElementById('ivSubLbl').textContent='Perpetual licence · up to '+band.cap+' users';
-    document.getElementById('ivSub').textContent=inr(band.price);
-    document.getElementById('ivGst').textContent=inr(gstAmt);
+    document.getElementById('ivSub').textContent=money(band.price);
+    document.getElementById('ivGst').textContent=money(gstAmt);
     document.getElementById('ivTotLbl').textContent='One-time total';
-    document.getElementById('ivTot').textContent=inr(total);
+    document.getElementById('ivTot').textContent=money(total);
     document.getElementById('ivEff').textContent='One-time · you own it · optional AMC 15–20%/yr on prevailing prices';
     return;
   }
@@ -202,17 +214,18 @@ function render(){
   let taxable=sub+setup, coupDisc=0;
   if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
     cr.style.display='';document.getElementById('ivCoupLbl').textContent='Coupon '+COUPON.code+(COUPON.type==='percent'?' ('+COUPON.value+'% off)':'');
-    document.getElementById('ivCoup').textContent='− '+inr(coupDisc);taxable-=coupDisc;}
+    document.getElementById('ivCoup').textContent='− '+money(coupDisc);taxable-=coupDisc;}
   else cr.style.display='none';
-  const gstAmt=taxable*GST/100, total=taxable+gstAmt;
+  const gstPct=(CUR==='USD')?0:GST, gstAmt=taxable*gstPct/100, total=taxable+gstAmt;
+  document.getElementById('ivGstLbl').textContent=(CUR==='USD')?'GST — export (0%)':'GST '+GST+'%';
   const effPerMo=sub/dev/per.m;
   document.getElementById('ivSubLbl').textContent='Cloud · '+dev+' user'+(dev>1?'s':'')+' × '+per.m+' mo';
-  document.getElementById('ivSub').textContent=inr(refGross);
-  if(discAmt>0.5){dr.style.display='';document.getElementById('ivDiscLbl').textContent='Advance discount ('+Math.round(cycDisc*100)+'%)';document.getElementById('ivDisc').textContent='− '+inr(discAmt);}else dr.style.display='none';
-  document.getElementById('ivGst').textContent=inr(gstAmt);
+  document.getElementById('ivSub').textContent=money(refGross);
+  if(discAmt>0.5){dr.style.display='';document.getElementById('ivDiscLbl').textContent='Advance discount ('+Math.round(cycDisc*100)+'%)';document.getElementById('ivDisc').textContent='− '+money(discAmt);}else dr.style.display='none';
+  document.getElementById('ivGst').textContent=money(gstAmt);
   document.getElementById('ivTotLbl').textContent='Payable now ('+per.m+'-month advance)';
-  document.getElementById('ivTot').textContent=inr(total);
-  document.getElementById('ivEff').textContent='≈ '+inr(effPerMo)+' /user/month · GST extra shown above';
+  document.getElementById('ivTot').textContent=money(total);
+  document.getElementById('ivEff').textContent='≈ '+money(effPerMo)+' /user/month · GST extra shown above';
 }
 
 async function doBuy(e){
@@ -225,10 +238,32 @@ async function doBuy(e){
     data.billing = CYC==='y' ? 'annual' : (CYC==='h' ? 'half_yearly' : 'quarterly');
     data.include_setup = document.getElementById('setupChk').checked ? 1 : 0;
     data.coupon_code = COUPON ? COUPON.code : null;
+    data.currency = CUR;
     const out=await post('/buy/order',data);
     show('ok','Order '+out.number+' created — opening the secure payment page…');
     location.href=out.pay_url;
   }catch(err){show('err',err.message);btn.disabled=false;btn.textContent=old;}
+  return false;
+}
+
+// Phase 3: real self-serve quotation — emailed with the pay link (WhatsApp stays as fallback).
+async function doQuote(){
+  const f=document.getElementById('f-buy'), d=Object.fromEntries(new FormData(f).entries());
+  if(!d.company_name||!d.contact_name||!d.email){show('err','For a quotation please fill the company name, your name and your email.');return false;}
+  if(!d.state_code){show('err','Please pick your state — the quotation shows GST exactly as your invoice will.');return false;}
+  const a=document.getElementById('quoteCta'); const old=a.textContent; a.textContent='Preparing your quotation…'; show('','');
+  try{
+    const body={company_name:d.company_name,contact_name:d.contact_name,email:d.email,phone:d.phone||null,
+      state_code:d.state_code,gstin:(d.gstin||'').toUpperCase()||null,
+      kind:KIND==='perpetual'?'perpetual':'cloud',
+      users:Math.max(1,parseInt(document.getElementById('devCount').value||'1',10)),
+      billing:CYC==='y'?'annual':(CYC==='h'?'half_yearly':'quarterly'),
+      include_setup:document.getElementById('setupChk').checked?1:0,
+      coupon_code:COUPON?COUPON.code:null, currency:CUR};
+    const out=await post('/buy/quote',body);
+    show('ok','✓ '+out.message+'<br><b>Quotation '+out.quote_number+'</b> — <a href="'+out.print_url+'" target="_blank" style="color:#0B6373;font-weight:700">view / print it</a> · <a href="'+out.pay_url+'" style="color:#0B6373;font-weight:700">open the pay link</a>. It is also in your inbox.');
+  }catch(err){show('err',err.message);}
+  a.textContent=old;
   return false;
 }
 
@@ -249,6 +284,9 @@ async function doBuy(e){
   function segKind(v){KIND=v;document.getElementById('kCloud').classList.toggle('on',v==='subscription');document.getElementById('kPerp').classList.toggle('on',v==='perpetual');const ap=document.getElementById('advPayCtrl');if(ap)ap.style.display=(v==='perpetual'?'none':'');document.getElementById('sumPlan').textContent=(v==='perpetual'?'SmartEPT Perpetual':'SmartEPT Managed Cloud');document.getElementById('sumTag').textContent=(v==='perpetual'?'One-time, client-hosted licence — never expires. First 12 months of updates & support included; optional AMC from Year 2.':'Every standard feature included. Managed hosting + 500 MB pooled storage per user; additional storage ₹3/GB/month.');try{const u=new URL(location.href);u.searchParams.set('kind',v==='perpetual'?'perpetual':'cloud');history.replaceState({},'',u);}catch(e){}render();upd();}
   document.getElementById('kCloud').onclick=()=>segKind('subscription');
   document.getElementById('kPerp').onclick=()=>segKind('perpetual');
+  function segCur(v){CUR=v;document.getElementById('curINR').classList.toggle('on',v==='INR');document.getElementById('curUSD').classList.toggle('on',v==='USD');render();}
+  document.getElementById('curINR').onclick=()=>segCur('INR');
+  document.getElementById('curUSD').onclick=()=>segCur('USD');
   document.getElementById('setupChk').onchange=render;
   // ---- Coupon apply (same public coupon-check as signup, portal and admin) ----
   const cMsg=document.getElementById('couponMsg');
@@ -282,13 +320,14 @@ async function doBuy(e){
   try{
     const r=await fetch('/api/v1/public/plans',{headers:{Accept:'application/json'},cache:'no-store'});const j=await r.json();
     PLANS=(j.plans||j.data||[]);GST=j.gst_rate||18;
+    if(j.usd_inr_rate)USD_RATE=+j.usd_inr_rate;
     if(j.setup)SETUP={base:j.setup.base,included:j.setup.included,per:j.setup.per_extra};
     if(j.cycles){if(j.cycles.annual_discount!=null)ANN_DISC=+j.cycles.annual_discount;if(j.cycles.half_yearly_discount!=null)HALF_DISC=+j.cycles.half_yearly_discount;}
     {const oh=document.querySelector('#cH .off');if(oh)oh.textContent=Math.round(HALF_DISC*100)+'% off';const oy=document.querySelector('#cY .off');if(oy)oy.textContent=Math.round(ANN_DISC*100)+'% off';}
     if(PLANS[0]&&Array.isArray(PLANS[0].perpetual_bands)){const pb=PLANS[0].perpetual_bands.filter(b=>b.max!=null).map(b=>({cap:b.max,price:b.price})).sort((a,b)=>a.cap-b.cap);if(pb.length){PERP_BANDS.length=0;pb.forEach(b=>PERP_BANDS.push(b));}}
     render();
   }catch(e){document.getElementById('inv').style.opacity=.5;}
-  function upd(){const dev=document.getElementById('devCount').value;const t=KIND==='perpetual'?('Hi Ametecs, I would like a quotation for SmartEPT Perpetual — '+dev+' users (one-time licence).'):('Hi Ametecs, I would like a quotation for SmartEPT Cloud — '+dev+' users, '+PERIOD[CYC].label+'.');document.getElementById('quoteCta').href='https://wa.me/919000098877?text='+encodeURIComponent(t);}
+  function upd(){const dev=document.getElementById('devCount').value;const t=KIND==='perpetual'?('Hi Ametecs, I would like a quotation for SmartEPT Perpetual — '+dev+' users (one-time licence).'):('Hi Ametecs, I would like a quotation for SmartEPT Cloud — '+dev+' users, '+PERIOD[CYC].label+'.');const wa=document.getElementById('quoteWa');if(wa)wa.href='https://wa.me/919000098877?text='+encodeURIComponent(t);}
   window.upd=upd;
   segKind(KIND);
 })();

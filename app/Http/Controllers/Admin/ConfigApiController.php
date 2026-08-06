@@ -120,6 +120,8 @@ class ConfigApiController extends Controller
         'pricing_annual_discount_pct', 'pricing_half_yearly_discount_pct', 'pricing_cloud_multiplier',
         'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr', 'pricing_amc_pct',
         'pricing_storage_min_gb', 'pricing_storage_min_inr', 'pricing_storage_slabs',
+        // Phase 4 (6-Aug-2026): international pricing + MD digest recipient.
+        'usd_inr_rate', 'md_digest_email',
     ];
 
     private const SECRET_SETTINGS = [
@@ -140,6 +142,7 @@ class ConfigApiController extends Controller
         'pricing_storage_min_gb' => 50,
         'pricing_storage_min_inr' => 150,
         'pricing_storage_slabs' => '[[1,500,3],[501,2048,2.5],[2049,null,2]]',
+        'usd_inr_rate' => 88,
     ];
 
     public function settings()

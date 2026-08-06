@@ -418,6 +418,13 @@ const HELP_KB_CENTRAL = [
       +'<p><b>How to check:</b> Run System Health above - the <b>Pricing plan</b> row will be red.</p>'
       +'<p><b>How to fix:</b> Run <code>migrate.bat</code> in the Central app folder (it now adds the plan automatically), then hard-refresh and try the order again. Advanced: in Laragon Terminal you can instead run <code>php artisan db:seed --class=PricingV2Seeder --force</code>.</p>'
       +'<p class="hkb-esc"><b>When to call the developer:</b> If the Pricing plan row is still red after running migrate.bat - WhatsApp '+WA+'.</p>' },
+  { id:'c-buy', tag:'Billing', cls:'p-info', title:'How the public Buy page works (/buy) - and what to check if a buyer reports a problem',
+    kw:'buy page purchase pay first cart razorpay stripe usd international quotation abandoned pending tenant',
+    body:'<p><b>What it is:</b> Since 6-Aug-2026 the website Buy buttons lead to <b>/buy</b> - the customer picks Cloud/Perpetual, users and period, sees the exact total, pays, and everything (account, licence, GST invoice, receipt, portal login) is created automatically. Trials are separate and also land in Leads.</p>'
+      +'<p><b>Client says "I paid but nothing happened":</b> Open Orders - find their order. If it shows PAID, licence + invoice exist (check the Licences tab); their portal is /client. If it shows created with money received, the webhook likely completed it - refresh. If truly stuck, use Record Payment with their Razorpay reference.</p>'
+      +'<p><b>Client abandoned at payment:</b> Their order stays as <i>created</i> with a <i>pending</i> client - the system automatically emails them their pay link after ~3 hours (abandoned-buy rescue). You can also copy the Pay Link from Orders and WhatsApp it.</p>'
+      +'<p><b>International (USD) buyers:</b> They choose USD on /buy and pay by card via Stripe; the invoice is a zero-GST export invoice. The USD price uses the USD → INR rate in Settings.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> A paid order with no licence after 10 minutes - WhatsApp '+WA+'.</p>' },
   { id:'c-logstuck', tag:'Application log', cls:'p-warn', title:'The log is not updating / shows an old date',
     kw:'log not updating old date stale stuck validation error 422 laravel log today last written',
     body:'<p><b>What you see:</b> The Application log newest line is from days ago even though something just went wrong on screen.</p>'
@@ -1009,7 +1016,7 @@ async plans() {
 
 // ============ ORDERS ============
 async orders() {
-  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button>';
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button> <button class="btn btn-l" onclick="newProspectQuote()">+ Quote for NEW client</button>';
   P.innerHTML = `<div class="filters">
     <select id="ost"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
     <select id="ogw"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
@@ -1087,7 +1094,7 @@ async settings() {
   P.innerHTML = `
   <div class="card"><h3>Company & Tax</h3><div class="modal-body row" style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
   ${f('company_name','Company name')}${f('company_gstin','GSTIN')}${f('company_phone','Phone')}${f('company_email','Email')}
-  ${f('gst_rate','GST rate %')}${f('whatsapp_number','WhatsApp number')}${f('invoice_prefix','Invoice prefix (EPT → EPT-2026-27-07-0001)')}${f('quote_prefix','Quote prefix (EPT-Q)')}${f('order_prefix','Order number prefix')}</div>
+  ${f('gst_rate','GST rate %')}${f('whatsapp_number','WhatsApp number')}${f('invoice_prefix','Invoice prefix (EPT → EPT-2026-27-07-0001)')}${f('quote_prefix','Quote prefix (EPT-Q)')}${f('order_prefix','Order number prefix')}${f('usd_inr_rate','USD → INR rate (international buyers, e.g. 88)')}${f('md_digest_email','MD daily money-digest email (blank = company email)')}</div>
   <label>Registered address</label><textarea id="set_company_address" rows="2">${esc(s.company_address||'')}</textarea></div>
   <div class="card"><h3>SmartEPT Cloud</h3>
   <label>Default hosted console URL <span style="font-weight:400;color:#7A8B90">(prefilled into a new Cloud client's "Hosted console URL" — your shared Ametecs-hosted admin address)</span></label>
@@ -1467,6 +1474,47 @@ async function createOrder() {
       as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null, po_number:(document.getElementById('no_po')?.value||null),
       coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null}});
     closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
+  } catch (e) { toast('Error: ' + e); }
+}
+// Phase 3 (6-Aug-2026): one-screen quotation for a brand-new prospect — no
+// pre-created client needed. Creates the prospect + quotation together and
+// emails it with the pay link; the client activates automatically on payment.
+async function newProspectQuote() {
+  openModal(`<h2>Quote for a NEW client</h2><div class="sub">No need to create the client first — fill their details and the quotation together. The quotation is emailed with a secure pay link; payment activates their workspace instantly (portal login is auto-created too).</div>
+  <div class="row">
+  <div><label>Company name</label><input id="pq_company"></div>
+  <div><label>Contact person</label><input id="pq_name"></div>
+  <div><label>Email (quotation goes here)</label><input id="pq_email" type="email"></div>
+  <div><label>Mobile</label><input id="pq_phone"></div>
+  <div><label>State code (GST — e.g. 36 Telangana)</label><input id="pq_state" maxlength="2" placeholder="36"></div>
+  <div><label>GSTIN (optional)</label><input id="pq_gstin" maxlength="15" style="text-transform:uppercase"></div>
+  <div><label>Kind</label><select id="pq_kind"><option value="subscription">Cloud subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
+  <div><label>Users</label><input id="pq_devices" type="number" value="25" min="1"></div>
+  <div><label>Billing period</label><select id="pq_billing"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
+  <div><label>Currency</label><select id="pq_currency"><option value="INR">₹ INR (GST invoice)</option><option value="USD">$ USD (export invoice, Stripe)</option></select></div>
+  <div><label>Coupon code (optional)</label><input id="pq_coupon" style="text-transform:uppercase"></div>
+  <div><label>Include one-time Setup &amp; Onboarding</label><select id="pq_setup"><option value="1">Yes (first order)</option><option value="0">No</option></select></div></div>
+  <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="pq_send" checked style="width:auto"> Email the quotation + pay link to the client now</label>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="createProspectQuote()">Create quotation</button></div>`, true);
+}
+async function createProspectQuote() {
+  try {
+    const r = await api('prospect-quote', {method:'POST', body:{
+      company_name:pq_company.value.trim(), contact_name:pq_name.value.trim(), email:pq_email.value.trim(),
+      phone:pq_phone.value.trim()||null, state_code:pq_state.value.trim(), gstin:pq_gstin.value.trim().toUpperCase()||null,
+      currency:pq_currency.value, kind:pq_kind.value, devices:+pq_devices.value, billing:pq_billing.value,
+      as_quote:true, include_setup:pq_setup.value==='1', send_email:document.getElementById('pq_send').checked,
+      coupon_code:(pq_coupon.value||'').trim().toUpperCase()||null}});
+    const o = r.order;
+    openModal(`<h2>Quotation created — ${esc(o.quote_number || o.number)}</h2>
+    <div class="sub"><b>${esc(o.tenant?.company_name)}</b> · total ${fmtMoney(o.total, o.currency)}${document.getElementById('pq_send')?.checked===false?'':' · emailed to the client'}</div>
+    <label>Pay link (send on WhatsApp too)</label>
+    <div style="display:flex;gap:8px;align-items:center"><input id="pq_link" value="${esc(r.pay_url)}" readonly style="flex:1"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById('pq_link').value);toast('Link copied')">Copy</button></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-l" target="_blank" href="${esc(r.print_url)}">Open printable quotation</a>
+      <a class="btn btn-l" target="_blank" href="https://wa.me/?text=${encodeURIComponent('Your SmartEPT quotation: ' + r.pay_url)}">Send on WhatsApp</a></div>
+    <div class="foot"><button class="btn btn-p" onclick="closeModal();go('orders')">Done</button></div>`);
   } catch (e) { toast('Error: ' + e); }
 }
 async function raiseSetup(tenantId, company) {

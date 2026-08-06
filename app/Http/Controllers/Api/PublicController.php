@@ -63,7 +63,9 @@ class PublicController extends Controller
                 ],
                 'gst_rate' => (float) Setting::get('gst_rate', 18),
                 'amc_pct' => (float) Setting::get('pricing_amc_pct', 18),
-                'trial' => ['days' => 7, 'devices' => 10, 'plan' => 'professional'],
+                // Phase 4: USD display rate for international buyers on /buy.
+                'usd_inr_rate' => max(1.0, (float) Setting::get('usd_inr_rate', 88)),
+                'trial' => ['days' => 7, 'devices' => 10, 'plan' => 'smartept'],
             ];
         });
 

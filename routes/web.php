@@ -53,6 +53,7 @@ Route::middleware('client.auth')->prefix('client')->group(function () {
         Route::post('quote', [Client\PortalApiController::class, 'quote']);
         Route::post('orders', [Client\PortalApiController::class, 'createOrder']);
         Route::post('licences/{licence}/renew', [Client\PortalApiController::class, 'renew']);
+        Route::post('licences/{licence}/upgrade', [Client\PortalApiController::class, 'upgrade']); // Phase 5: pro-rata mid-period upgrade
         Route::get('account/billing', [Client\PortalApiController::class, 'billingProfile']);
         Route::put('account/billing', [Client\PortalApiController::class, 'updateBillingProfile']);
         Route::post('account/password', [Client\PortalApiController::class, 'changePassword']);
@@ -64,9 +65,11 @@ Route::middleware('client.auth')->prefix('client')->group(function () {
 // ---------- Public: BUY front door (Phase 1 money rework — pay first, account after) ----------
 Route::get('/buy', [\App\Http\Controllers\BuyController::class, 'show']);
 Route::post('/buy/order', [\App\Http\Controllers\BuyController::class, 'order'])->middleware('throttle:10,1');
+Route::post('/buy/quote', [\App\Http\Controllers\BuyController::class, 'quote'])->middleware('throttle:6,1'); // Phase 3: self-serve quotation
 
 // ---------- Public: checkout ----------
 Route::get('/pay/{number}/{token}', [CheckoutController::class, 'show']);
+Route::get('/pay/{number}/{token}/quote', [CheckoutController::class, 'quotePrint']); // Phase 3: printable quotation, token-secured
 Route::post('/pay/{number}/{token}/razorpay-order', [CheckoutController::class, 'createRazorpayOrder']);
 Route::post('/pay/{number}/{token}/razorpay-callback', [CheckoutController::class, 'razorpayCallback']);
 Route::get('/pay/{number}/{token}/stripe', [CheckoutController::class, 'stripeRedirect']);
@@ -124,6 +127,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::put('licences/{licence}/limit', [Admin\LicenceApiController::class, 'updateLimit']);
             Route::post('licences/{licence}/deactivate-device', [Admin\LicenceApiController::class, 'deactivateDevice']);
             Route::post('orders', [Admin\BillingApiController::class, 'createOrder']);
+            Route::post('prospect-quote', [Admin\BillingApiController::class, 'prospectQuote']); // Phase 3: one-screen quote for a NEW prospect
             Route::post('setup-invoice', [Admin\BillingApiController::class, 'raiseSetupInvoice']);
             Route::post('orders/{order}/mark-paid', [Admin\BillingApiController::class, 'markPaid']);
             Route::post('orders/{order}/record-balance', [Admin\BillingApiController::class, 'recordBalance']); // §10 instalments

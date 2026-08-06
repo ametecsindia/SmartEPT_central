@@ -114,6 +114,9 @@ td{padding:7px 9px;border-bottom:1px solid #F0F1F4;vertical-align:top}
 
 @if ($invoice->currency === 'INR')
 <div class="words"><b>Amount in words:</b> {{ \App\Support\AmountInWords::convert((float) $invoice->total) }}</div>
+@else
+{{-- Phase 4 (6-Aug-2026): international invoice — zero-rated export of services. --}}
+<div class="words"><b>Export of services:</b> Supply meant for export under LUT without payment of integrated tax (IGST). Place of supply — outside India. Amount in {{ $invoice->currency }}.</div>
 @endif
 
 <div class="blocks">
