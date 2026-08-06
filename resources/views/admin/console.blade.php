@@ -1304,7 +1304,37 @@ async function loadLicences() {
   ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>
   <button class="link" onclick="licDevices(${l.id},'${esc(l.key)}')">Devices</button>
   <button class="link" onclick="licHistory(${l.id},'${esc(l.key)}')">History</button>
-  ${l.server_fingerprint?`<button class="link" onclick="releaseBinding(${l.id})">Release binding</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+  ${l.deployment==='client_hosted'||l.server_fingerprint?`<button class="link" onclick="shiftMachine(${l.id},'${esc(l.key)}')">Shift machine</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+}
+// Ejaz, 6-Aug: the installed PC was damaged/formatted/replaced — shift the
+// licence to the new machine ID (or just release the binding). History keeps
+// the old + new machine IDs forever.
+function shiftMachine(id, key) {
+  const l = _licById(id), cur = l.server_fingerprint || '';
+  openModal(`<h2>Shift licence to another machine — ${esc(key)}</h2>
+    <div class="sub">Use this when the PC where SmartEPT is installed was <b>damaged, formatted or replaced</b>.
+    Current bound machine: ${cur ? '<b style="font-family:ui-monospace,monospace">' + esc(cur) + '</b>' : '<b>not bound yet</b> (binds automatically on first connection)'}.</div>
+    <label>NEW machine's fingerprint (from its SmartEPT Activation / Licence screen)</label>
+    <input id="sm_fp" placeholder="Paste the new machine's fingerprint" style="font-family:ui-monospace,monospace">
+    <div class="mini" style="margin-top:6px">Don't have the new fingerprint yet? Leave it blank and click <b>Release only</b> — the new server then binds itself on its first connection. Either way the old machine stops validating, and the shift is recorded in History.</div>
+    <div class="mini" id="sm_msg" style="margin-top:6px"></div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    ${cur ? '<button class="btn btn-l" onclick="doReleaseOnly(' + id + ')">Release only</button>' : ''}
+    <button class="btn btn-p" onclick="doShiftMachine(${id})">Shift to this machine</button></div>`);
+}
+async function doShiftMachine(id) {
+  const fp = (document.getElementById('sm_fp').value || '').trim(), msg = document.getElementById('sm_msg');
+  if (!fp) { msg.textContent = 'Paste the new machine\'s fingerprint — or use "Release only".'; return; }
+  try {
+    const r = await api(`licences/${id}/shift-machine`, {method:'POST', body:{fingerprint: fp}});
+    closeModal(); toast(r.message || 'Licence shifted to the new machine'); loadLicences();
+  } catch (e) { msg.textContent = 'Error: ' + e; }
+}
+async function doReleaseOnly(id) {
+  try {
+    await api(`licences/${id}/action`, {method:'POST', body:{action:'release_binding'}});
+    closeModal(); toast('Binding released — the new server binds itself on first connection'); loadLicences();
+  } catch (e) { toast('Error: ' + e); }
 }
 // Ejaz, 6-Aug: full licence history — every action + order in one timeline.
 const LIC_HIST_LABELS = {
@@ -1312,6 +1342,7 @@ const LIC_HIST_LABELS = {
   'licence.renew':'Renewed', 'licence.renew_amc':'AMC renewed',
   'licence.suspend':'Suspended', 'licence.resume':'Resumed', 'licence.revoke':'REVOKED',
   'licence.release_binding':'Server binding released (PC formatted/changed)',
+  'licence.machine_shifted':'Licence SHIFTED to a new machine',
   'licence.file_issued':'Licence file (.lic) generated / downloaded',
   'licence.edited':'Details edited', 'licence.limit_changed':'Device limit changed',
   'licence.device_deactivated':'Device seat freed',

@@ -61,21 +61,64 @@ class LicenceApiController extends Controller
     {
         $action = $request->validate(['action' => ['required', 'in:renew,renew_amc,suspend,resume,revoke,release_binding']])['action'];
 
+        // History must tell the full machine story (Ejaz, 6-Aug-2026): when a
+        // binding is released, record WHICH machine it was released from.
+        $extra = $action === 'release_binding'
+            ? ['old_machine' => $licence->server_fingerprint]
+            : [];
+
         match ($action) {
             'renew' => $this->licences->renew($licence),
             'renew_amc' => $this->licences->renewAmc($licence),
             'suspend' => $this->licences->suspend($licence),
             'resume' => $this->licences->resume($licence),
             'revoke' => $this->licences->revoke($licence),
-            // Ejaz, 6-Aug-2026: the client's server was formatted / damaged /
-            // replaced — clear the binding so the NEW server can validate and
-            // bind on its first phone-home. The old server stops validating.
+            // The client's server was formatted / damaged / replaced — clear the
+            // binding so the NEW server can validate and bind on its first
+            // phone-home. The old server stops validating.
             'release_binding' => $licence->update(['server_fingerprint' => null]),
         };
 
-        AuditLog::write("licence.$action", $licence, ['key' => $licence->key]);
+        AuditLog::write("licence.$action", $licence, ['key' => $licence->key] + $extra);
 
         return response()->json($licence->fresh());
+    }
+
+    /**
+     * POST /admin/api/licences/{licence}/shift-machine (Ejaz, 6-Aug-2026):
+     * the installed PC was damaged/formatted/replaced — SHIFT the licence to
+     * the new machine ID in one step. Old and new machine IDs are recorded
+     * permanently in the licence History. After this, "Licence file" already
+     * carries the new machine ID for a locked .lic download.
+     */
+    public function shiftMachine(Request $request, Licence $licence)
+    {
+        $data = $request->validate([
+            'fingerprint' => ['required', 'string', 'min:6', 'max:190'],
+        ], [
+            'fingerprint.required' => 'Paste the NEW machine\'s fingerprint (from its SmartEPT Activation/Licence screen).',
+            'fingerprint.min' => 'That does not look like a machine fingerprint — copy it exactly from the new machine\'s Licence screen.',
+        ]);
+
+        $new = trim($data['fingerprint']);
+        if ($new === $licence->server_fingerprint) {
+            return response()->json(['error' => 'That is already this licence\'s bound machine — nothing to shift.'], 422);
+        }
+
+        $old = $licence->server_fingerprint;
+        $licence->update(['server_fingerprint' => $new, 'activated_at' => now()]);
+
+        AuditLog::write('licence.machine_shifted', $licence, [
+            'key' => $licence->key,
+            'old_machine' => $old ?: '(not bound)',
+            'new_machine' => $new,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'licence' => $licence->fresh(),
+            'message' => 'Licence shifted to the new machine. The old machine stops validating; use "Licence file" to download a .lic locked to the new machine (its ID is already remembered).',
+        ]);
     }
 
     /**

@@ -130,6 +130,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::put('licences/{licence}', [Admin\LicenceApiController::class, 'update']);
             Route::put('licences/{licence}/limit', [Admin\LicenceApiController::class, 'updateLimit']);
             Route::post('licences/{licence}/deactivate-device', [Admin\LicenceApiController::class, 'deactivateDevice']);
+            Route::post('licences/{licence}/shift-machine', [Admin\LicenceApiController::class, 'shiftMachine']); // 6-Aug: shift licence to a new machine ID (damaged/replaced PC), history kept
             Route::post('orders', [Admin\BillingApiController::class, 'createOrder']);
             Route::post('prospect-quote', [Admin\BillingApiController::class, 'prospectQuote']); // Phase 3: one-screen quote for a NEW prospect
             Route::post('setup-invoice', [Admin\BillingApiController::class, 'raiseSetupInvoice']);

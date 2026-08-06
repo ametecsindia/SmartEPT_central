@@ -989,5 +989,17 @@ function sendWA(e){
 })();
 render();
 </script>
+<script>
+/* 6-Aug-2026: carry the pricing slider's user count into the Buy page.
+   Link wiring only — the pricing logic above is untouched. */
+(function(){
+  var sl=document.getElementById('npxUsers'),c=document.getElementById('npxCloudBuyBtn'),p=document.getElementById('npxPerpBuyBtn');
+  if(!sl)return;
+  function updBuyLinks(){var u=parseInt(sl.value||'0',10)||0;
+    if(c&&c.getAttribute('href')&&c.getAttribute('href').indexOf('/buy')===0)c.setAttribute('href','/buy?kind=cloud&users='+u);
+    if(p&&p.getAttribute('href')&&p.getAttribute('href').indexOf('/buy')===0)p.setAttribute('href','/buy?kind=perpetual&users='+u);}
+  sl.addEventListener('input',updBuyLinks);sl.addEventListener('change',updBuyLinks);updBuyLinks();
+})();
+</script>
 </body>
 </html>
