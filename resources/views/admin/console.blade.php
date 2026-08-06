@@ -1303,7 +1303,39 @@ async function loadLicences() {
   ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
   ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>
   <button class="link" onclick="licDevices(${l.id},'${esc(l.key)}')">Devices</button>
+  <button class="link" onclick="licHistory(${l.id},'${esc(l.key)}')">History</button>
   ${l.server_fingerprint?`<button class="link" onclick="releaseBinding(${l.id})">Release binding</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+}
+// Ejaz, 6-Aug: full licence history — every action + order in one timeline.
+const LIC_HIST_LABELS = {
+  'licence.created':'Licence issued', 'licence.issued':'Licence issued',
+  'licence.renew':'Renewed', 'licence.renew_amc':'AMC renewed',
+  'licence.suspend':'Suspended', 'licence.resume':'Resumed', 'licence.revoke':'REVOKED',
+  'licence.release_binding':'Server binding released (PC formatted/changed)',
+  'licence.file_issued':'Licence file (.lic) generated / downloaded',
+  'licence.edited':'Details edited', 'licence.limit_changed':'Device limit changed',
+  'licence.device_deactivated':'Device seat freed',
+  'order.paid':'Order PAID', 'order.created':'Order raised', 'order.quote':'Quotation raised', 'order.failed':'Order failed', 'order.refunded':'Order refunded',
+};
+function licHistMeta(m){
+  if(!m) return '';
+  return Object.entries(m).filter(([k,v])=>v!==null&&v!==''&&v!==undefined&&k!=='key')
+    .map(([k,v])=>esc(k.replace(/_/g,' '))+': <b>'+esc(typeof v==='object'?JSON.stringify(v):String(v))+'</b>').join(' · ');
+}
+async function licHistory(id, key) {
+  openModal(`<h2>Licence history — ${esc(key)}</h2><div class="sub">The complete life story: every issue, renewal, edit, suspension, .lic download, binding release, freed seat and order — newest first.</div>
+  <div id="lh_list">Loading…</div>
+  <div class="foot"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`, true);
+  try {
+    const d = await api(`licences/${id}/history`);
+    document.getElementById('lh_list').innerHTML = d.timeline.length ? `<table>
+      <tr><th>When</th><th>What happened</th><th>By</th><th>Details</th></tr>
+      ${d.timeline.map(e => `<tr><td class="mini" style="white-space:nowrap">${esc(e.at)}</td>
+      <td><b>${esc(LIC_HIST_LABELS[e.action] || e.action)}</b></td>
+      <td class="mini">${esc(e.by || '—')}</td>
+      <td class="mini">${licHistMeta(e.meta)}</td></tr>`).join('')}
+    </table>` : '<p class="mini">No history recorded yet.</p>';
+  } catch (e) { document.getElementById('lh_list').textContent = 'Error: ' + e; }
 }
 // Ejaz, 6-Aug: the client's SERVER was formatted / damaged / replaced —
 // release the binding so the fresh install validates and binds itself.

@@ -79,6 +79,56 @@ class LicenceApiController extends Controller
     }
 
     /**
+     * GET /admin/api/licences/{licence}/history — the licence's full life story
+     * (Ejaz, 6-Aug-2026): every admin action (issue, renew, edit, suspend,
+     * .lic downloads, binding releases, freed seats) from the audit log, plus
+     * every order/payment tied to this licence — one chronological timeline.
+     */
+    public function history(Licence $licence)
+    {
+        $events = AuditLog::with('adminUser:id,name')
+            ->where('subject_type', Licence::class)
+            ->where('subject_id', $licence->id)
+            ->latest()->limit(300)->get()
+            ->map(fn ($a) => [
+                'at' => $a->created_at->toDateTimeString(),
+                'kind' => 'event',
+                'action' => $a->action,
+                'by' => $a->adminUser?->name ?: 'System / client',
+                'meta' => $a->meta ?: [],
+            ]);
+
+        $orders = \App\Models\Order::where('licence_id', $licence->id)->latest()->get()
+            ->map(fn ($o) => [
+                'at' => $o->created_at->toDateTimeString(),
+                'kind' => 'order',
+                'action' => 'order.' . $o->status,
+                'by' => $o->requested_by ?: '—',
+                'meta' => [
+                    'number' => $o->quote_number ?: $o->number,
+                    'description' => $o->description,
+                    'total' => ($o->currency === 'INR' ? '₹' : '$') . number_format((float) $o->total, 2),
+                    'status' => $o->status,
+                    'paid_at' => optional($o->paid_at)->toDateTimeString(),
+                ],
+            ]);
+
+        $born = [[
+            'at' => $licence->created_at->toDateTimeString(),
+            'kind' => 'event', 'action' => 'licence.created', 'by' => '—',
+            'meta' => ['key' => $licence->key, 'kind' => $licence->kind, 'devices' => $licence->device_limit],
+        ]];
+
+        $timeline = collect($born)->merge($events)->merge($orders)
+            ->sortByDesc('at')->values();
+
+        return response()->json([
+            'licence' => $licence->only(['id', 'key', 'kind', 'status']),
+            'timeline' => $timeline,
+        ]);
+    }
+
+    /**
      * GET /admin/api/licences/{licence}/devices — every device seat on this
      * licence, so the admin can free the seat of a formatted/damaged/replaced
      * PC (the replacement then takes the free seat).
