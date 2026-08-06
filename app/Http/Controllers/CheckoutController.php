@@ -90,6 +90,21 @@ class CheckoutController extends Controller
             'payment_id' => $data['razorpay_payment_id'],
         ]);
 
+        // Phase 1 buy flow: the buyer created this order on the public /buy page
+        // with their own chosen password — sign them straight into the client
+        // portal once the money is verified (SmartPRS auto-sign-in pattern).
+        if (($order->meta['buy_flow'] ?? false) && $order->fresh()->balance() <= 0.01) {
+            $user = \App\Models\TenantUser::where('tenant_id', $order->tenant_id)
+                ->where('active', 1)->orderBy('id')->first();
+            if ($user && ! auth('client')->check()) {
+                auth('client')->login($user, true);
+                $request->session()->regenerate();
+                $user->update(['last_login_at' => now(), 'email_verified_at' => $user->email_verified_at ?: now()]);
+            }
+
+            return response()->json(['ok' => true, 'redirect' => '/client?paid=1']);
+        }
+
         return response()->json(['ok' => true, 'redirect' => "/pay/$number/$token?paid=1"]);
     }
 

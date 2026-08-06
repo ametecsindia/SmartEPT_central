@@ -704,7 +704,10 @@ class BillingService
      */
     public function provisionTrial(Tenant $tenant): Licence
     {
-        $plan = Plan::where('code', 'professional')->firstOrFail();
+        // Phase 0 fix (6-Aug-2026): trials run on the live v2 SmartEPT plan.
+        // Fallback to the retired 'professional' plan keeps old installs working.
+        $plan = Plan::where('code', 'smartept')->first()
+            ?? Plan::where('code', 'professional')->firstOrFail();
 
         $tenant->update([
             'status' => 'trial',

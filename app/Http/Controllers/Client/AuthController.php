@@ -102,7 +102,9 @@ class AuthController extends Controller
                 'contact_name' => $data['contact_name'],
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
-                'deployment' => 'client_hosted',
+                // Phase 0 fix (6-Aug-2026): trials run on SmartEPT Cloud (v2),
+                // not client-hosted.
+                'deployment' => 'cloud',
                 'status' => 'trial',
                 'state_code' => $data['state_code'],
                 'gstin' => ! empty($data['gstin']) ? strtoupper($data['gstin']) : null,

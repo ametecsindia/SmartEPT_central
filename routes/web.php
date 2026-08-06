@@ -61,6 +61,10 @@ Route::middleware('client.auth')->prefix('client')->group(function () {
     });
 });
 
+// ---------- Public: BUY front door (Phase 1 money rework — pay first, account after) ----------
+Route::get('/buy', [\App\Http\Controllers\BuyController::class, 'show']);
+Route::post('/buy/order', [\App\Http\Controllers\BuyController::class, 'order'])->middleware('throttle:10,1');
+
 // ---------- Public: checkout ----------
 Route::get('/pay/{number}/{token}', [CheckoutController::class, 'show']);
 Route::post('/pay/{number}/{token}/razorpay-order', [CheckoutController::class, 'createRazorpayOrder']);
