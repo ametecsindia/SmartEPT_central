@@ -1415,6 +1415,17 @@ function editLic(id){
     <div class="mini" id="ed_msg" style="margin-top:6px"></div>
     <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
     <button class="btn btn-p" onclick="saveLic(${id})">Save changes</button></div>`);
+  const edk = document.getElementById('ed_kind');
+  if (edk) { edk.onchange = () => edKindUi(l.billing); edKindUi(l.billing); }
+}
+// Perpetual/trial = no billing period — Edit-licence modal (Ejaz, 6-Aug).
+const ED_BILL_OPTS = [['monthly','Monthly'],['quarterly','Quarterly'],['half_yearly','Half-yearly'],['annual','Annual']];
+function edKindUi(cur){
+  const k = document.getElementById('ed_kind'), b = document.getElementById('ed_bill');
+  if (!k || !b) return;
+  if (k.value === 'perpetual') { b.innerHTML = '<option value="annual">One-time — lifetime licence (no billing period)</option>'; b.disabled = true; }
+  else if (k.value === 'trial') { b.innerHTML = '<option value="annual">Trial — 7 days (free, no billing period)</option>'; b.disabled = true; }
+  else { b.innerHTML = ED_BILL_OPTS.map(o => `<option value="${o[0]}"${o[0]===cur?' selected':''}>${o[1]}</option>`).join(''); b.disabled = false; }
 }
 async function saveLic(id){
   const body={
@@ -1456,7 +1467,7 @@ async function issueLicence() {
   openModal(`<h2>Issue Licence</h2><div class="sub">Direct issue without an order — use Orders for the full payment flow.</div>
   <label>Client</label><select id="il_tenant">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
   <div class="row"><div><label>Plan</label><select id="il_plan"><option value="smartept" selected>SmartEPT (all features)</option></select></div>
-  <div><label>Kind</label><select id="il_kind"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
+  <div><label>Kind</label><select id="il_kind" onchange="kindBillingUi('il_kind','il_billing')"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
   <div><label>Billing period</label><select id="il_billing"><option value="annual">Annual — 12 months (best price, 25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="il_deploy"><option value="client_hosted">Client-Hosted</option><option value="cloud">Cloud</option></select></div>
   <div><label>User limit</label><input id="il_devices" type="number" value="10" min="1"></div></div>
@@ -1569,9 +1580,10 @@ async function newProspectQuote() {
 // Perpetual = one-time — the billing-period dropdown must say so (Ejaz, 6-Aug).
 const BILLING_OPTS = '<option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option>';
 function kindBillingUi(kindSel, billSel) {
-  const s = document.getElementById(billSel), perp = document.getElementById(kindSel)?.value === 'perpetual';
+  const s = document.getElementById(billSel), kind = document.getElementById(kindSel)?.value;
   if (!s) return;
-  if (perp) { s.innerHTML = '<option value="annual">One-time — lifetime licence (no billing period)</option>'; s.disabled = true; }
+  if (kind === 'perpetual') { s.innerHTML = '<option value="annual">One-time — lifetime licence (no billing period)</option>'; s.disabled = true; }
+  else if (kind === 'trial') { s.innerHTML = '<option value="annual">Trial — 7 days (free, no billing period)</option>'; s.disabled = true; }
   else if (s.disabled || s.options.length < 3) { s.innerHTML = BILLING_OPTS; s.disabled = false; }
 }
 function pqKindUi() { kindBillingUi('pq_kind', 'pq_billing'); }
