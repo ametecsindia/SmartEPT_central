@@ -180,6 +180,9 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             // (Ametecs troubleshooting-in-app standard — non-technical self-service).
             Route::get('diagnostics', [Admin\DiagnosticsController::class, 'checks']);
             Route::get('logs', [Admin\DiagnosticsController::class, 'logs']);
+            Route::post('scheduler/run-now', [Admin\DiagnosticsController::class, 'schedulerRunNow']);   // 6-Aug: run due jobs from the panel
+            Route::post('scheduler/install', [Admin\DiagnosticsController::class, 'schedulerInstall']);  // 6-Aug: one-click auto-scheduler (Windows Task Scheduler / Linux cron)
+            Route::get('scheduler/instructions', [Admin\DiagnosticsController::class, 'schedulerInstructions']); // 6-Aug: all-hosting setup options
 
             // Managed installer catalogue — upload/publish agent (Win/Mac/Linux) + server.
             Route::get('download-artifacts', [Admin\DownloadApiController::class, 'index']);

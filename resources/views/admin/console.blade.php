@@ -502,12 +502,51 @@ async function helpRun() {
     box.innerHTML = (r.checks || []).map(c => {
       const cls = c.status === 'ok' ? 'hc-ok' : (c.status === 'warn' ? 'hc-warn' : 'hc-down');
       const fix = c.fix ? ' <a onclick="openHelpKb(\'' + c.fix + '\')">How to fix this &rarr;</a>' : '';
+      // 6-Aug: one-click scheduler tools right on the amber row — no terminal needed.
+      const schedBtns = (c.key === 'scheduler' && c.status !== 'ok')
+        ? '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'
+          + '<button class="btn btn-p" style="padding:7px 13px;font-size:12.5px" onclick="schedInstall(this)">⚙ Install auto-scheduler (one-time)</button>'
+          + '<button class="btn btn-l" style="padding:7px 13px;font-size:12.5px" onclick="schedRunNow(this)">▶ Run scheduled jobs now</button>'
+          + '<button class="btn btn-l" style="padding:7px 13px;font-size:12.5px" onclick="schedOptions()">📋 All hosting options</button></div>'
+        : '';
       return '<div class="hc-item ' + cls + '"><span class="dot"></span><div><b>'
-        + esc(c.label) + '</b><p>' + esc(c.detail) + fix + '</p></div></div>';
+        + esc(c.label) + '</b><p>' + esc(c.detail) + fix + '</p>' + schedBtns + '</div></div>';
     }).join('');
   } catch (e) {
     box.innerHTML = '<div class="mini" style="color:var(--danger)">Could not run checks: ' + esc(String(e)) + '</div>';
   }
+}
+// 6-Aug: scheduler control from the panel itself (Ejaz) — install the Windows
+// 1-minute task or run due jobs immediately, no terminal needed.
+async function schedInstall(btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Installing…';
+  try { const r = await api('scheduler/install', {method:'POST', body:{}}); toast(r.message || 'Installed'); setTimeout(helpRun, 1200); }
+  catch (e) { alert('Could not install automatically:\n\n' + e); }
+  btn.disabled = false; btn.textContent = old;
+}
+async function schedRunNow(btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Running…';
+  try { const r = await api('scheduler/run-now', {method:'POST', body:{}}); toast(r.message || 'Jobs ran'); setTimeout(helpRun, 800); }
+  catch (e) { toast('Error: ' + e); }
+  btn.disabled = false; btn.textContent = old;
+}
+// ALL hosting options in one place (Ejaz, 6-Aug) — Windows, Linux VPS, cPanel.
+async function schedOptions() {
+  let i = {};
+  try { i = await api('scheduler/instructions'); } catch (e) { toast('Error: ' + e); return; }
+  const copyBox = (id, val) => '<div style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input id="' + id + '" readonly value="' + esc(val) + '" style="flex:1;font-family:ui-monospace,monospace;font-size:11.5px"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById(\'' + id + '\').value);toast(\'Copied\')">Copy</button></div>';
+  openModal(`<h2>Scheduler setup — all hosting options</h2>
+  <div class="sub">The scheduler must run <b>every minute</b> — it powers renewal &amp; trial reminders, grace warnings, abandoned-buy rescue, the quote chaser and your daily money digest. Pick the option matching where SmartEPT Central is hosted (this server: <b>${esc(i.os || '')}</b>).</div>
+  <p style="font-weight:700;margin:10px 0 2px">1 · This machine, automatically (recommended)</p>
+  <p class="mini">Click <b>⚙ Install auto-scheduler</b> on the System Health row — works on Windows (creates a hidden Task Scheduler task) and on a Linux VPS (adds the cron line). One time only.</p>
+  <p style="font-weight:700;margin:10px 0 2px">2 · Linux VPS via SSH (if the button is refused)</p>
+  ${copyBox('so_ssh', i.ssh_install || '')}
+  <p style="font-weight:700;margin:6px 0 2px">3 · cPanel / Plesk shared hosting</p>
+  <p class="mini">cPanel → <b>Cron Jobs</b> → Add New Cron Job → Common Setting "Once Per Minute" → paste as the command:</p>
+  ${copyBox('so_cron', (i.cron_line || '').replace('* * * * * ', ''))}
+  <p style="font-weight:700;margin:6px 0 2px">4 · Windows Task Scheduler, manually</p>
+  <p class="mini">Task Scheduler → Create Task → trigger: repeat every 1 minute → action: start <code>wscript.exe</code> with argument <code>${esc((i.base || '') + '\\scheduler-tick.vbs')}</code> (the file is created by the auto-install button, or run the button once to generate it).</p>
+  <div class="foot"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`, true);
 }
 function helpPanelTab(name) {
   document.querySelectorAll('#page .htab').forEach(b => b.classList.toggle('on', b.dataset.ht === name));

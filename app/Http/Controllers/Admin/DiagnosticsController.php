@@ -54,6 +54,138 @@ class DiagnosticsController extends Controller
         ]);
     }
 
+    /**
+     * POST /admin/api/scheduler/run-now (Ejaz, 6-Aug-2026): run all due
+     * scheduled jobs immediately from the admin panel — instant heartbeat,
+     * instant reminders, no terminal needed.
+     */
+    public function schedulerRunNow(): JsonResponse
+    {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('schedule:run');
+            $out = trim(\Illuminate\Support\Facades\Artisan::output());
+            \App\Models\AuditLog::write('scheduler.run_now', null, []);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Scheduled jobs ran. Re-run System Health — the scheduler row uses a 1-minute heartbeat, so it turns green when the AUTOMATIC runner is also working.',
+                'output' => mb_substr($out, -1500),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET /admin/api/scheduler/instructions (Ejaz, 6-Aug-2026): everything an
+     * admin needs to set the scheduler up on ANY hosting — shown in the panel.
+     */
+    public function schedulerInstructions(): JsonResponse
+    {
+        $php = PHP_OS_FAMILY === 'Windows'
+            ? PHP_BINARY
+            : (is_executable(PHP_BINDIR . '/php') ? PHP_BINDIR . '/php' : 'php');
+
+        return response()->json([
+            'os' => PHP_OS_FAMILY,
+            'base' => base_path(),
+            'php' => $php,
+            'cron_line' => '* * * * * cd ' . base_path() . ' && ' . $php . ' artisan schedule:run >> /dev/null 2>&1',
+            'ssh_install' => '(crontab -l 2>/dev/null | grep -v "artisan schedule:run"; echo "* * * * * cd '
+                . base_path() . ' && ' . $php . ' artisan schedule:run >> /dev/null 2>&1") | crontab -',
+        ]);
+    }
+
+    /**
+     * POST /admin/api/scheduler/install (Ejaz, 6-Aug-2026): register the
+     * automatic 1-minute runner FROM THE ADMIN PANEL — no terminal needed.
+     * Windows: creates a hidden Task Scheduler task that runs
+     * "php artisan schedule:run" every minute. Linux: returns the cron line.
+     */
+    public function schedulerInstall(): JsonResponse
+    {
+        try {
+            $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+            if (! function_exists('exec') || in_array('exec', $disabled, true)) {
+                return response()->json(['ok' => false, 'error' => 'PHP exec() is disabled on this server — enable it in php.ini, or add the scheduler manually (Windows Task Scheduler / crontab).'], 422);
+            }
+
+            // ---------- Linux VPS (production smartept.com) ----------
+            if (PHP_OS_FAMILY !== 'Windows') {
+                // PHP_BINARY under FPM is php-fpm — find the CLI binary instead.
+                $php = PHP_BINDIR . '/php';
+                if (! is_executable($php)) {
+                    $php = trim((string) shell_exec('command -v php 2>/dev/null')) ?: 'php';
+                }
+
+                $line = '* * * * * cd ' . base_path() . ' && ' . $php . ' artisan schedule:run >> /dev/null 2>&1';
+                $sshFallback = "Run these two commands over SSH instead:\n"
+                    . '  (crontab -l 2>/dev/null | grep -v "artisan schedule:run"; echo "' . $line . '") | crontab -' . "\n"
+                    . '  crontab -l   (to verify the line is there)';
+
+                // Idempotent install: strip any previous schedule:run line, append ours.
+                $cmd = '(crontab -l 2>/dev/null | grep -v "artisan schedule:run"; echo ' . escapeshellarg($line) . ') | crontab - 2>&1';
+                exec($cmd, $out, $code);
+
+                $check = (string) shell_exec('crontab -l 2>/dev/null');
+                if ($code !== 0 || strpos($check, 'artisan schedule:run') === false) {
+                    return response()->json([
+                        'ok' => false,
+                        'error' => 'The hosting did not allow the web user to edit cron ('
+                            . trim(implode(' ', $out)) . "). " . $sshFallback,
+                    ], 422);
+                }
+
+                \Illuminate\Support\Facades\Artisan::call('schedule:run'); // instant heartbeat
+                \App\Models\AuditLog::write('scheduler.installed', null, ['os' => 'linux', 'cron' => $line]);
+
+                return response()->json([
+                    'ok' => true,
+                    'message' => 'Done! Cron now runs the SmartEPT scheduler every minute on this Linux server. Re-run System Health in a minute — the row will be green.',
+                ]);
+            }
+
+            // ---------- Windows / Laragon (this PC) ----------
+
+            $base = base_path();
+            $php = PHP_BINARY;
+            $bat = $base . DIRECTORY_SEPARATOR . 'scheduler-tick.bat';
+            $vbs = $base . DIRECTORY_SEPARATOR . 'scheduler-tick.vbs';
+
+            file_put_contents($bat,
+                "@echo off\r\n"
+                . 'cd /d "' . $base . "\"\r\n"
+                . '"' . $php . '" artisan schedule:run >> "storage\\logs\\scheduler-tick.log" 2>&1' . "\r\n");
+
+            // VBS wrapper = no black window flashing every minute.
+            file_put_contents($vbs,
+                'CreateObject("Wscript.Shell").Run """" & "' . str_replace('\\', '\\\\', $bat) . '" & """", 0, False' . "\r\n");
+
+            $cmd = 'schtasks /Create /F /SC MINUTE /MO 1 /TN "SmartEPT Central Scheduler" /TR "wscript.exe \"' . $vbs . '\"" 2>&1';
+            exec($cmd, $out, $code);
+
+            if ($code !== 0) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Windows refused to create the task: ' . implode(' ', $out)
+                        . ' — try once from an elevated (Run as administrator) browser/Laragon, or create it manually in Task Scheduler pointing at scheduler-tick.vbs.',
+                ], 422);
+            }
+
+            // Kick one run right away so the heartbeat goes green immediately.
+            \Illuminate\Support\Facades\Artisan::call('schedule:run');
+
+            \App\Models\AuditLog::write('scheduler.installed', null, ['task' => 'SmartEPT Central Scheduler']);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Done! Windows now runs the SmartEPT scheduler every minute automatically ("SmartEPT Central Scheduler" in Task Scheduler). Re-run System Health in a minute — the row will be green.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     /** GET /admin/api/logs?lines=N — last N lines of storage/logs/laravel.log. */
     public function logs(Request $request): JsonResponse
     {
