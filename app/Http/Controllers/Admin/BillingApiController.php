@@ -87,8 +87,22 @@ class BillingApiController extends Controller
         if ($g = $request->query('gateway')) {
             $q->where('gateway', $g);
         }
+        // 7-Aug: search + sort for every role that can view Orders.
+        if ($search = trim((string) $request->query('q'))) {
+            $q->where(fn ($w) => $w->where('number', 'like', "%$search%")
+                ->orWhere('quote_number', 'like', "%$search%")
+                ->orWhere('description', 'like', "%$search%")
+                ->orWhereHas('tenant', fn ($t) => $t->where('company_name', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%")));
+        }
+        match ($request->query('sort')) {
+            'oldest' => $q->oldest(),
+            'total_desc' => $q->orderByDesc('total'),
+            'total_asc' => $q->orderBy('total'),
+            default => $q->latest(),
+        };
 
-        $page = $q->latest()->paginate(25);
+        $page = $q->paginate(25);
         $page->getCollection()->transform(function ($o) {
             $o->setAttribute('received', round((float) ($o->received ?? 0), 2));
             $o->setAttribute('balance', round(max(0, (float) $o->total - (float) ($o->received ?? 0)), 2));
@@ -425,8 +439,20 @@ class BillingApiController extends Controller
         if ($s = $request->query('status')) {
             $q->where('status', $s);
         }
+        // 7-Aug: search + sort for every role that can view Invoices.
+        if ($search = trim((string) $request->query('q'))) {
+            $q->where(fn ($w) => $w->where('number', 'like', "%$search%")
+                ->orWhereHas('tenant', fn ($t) => $t->where('company_name', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%")));
+        }
+        match ($request->query('sort')) {
+            'oldest' => $q->oldest(),
+            'total_desc' => $q->orderByDesc('total'),
+            'total_asc' => $q->orderBy('total'),
+            default => $q->latest(),
+        };
 
-        return response()->json($q->latest()->paginate(25));
+        return response()->json($q->paginate(25));
     }
 
     // ---------- Trials ----------

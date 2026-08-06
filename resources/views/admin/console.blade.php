@@ -888,17 +888,13 @@ async support() {
   P.innerHTML = '<div class="mini">Loading…</div>';
   const d = await api('tickets');
   TK_ROWS = {}; (d.data || []).forEach(t => { TK_ROWS[t.id] = t; });
-  const c = d.counts || {};
-  const chip = (s, l) => '<span class="pill ' + (TK_PILL[s] || 'p-mut') + '">' + (l || s) + ' ' + (c[s] || 0) + '</span>';
-  const rows = (d.data || []).map(t => '<tr onclick="tkOpen(' + t.id + ')" style="cursor:pointer">'
-    + '<td class="mini">' + esc(t.created_at_h || t.created_at || '') + '</td>'
-    + '<td><b>' + esc(t.tenant || '—') + '</b><div class="mini">' + esc(t.raised_by || '') + '</div></td>'
-    + '<td>' + esc(t.subject) + '<div class="mini">' + esc(t.category || '') + '</div></td>'
-    + '<td><span class="pill ' + (TK_PILL[t.status] || 'p-mut') + '">' + esc(String(t.status).replace('_', ' ')) + '</span></td>'
-    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at_h || t.replied_at)) : '') + (t.messages_count ? ' · ' + t.messages_count + ' msg' : '') + '</td></tr>').join('');
-  P.innerHTML = '<div class="card"><h3>Support tickets <span class="mini">' + chip('open', 'open') + ' · ' + chip('in_progress', 'in progress') + ' · ' + chip('resolved', 'resolved') + ' · ' + chip('closed', 'closed') + '</span></h3>'
-    + '<table><tr><th>Raised</th><th>Client</th><th>Subject</th><th>Status</th><th></th></tr>'
-    + (rows || '<tr><td colspan="5" class="mini">No tickets yet.</td></tr>') + '</table></div>';
+  window.TK_LIST = d.data || []; window.TK_COUNTS = d.counts || {};
+  P.innerHTML = `<div class="filters">
+    <input id="tkq" placeholder="Search client / subject / category…" oninput="tkRender()">
+    <select id="tkst" onchange="tkRender()"><option value="">All statuses</option><option value="open">open</option><option value="in_progress">in progress</option><option value="resolved">resolved</option><option value="closed">closed</option></select>
+    <select id="tksort" onchange="tkRender()"><option value="">Newest first</option><option value="oldest">Oldest first</option><option value="client">Client A → Z</option></select>
+  </div><div id="tklist"></div>`;
+  tkRender();
 },
 
 // ============ HELP & TROUBLESHOOTING ============
@@ -968,16 +964,12 @@ async tenants() {
 // ============ TRIALS ============
 async trials() {
   const d = await api('trials');
-  const row = t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
-    <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
-    <td>${t.trial_ends_at ? new Date(t.trial_ends_at).toLocaleDateString() : '—'}</td>
-    <td>${CAN_WRITE ? `<button class="link" onclick="extendTrial(${t.id})">Extend</button>
-    <button class="link" onclick="convertTrial(${t.id}, '${esc(t.company_name)}')">Convert to Paid</button>` : ''}</td></tr>`;
-  P.innerHTML = `
-  <div class="card"><h3>Active Trials (${d.active.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ends</th><th></th></tr>
-  ${d.active.map(row).join('') || '<tr><td colspan="4" class="mini">No active trials</td></tr>'}</table></div>
-  <div class="card"><h3>Expired Trials (${d.expired.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ended</th><th></th></tr>
-  ${d.expired.map(row).join('') || '<tr><td colspan="4" class="mini">None</td></tr>'}</table></div>`;
+  window.TR_D = d;
+  P.innerHTML = `<div class="filters">
+    <input id="trq" placeholder="Search company / contact / email / phone…" oninput="trialsRender()">
+    <select id="trsort" onchange="trialsRender()"><option value="">Ends — soonest first</option><option value="ends_desc">Ends — latest first</option><option value="company">Company A → Z</option></select>
+  </div><div id="trlist"></div>`;
+  trialsRender();
 },
 
 // ============ LEADS (R3-7) ============
@@ -1057,9 +1049,11 @@ async plans() {
 async orders() {
   if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button> <button class="btn btn-l" onclick="newProspectQuote()">+ Quote for NEW client</button>';
   P.innerHTML = `<div class="filters">
-    <select id="ost"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
-    <select id="ogw"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
-    <button class="btn btn-l" onclick="loadOrders()">Filter</button></div><div id="olist"></div>`;
+    <input id="oq" placeholder="Search order / quote no. / client…" onkeydown="if(event.key==='Enter')loadOrders()">
+    <select id="ost" onchange="loadOrders()"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
+    <select id="ogw" onchange="loadOrders()"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
+    <select id="osort" onchange="loadOrders()"><option value="">Newest first</option><option value="oldest">Oldest first</option><option value="total_desc">Total — high to low</option><option value="total_asc">Total — low to high</option></select>
+    <button class="btn btn-l" onclick="loadOrders()">Search</button></div><div id="olist"></div>`;
   loadOrders();
 },
 
@@ -1067,31 +1061,23 @@ async orders() {
 async credit() {
   P.innerHTML = '<div class="mini">Loading…</div>';
   const d = await api('credit-clients');
-  const rows = (d.data||[]).map(c => `<tr>
-    <td><b>${esc(c.tenant?.company_name)}</b><div class="mini">${esc(c.quote_number || c.number)}${c.invoice_number ? ' · ' + esc(c.invoice_number) : ''}</div></td>
-    <td class="mini">${esc(c.description)}</td>
-    <td><b>${fmtMoney(c.total, c.currency)}</b></td>
-    <td style="color:var(--ok);font-weight:700">${fmtMoney(c.received, c.currency)}</td>
-    <td><b style="color:${c.overdue ? 'var(--danger)' : 'var(--ink)'}">${fmtMoney(c.balance, c.currency)}</b></td>
-    <td style="${c.overdue ? 'color:var(--danger);font-weight:800' : ''}">${c.credit_due_date ? new Date(c.credit_due_date).toLocaleDateString() : '—'}${c.overdue ? ' ⚠ OVERDUE' : ''}</td>
-    <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick="recordBalance(${c.id}, ${c.balance}, '${esc(c.tenant?.company_name)}')">Record balance</button>` : ''}
-      <button class="link" onclick="navigator.clipboard.writeText('${esc(c.pay_url)}');toast('Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
-  P.innerHTML = `<div class="card"><h3>Provisioned on credit — balance outstanding (${(d.data||[]).length})</h3>
-  <table><tr><th>Client</th><th>Order</th><th>Total</th><th>Received</th><th>Balance</th><th>Payable by</th><th></th></tr>
-  ${rows || '<tr><td colspan="7" class="mini">No credit balances — every provisioned order is fully paid. 🎉</td></tr>'}</table>
-  <div class="mini" style="margin-top:10px">Overdue turns red as a reminder for <b>manual follow-up only</b> — nothing locks automatically. Credit is a commercial judgement. The client's original pay link stays alive and collects exactly the balance.</div></div>`;
+  window.CR_ROWS = d.data || [];
+  P.innerHTML = `<div class="filters">
+    <input id="crq" placeholder="Search client / order / invoice…" oninput="creditRender()">
+    <select id="crsort" onchange="creditRender()"><option value="">Payable-by date</option><option value="balance">Balance — high to low</option><option value="total">Total — high to low</option><option value="client">Client A → Z</option></select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--deep,#04252C)"><input type="checkbox" id="crov" onchange="creditRender()" style="width:auto"> Overdue only</label>
+  </div><div id="crlist"></div>`;
+  creditRender();
 },
 
 // ============ INVOICES ============
 async invoices() {
-  const d = await api('invoices');
-  P.innerHTML = `<div class="card"><table><tr><th>Invoice</th><th>Date</th><th>Client</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Status</th><th></th></tr>
-  ${d.data.map(i => `<tr><td><b>${esc(i.number)}</b></td><td class="mini">${i.date?.slice(0,10)}</td>
-  <td>${esc(i.tenant?.company_name)}</td><td>${fmtMoney(i.subtotal, i.currency)}</td>
-  <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
-  <td><b>${fmtMoney(i.total, i.currency)}</b></td>
-  <td>${i.status==='issued' && i.due_date ? `<span class="pill p-warn">DUE</span><div class="mini">by ${i.due_date.slice(0,10)}</div>` : pill(i.status)}</td>
-  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No invoices yet</td></tr>'}</table></div>`;
+  P.innerHTML = `<div class="filters">
+    <input id="iq" placeholder="Search invoice no. / client…" onkeydown="if(event.key==='Enter')loadInvoices()">
+    <select id="ist" onchange="loadInvoices()"><option value="">All statuses</option><option value="paid">paid</option><option value="issued">due</option></select>
+    <select id="isort" onchange="loadInvoices()"><option value="">Newest first</option><option value="oldest">Oldest first</option><option value="total_desc">Total — high to low</option><option value="total_asc">Total — low to high</option></select>
+    <button class="btn btn-l" onclick="loadInvoices()">Search</button></div><div id="ivlist" class="mini">Loading…</div>`;
+  loadInvoices();
 },
 
 // ============ STORAGE ============
@@ -1564,9 +1550,15 @@ async function doIssue() {
   } catch (e) { toast('Error: ' + e); }
 }
 
+// ---------- shared list tools (Ejaz, 7-Aug: search + sort on every money screen, all roles) ----------
+function normNum(v){const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n;}
+function listSort(rows,key,dir){const m=dir==='desc'?-1:1;return [...rows].sort((a,b)=>{const x=key.split('.').reduce((o,k)=>o?.[k],a),y=key.split('.').reduce((o,k)=>o?.[k],b);const nx=normNum(x),ny=normNum(y);if(nx!==null&&ny!==null&&String(x).match(/^[0-9.\- ₹$,]+$/))return (nx-ny)*m;if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return String(x).localeCompare(String(y))*m;});}
+function rowMatch(o,q){if(!q)return true;try{return JSON.stringify(o).toLowerCase().includes(q.toLowerCase());}catch(e){return true;}}
+
 // ---------- orders helpers ----------
 async function loadOrders() {
-  const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}`);
+  const oq = document.getElementById('oq'), osort = document.getElementById('osort');
+  const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}&q=${encodeURIComponent(oq?oq.value.trim():'')}&sort=${osort?osort.value:''}`);
   document.getElementById('olist').innerHTML = `<div class="card"><table>
   <tr><th>Order</th><th>Client</th><th>Licence</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
   ${d.data.map(o => `<tr><td><b>${esc(o.quote_number || o.number)}</b><div class="mini">${o.quote_number ? esc(o.number) + ' · ' : ''}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}</div></td>
@@ -1583,6 +1575,83 @@ async function loadOrders() {
     : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
   <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:`<a class="link" href="/admin/orders/${o.id}/proforma" target="_blank">Proforma</a>`}` :
   (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
+}
+// Trials list with instant search + sort (7-Aug, all roles).
+function trialsRender() {
+  const d = window.TR_D || {active:[], expired:[]};
+  const q = (document.getElementById('trq')?.value || '').trim();
+  const sort = document.getElementById('trsort')?.value || '';
+  const prep = arr => {
+    let r = (arr || []).filter(t => rowMatch(t, q));
+    if (sort === 'company') r = listSort(r, 'company_name', 'asc');
+    else r = [...r].sort((a,b) => (new Date(a.trial_ends_at||0) - new Date(b.trial_ends_at||0)) * (sort === 'ends_desc' ? -1 : 1));
+    return r;
+  };
+  const row = t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
+    <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
+    <td>${t.trial_ends_at ? new Date(t.trial_ends_at).toLocaleDateString() : '—'}</td>
+    <td>${CAN_WRITE ? `<button class="link" onclick="extendTrial(${t.id})">Extend</button>
+    <button class="link" onclick="convertTrial(${t.id}, '${esc(t.company_name)}')">Convert to Paid</button>` : ''}</td></tr>`;
+  const act = prep(d.active), exp = prep(d.expired);
+  document.getElementById('trlist').innerHTML = `
+  <div class="card"><h3>Active Trials (${act.length}${act.length !== (d.active||[]).length ? ' of ' + d.active.length : ''})</h3><table><tr><th>Company</th><th>Contact</th><th>Ends</th><th></th></tr>
+  ${act.map(row).join('') || '<tr><td colspan="4" class="mini">No matching active trials</td></tr>'}</table></div>
+  <div class="card"><h3>Expired Trials (${exp.length}${exp.length !== (d.expired||[]).length ? ' of ' + d.expired.length : ''})</h3><table><tr><th>Company</th><th>Contact</th><th>Ended</th><th></th></tr>
+  ${exp.map(row).join('') || '<tr><td colspan="4" class="mini">None</td></tr>'}</table></div>`;
+}
+// Support tickets with instant search / status / sort (7-Aug, all roles).
+function tkRender() {
+  const q = (document.getElementById('tkq')?.value || '').trim();
+  const st = document.getElementById('tkst')?.value || '';
+  const sort = document.getElementById('tksort')?.value || '';
+  const c = window.TK_COUNTS || {};
+  const chip = (s, l) => '<span class="pill ' + (TK_PILL[s] || 'p-mut') + '">' + (l || s) + ' ' + (c[s] || 0) + '</span>';
+  let list = (window.TK_LIST || []).filter(t => rowMatch(t, q) && (!st || t.status === st));
+  if (sort === 'client') list = listSort(list, 'tenant', 'asc');
+  else list = [...list].sort((a,b) => (new Date(a.created_at||0) - new Date(b.created_at||0)) * (sort === 'oldest' ? 1 : -1));
+  const rows = list.map(t => '<tr onclick="tkOpen(' + t.id + ')" style="cursor:pointer">'
+    + '<td class="mini">' + esc(t.created_at_h || t.created_at || '') + '</td>'
+    + '<td><b>' + esc(t.tenant || '—') + '</b><div class="mini">' + esc(t.raised_by || '') + '</div></td>'
+    + '<td>' + esc(t.subject) + '<div class="mini">' + esc(t.category || '') + '</div></td>'
+    + '<td><span class="pill ' + (TK_PILL[t.status] || 'p-mut') + '">' + esc(String(t.status).replace('_', ' ')) + '</span></td>'
+    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at_h || t.replied_at)) : '') + (t.messages_count ? ' · ' + t.messages_count + ' msg' : '') + '</td></tr>').join('');
+  document.getElementById('tklist').innerHTML = '<div class="card"><h3>Support tickets <span class="mini">' + chip('open', 'open') + ' · ' + chip('in_progress', 'in progress') + ' · ' + chip('resolved', 'resolved') + ' · ' + chip('closed', 'closed') + '</span></h3>'
+    + '<table><tr><th>Raised</th><th>Client</th><th>Subject</th><th>Status</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No matching tickets.</td></tr>') + '</table></div>';
+}
+// Credit-clients list with instant search / sort / overdue filter (7-Aug, all roles).
+function creditRender() {
+  const q = (document.getElementById('crq')?.value || '').trim();
+  const sort = document.getElementById('crsort')?.value || '';
+  const ovOnly = document.getElementById('crov')?.checked;
+  let rowsArr = (window.CR_ROWS || []).filter(c => rowMatch(c, q) && (!ovOnly || c.overdue));
+  if (sort === 'balance') rowsArr = listSort(rowsArr, 'balance', 'desc');
+  else if (sort === 'total') rowsArr = listSort(rowsArr, 'total', 'desc');
+  else if (sort === 'client') rowsArr = listSort(rowsArr, 'tenant.company_name', 'asc');
+  const rows = rowsArr.map(c => `<tr>
+    <td><b>${esc(c.tenant?.company_name)}</b><div class="mini">${esc(c.quote_number || c.number)}${c.invoice_number ? ' · ' + esc(c.invoice_number) : ''}</div></td>
+    <td class="mini">${esc(c.description)}</td>
+    <td><b>${fmtMoney(c.total, c.currency)}</b></td>
+    <td style="color:var(--ok);font-weight:700">${fmtMoney(c.received, c.currency)}</td>
+    <td><b style="color:${c.overdue ? 'var(--danger)' : 'var(--ink)'}">${fmtMoney(c.balance, c.currency)}</b></td>
+    <td style="${c.overdue ? 'color:var(--danger);font-weight:800' : ''}">${c.credit_due_date ? new Date(c.credit_due_date).toLocaleDateString() : '—'}${c.overdue ? ' ⚠ OVERDUE' : ''}</td>
+    <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick="recordBalance(${c.id}, ${c.balance}, '${esc(c.tenant?.company_name)}')">Record balance</button>` : ''}
+      <button class="link" onclick="navigator.clipboard.writeText('${esc(c.pay_url)}');toast('Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
+  document.getElementById('crlist').innerHTML = `<div class="card"><h3>Provisioned on credit — balance outstanding (${rowsArr.length}${rowsArr.length !== (window.CR_ROWS||[]).length ? ' of ' + (window.CR_ROWS||[]).length : ''})</h3>
+  <table><tr><th>Client</th><th>Order</th><th>Total</th><th>Received</th><th>Balance</th><th>Payable by</th><th></th></tr>
+  ${rows || '<tr><td colspan="7" class="mini">No matching credit balances.</td></tr>'}</table>
+  <div class="mini" style="margin-top:10px">Overdue turns red as a reminder for <b>manual follow-up only</b> — nothing locks automatically. Credit is a commercial judgement. The client's original pay link stays alive and collects exactly the balance.</div></div>`;
+}
+async function loadInvoices() {
+  const iq = document.getElementById('iq'), ist = document.getElementById('ist'), isort = document.getElementById('isort');
+  const d = await api(`invoices?status=${ist?ist.value:''}&q=${encodeURIComponent(iq?iq.value.trim():'')}&sort=${isort?isort.value:''}`);
+  document.getElementById('ivlist').innerHTML = `<div class="card"><table><tr><th>Invoice</th><th>Date</th><th>Client</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Status</th><th></th></tr>
+  ${d.data.map(i => `<tr><td><b>${esc(i.number)}</b></td><td class="mini">${i.date?.slice(0,10)}</td>
+  <td>${esc(i.tenant?.company_name)}</td><td>${fmtMoney(i.subtotal, i.currency)}</td>
+  <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
+  <td><b>${fmtMoney(i.total, i.currency)}</b></td>
+  <td>${i.status==='issued' && i.due_date ? `<span class="pill p-warn">DUE</span><div class="mini">by ${i.due_date.slice(0,10)}</div>` : pill(i.status)}</td>
+  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No matching invoices</td></tr>'}</table></div>`;
 }
 // Ejaz, 6-Aug: log cleanup for performance — category + date range, with a
 // count preview before anything is deleted. Daily licence verifications are
