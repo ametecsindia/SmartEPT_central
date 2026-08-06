@@ -1176,7 +1176,7 @@ async audit() {
     if (typeof m !== 'object') return esc(String(m));
     return esc(Object.entries(m).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : (v && typeof v === 'object' ? JSON.stringify(v) : v))).join('  ·  ')).slice(0, 140) || '—';
   };
-  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
+  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'licence.verified', 'licence.validation_rejected', 'licence.machine_bound', 'licence.machine_shifted', 'licence.release_binding', 'licence.file_issued', 'licence.device_deactivated', 'licence.edited', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'quote.prospect_created', 'buy.order_created', 'buy.quote_requested', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
   const opts = ACTS.map((a) => '<option value="' + a + '"' + (a === cur ? ' selected' : '') + '>' + (a || 'All actions') + '</option>').join('');
   P.innerHTML = `<div class="card">
   <div class="row" style="margin-bottom:12px;align-items:flex-end">
