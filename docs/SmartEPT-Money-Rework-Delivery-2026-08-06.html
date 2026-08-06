@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEPT Money Rework — Complete Delivery Report (6 Aug 2026)</title>
+<style>
+:root{--teal:#0E7C8F;--deep:#04252C;--bg:#F4F6F9;--border:#DCDFE7;--t2:#565A66;--t3:#878C99;--ok:#08875D;--warn:#B7791F;--red:#D02748}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:#15171C;font-size:14.5px;line-height:1.65}
+.page{max-width:960px;margin:0 auto;padding:0 20px 80px}
+.cover{background:linear-gradient(160deg,#04252C,#0B4A56);color:#fff;padding:44px 40px;border-radius:0 0 18px 18px;margin-bottom:28px}
+.cover .k{display:inline-block;background:rgba(34,184,207,.2);color:#7FE0EC;font-weight:800;font-size:12px;letter-spacing:1.5px;padding:6px 14px;border-radius:20px;margin-bottom:14px;text-transform:uppercase}
+.cover h1{font-size:28px;line-height:1.3;margin-bottom:10px}
+.cover p{color:#9FC5CC;font-size:14px;max-width:740px}
+.cover .meta{margin-top:16px;font-size:12.5px;color:#7FA8AF}
+h2{font-size:20px;margin:40px 0 8px;color:var(--deep);border-bottom:3px solid var(--teal);padding-bottom:8px}
+h3{font-size:16px;margin:20px 0 8px;color:var(--deep)}
+p{margin:8px 0}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin:14px 0;box-shadow:0 2px 10px rgba(4,37,44,.06)}
+.done{display:inline-block;background:#E6F5EE;color:var(--ok);border-radius:20px;padding:2px 12px;font-size:11.5px;font-weight:800;margin-left:8px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;background:#fff}
+th{background:#F0F6F7;text-align:left;padding:9px 10px;border:1px solid var(--border);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)}
+td{padding:9px 10px;border:1px solid var(--border);vertical-align:top}
+code{background:#EEF2F7;border-radius:5px;padding:1px 6px;font-size:12.5px;color:#0B6373;font-family:Consolas,monospace}
+.note{background:#FBF3E2;border:1px solid #EAD9A8;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:#7A5614}
+.good{background:#E6F5EE;border:1px solid #A9DFC8;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13.5px;color:#065F46}
+ul{margin:8px 0 8px 22px}
+li{margin:5px 0}
+.chk li{list-style:none;margin-left:-22px;padding-left:26px;position:relative}
+.chk li:before{content:"☐";position:absolute;left:0;font-size:15px;color:var(--teal)}
+.idea{border-left:4px solid var(--teal);padding-left:14px;margin:14px 0}
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="k">Night Review · For Ejaz Hussain, Managing Director</div>
+  <h1>SmartEPT Money System — Complete Rework Delivered<br>All 6 Phases + Your 3 Approved Extras</h1>
+  <p>Everything from the approved plan is built, tested for syntax and rendering, deployed into the live tree and committed to git. SmartEPT's money system now has SmartPRS's smooth front door on top of its own stronger accounting engine — plus international USD sales and three automations SmartPRS doesn't have. Nothing existing was disturbed; the pricing logic was not touched anywhere.</p>
+  <div class="meta">6 August 2026 · Commits <b>43c8eb4</b> (Phases 0+1) and <b>5213f2c</b> (Phases 2–6) on main · No database migrations needed · Your action list is at the end</div>
+</div>
+<div class="page">
+
+<h2>1. What was built — phase by phase</h2>
+
+<div class="card"><h3>Phase 0 — Foundation protected & repaired <span class="done">DONE</span></h3>
+<ul>
+<li>Trials now issue on the real <b>SmartEPT v2 plan</b> (they were silently using the retired "Professional" plan).</li>
+<li>Trial accounts now correctly tagged <b>Cloud</b> (were "client-hosted").</li>
+<li>Untouched, guaranteed: the ledger door, invoices/GST engine, pay links, credit desk, coupons, admin pricing bands, <b>all pricing logic</b>, landing content (only 2 button links changed).</li>
+</ul></div>
+
+<div class="card"><h3>Phase 1 — The /buy front door <span class="done">DONE</span></h3>
+<ul>
+<li>New public <b>/buy</b> page: Cloud/Perpetual, users, advance period, optional Setup, coupon box <b>with the exclusive-offer email catch</b>, live "Payable now" — and a real <b>Pay securely &amp; activate</b> button. No OTP for buyers — payment is the proof.</li>
+<li>Payment → your existing golden path untouched: licence + PAID GST invoice + receipt + WhatsApp + <b>auto-login</b> into the portal.</li>
+<li>Landing "Start on Cloud"/"Buy a licence" now point to /buy; old links auto-forward; trial page stays trial-only with a "ready to buy?" link.</li>
+<li>Abandoned buys recover themselves: the buyer can sign in anytime and reopen the pay link — plus see Extra #1 below.</li>
+</ul></div>
+
+<div class="card"><h3>Phase 2 — Trial = separate LEAD path (your decision) <span class="done">DONE</span></h3>
+<ul>
+<li>Every trial signup <b>also creates a Lead</b> (source "trial", linked to the account) with an instant email alert to sales + WhatsApp ping.</li>
+<li>Trial-end reminders (day 3/1/0) already existed and stay; the portal's trial banner with "Choose a plan" stays.</li>
+</ul></div>
+
+<div class="card"><h3>Phase 3 — Quotations, self-serve + one-screen admin <span class="done">DONE</span></h3>
+<ul>
+<li>/buy now has <b>"Prefer a formal quotation? Email it to me with a pay link"</b> — a real quotation (EPT-Q number) is created and emailed instantly with the pay link and a printable quote page; WhatsApp remains as a secondary option. Each quotation also lands as a Lead (status QUOTED).</li>
+<li>New <b>public printable quotation</b> at the pay link + <code>/quote</code> — token-secured, no login, finance can print it.</li>
+<li>Admin: new <b>"+ Quote for NEW client"</b> button on the Orders screen — prospect details + quotation in ONE screen, no pre-created client. Emails the client automatically (optional tick) and gives you the pay link + WhatsApp share.</li>
+<li>When a prospect's quote is paid, their <b>portal login is auto-created</b> (they set their password via Forgot-password OTP).</li>
+<li>Expired quote links already refused payment in SmartEPT (better than SmartPRS) — verified and kept.</li>
+</ul></div>
+
+<div class="card"><h3>Phase 4 — International money (USD) <span class="done">DONE</span></h3>
+<ul>
+<li>/buy has a <b>Currency switch: ₹ INR · India / $ USD · International</b>. USD shows converted prices live and GST becomes "export (0%)".</li>
+<li>USD orders convert at your admin-set <b>USD → INR rate</b> (new field in Settings → Company &amp; Tax, default 88) and settle by <b>Stripe</b> (already integrated — just add keys in Settings).</li>
+<li>USD invoices print as <b>zero-rated export invoices</b> ("Supply meant for export under LUT…").</li>
+<li>Admin "+ Quote for NEW client" also supports USD.</li>
+</ul></div>
+
+<div class="card"><h3>Phase 5 — Renewal muscle <span class="done">DONE</span></h3>
+<ul>
+<li>Reminder ladder upgraded to <b>30 / 15 / 7 / 3 / 1 / 0 days</b> before expiry (email + WhatsApp), then a <b>daily grace-period reminder</b> ("grace day N of 7 — agents stop syncing on {date}") until renewal.</li>
+<li><b>Pro-rata mid-period upgrades</b> (SmartPRS's best feature, now in SmartEPT): the client portal's Buy &amp; Renew screen has an <b>"Add users mid-period"</b> card — they pay only the difference for the remaining days, the expiry date doesn't move, and renewals bill the new size automatically.</li>
+<li>The automation engine now runs <b>hourly</b> (everything is deduplicated, so nothing ever double-sends).</li>
+</ul></div>
+
+<div class="card"><h3>Phase 6 — No-weak-spot sweep <span class="done">DONE</span></h3>
+<ul>
+<li>System Health (Help → Troubleshooting) gained a <b>"Public Buy page"</b> check — template present, gateways configured, USD readiness.</li>
+<li>New plain-language <b>KB card</b>: "How the public Buy page works — and what to check if a buyer reports a problem".</li>
+<li>Invoice print already showed Received/Balance for credit clients (SmartEPT was already ahead of SmartPRS here) — verified; added the export-invoice wording for USD.</li>
+<li>Overpayment guards verified (the ledger caps every recording at the open balance — nothing to fix).</li>
+</ul></div>
+
+<div class="card"><h3>Your 3 approved beyond-SmartPRS extras <span class="done">DONE</span></h3>
+<ul>
+<li><b>Abandoned-buy rescue:</b> a /buy order unpaid after ~3 hours gets ONE automatic email resending the pay link ("your order is reserved, price locked"). Recovers lost sales silently.</li>
+<li><b>Quote-expiry chaser:</b> an unpaid quotation gets ONE automatic reminder as its validity approaches the end. No quote dies silently.</li>
+<li><b>MD daily money digest:</b> every morning (~7–8 AM) one email to you — yesterday's leads, trials, quotations (with value), payments received (with names), total credit outstanding, licences expiring within 7 days. Set the recipient in Settings → "MD daily money-digest email" (defaults to the company email).</li>
+</ul></div>
+
+<h2>2. Your 5-minute action list (required once)</h2>
+<div class="note"><b>Nothing needs migrate.bat — there are zero database changes.</b> Only these:
+<ul>
+<li><b>1.</b> Laragon <b>Stop All → Start All</b> (OPcache — without this the old code keeps running).</li>
+<li><b>2.</b> Hard-refresh the landing page (<b>Ctrl+Shift+R</b>).</li>
+<li><b>3.</b> In /admin → Settings: check the new <b>USD → INR rate</b> (default 88) and optionally set <b>MD digest email</b> to your personal inbox. For USD sales, add <b>Stripe keys</b> when ready.</li>
+<li><b>4.</b> Confirm the Windows scheduler runs <code>php artisan schedule:run</code> every minute (it powers all the automations — System Health shows a red row if it is not running).</li>
+</ul></div>
+
+<h2>3. Night-review click-through checklist</h2>
+<div class="card"><ul class="chk">
+<li>Landing → <b>Start on Cloud</b> → lands on /buy with live prices (not the trial page).</li>
+<li>/buy: change users/period → price updates; switch <b>$ USD</b> → dollar prices, GST becomes export 0%.</li>
+<li>/buy: fill details → <b>Pay securely &amp; activate</b> → Razorpay test payment → you land signed-in inside the client portal; licence active; PAID invoice emailed.</li>
+<li>/buy: <b>Prefer a formal quotation</b> → quotation email arrives with pay link + printable quote; it appears in /admin → Orders (status quote) and in Leads.</li>
+<li>Landing → <b>Start free trial</b> → trial works as before AND the company appears in /admin → Leads (source trial) + sales alert email.</li>
+<li>/admin → Orders → <b>+ Quote for NEW client</b> → create a test quotation without creating a client first; check the pay link works.</li>
+<li>Client portal → Buy &amp; Renew → <b>Add users mid-period</b> → pay page shows the pro-rata amount only.</li>
+<li>/admin → Help → Troubleshooting → System Health shows the new <b>Public Buy page</b> row green.</li>
+<li>Next morning: check your inbox for the <b>MD money digest</b>.</li>
+</ul></div>
+
+<h2>4. Improvement ideas beyond SmartPRS — awaiting your approval (nothing built)</h2>
+<div class="card">
+<div class="idea"><b>1. WhatsApp pay-link templates.</b> Today quotations/rescues go by email; with an approved Interakt template the pay link could land directly on the client's WhatsApp — where Indian clients actually respond.</div>
+<div class="idea"><b>2. Partner / referral codes.</b> A coupon-like code per channel partner that tracks every sale it brings and computes their commission — a growth engine for reseller-led sales.</div>
+<div class="idea"><b>3. Razorpay EMI / affordability options.</b> Let bigger perpetual licences be paid in instalments through the gateway (EMI, pay-later) — could unlock larger deals without your credit risk.</div>
+<div class="idea"><b>4. "Quote viewed" tracking.</b> Know when the client opened the quotation page, so sales calls at the perfect moment.</div>
+<div class="idea"><b>5. Self-serve storage top-up.</b> Cloud clients buy extra GB from the portal with instant payment — small recurring revenue with zero sales effort.</div>
+<p style="font-size:12.5px;color:var(--t3)">Reply with the numbers you want and they go into the next build.</p>
+</div>
+
+<h2>5. Technical record (for the file)</h2>
+<div class="card" style="font-size:12.5px;color:var(--t2)">
+<p><b>Commits on main:</b> 43c8eb4 (P0+P1), 5213f2c (P2–P6 + extras). Files: new — buy.blade.php, BuyController.php; modified — routes/web.php, routes/console.php, CheckoutController, BillingService, Client/AuthController, Client/PortalApiController, portal.blade, Admin/BillingApiController, admin/console.blade, RunDunning, Api/PublicController, Admin/ConfigApiController, invoice-print.blade, Admin/DiagnosticsController. All PHP syntax-checked; /buy rendered and JS-verified in headless Chromium (INR + USD, cloud + perpetual, custom-band, quote flow). New settings: usd_inr_rate, md_digest_email. New routes: GET /buy, POST /buy/order, POST /buy/quote, GET /pay/{n}/{t}/quote, POST /admin/api/prospect-quote, POST /client/api/licences/{l}/upgrade. Scheduler: smartept:dunning now hourly (all sends deduped via mail_logs). Pricing engine, landing pricing JS, bands: <b>untouched</b>.</p>
+</div>
+
+<p style="margin-top:40px;font-size:12px;color:var(--t3);text-align:center">SmartEPT Money Rework — Complete Delivery · 6 August 2026 · Ametecs India Private Limited · Prepared for the Managing Director's night review</p>
+</div>
+</body>
+</html>
