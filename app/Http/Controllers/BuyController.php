@@ -33,6 +33,12 @@ class BuyController extends Controller
 
     public function order(Request $request, BillingService $billing, PricingService $pricing)
     {
+        // Honeypot (Ejaz, 7-Aug): bots fill the invisible field — feed them a
+        // fake success so they move on; nothing is created, nobody is emailed.
+        if ($request->filled('website_hp')) {
+            return response()->json(['ok' => true, 'number' => 'SEPT-ORD-00000', 'total' => 0, 'pay_url' => url('/')], 201);
+        }
+
         $data = $request->validate([
             'company_name' => ['required', 'string', 'max:190'],
             'contact_name' => ['required', 'string', 'max:190'],
@@ -149,6 +155,12 @@ class BuyController extends Controller
      */
     public function quote(Request $request, BillingService $billing, PricingService $pricing)
     {
+        // Honeypot — see order() above.
+        if ($request->filled('website_hp')) {
+            return response()->json(['ok' => true, 'quote_number' => 'EPT-Q-0000', 'total' => 0, 'currency' => 'INR',
+                'pay_url' => url('/'), 'print_url' => url('/'), 'message' => 'Quotation emailed.'], 201);
+        }
+
         $data = $request->validate([
             'company_name' => ['required', 'string', 'max:190'],
             'contact_name' => ['required', 'string', 'max:190'],

@@ -111,6 +111,8 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
   <h1 class="buyh">Buy SmartEPT — instant activation</h1>
   <p class="sub">Pay securely and your workspace, licence and GST invoice are created the same minute — then you sign straight in. <b>Just exploring?</b> <a href="/client/signup" style="color:#0B6373;font-weight:700">Start a 7-day free trial →</a></p>
   <form id="f-buy" onsubmit="return doBuy(event)">
+    {{-- Honeypot (Ejaz, 7-Aug): invisible to humans; bots that fill it get a fake success and nothing is created. --}}
+    <div style="position:absolute;left:-5000px;top:-5000px;height:1px;overflow:hidden" aria-hidden="true"><input type="text" name="website_hp" tabindex="-1" autocomplete="off"></div>
     <label>Company name</label><input name="company_name" required maxlength="190">
     <div class="row">
       <div><label>Your name</label><input name="contact_name" required maxlength="190"></div>

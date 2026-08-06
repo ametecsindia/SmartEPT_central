@@ -31,6 +31,13 @@ class AuthController extends Controller
 
     public function signupRequestOtp(Request $request)
     {
+        // Honeypot (Ejaz, 7-Aug): invisible field filled = bot → fake success,
+        // no OTP is issued, no email goes out.
+        if ($request->filled('website_hp')) {
+            return response()->json(['ok' => true,
+                'message' => 'We emailed a 6-digit code to ' . (string) $request->input('email') . '. Enter it below to start your trial.']);
+        }
+
         $data = $request->validate([
             'company_name' => ['required', 'string', 'max:190'],
             'contact_name' => ['required', 'string', 'max:190'],

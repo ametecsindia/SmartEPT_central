@@ -80,6 +80,12 @@ class PublicController extends Controller
      */
     public function lead(Request $request, MailService $mail)
     {
+        // Honeypot (Ejaz, 7-Aug): bots that fill the invisible field get a fake
+        // thank-you; no lead is saved, no alert goes to sales.
+        if ($request->filled('website_hp')) {
+            return response()->json(['ok' => true, 'message' => 'Thank you! Our team will contact you shortly.'], 201);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:190'],
             'company' => ['nullable', 'string', 'max:190'],

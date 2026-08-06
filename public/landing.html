@@ -732,6 +732,7 @@ footer{background:var(--cov1);color:#9FC5CC;padding:56px 0 30px}
     <form class="leadform" onsubmit="return sendWA(event)">
       <h3>Get a quote on WhatsApp</h3>
       <div class="fs">Fill this in — it opens WhatsApp with your details ready to send.</div>
+      <div style="position:absolute;left:-5000px;top:-5000px;height:1px;overflow:hidden" aria-hidden="true"><input type="text" id="lfHp" tabindex="-1" autocomplete="off"></div>
       <label>Your name</label><input id="lfName" required placeholder="e.g. Rajesh Kumar">
       <label>Company</label><input id="lfCo" required placeholder="e.g. ABC Recoveries Pvt Ltd">
       <label>Your WhatsApp / mobile number</label><input id="lfPhone" required placeholder="e.g. 98480 12345" inputmode="tel" maxlength="16">
@@ -936,7 +937,7 @@ function sendWA(e){
      with an instant email to sales — fire-and-forget, never blocks WhatsApp. */
   if (location.protocol !== 'file:') {
     try { fetch('/api/v1/public/leads', {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body: JSON.stringify({name:name, company:co, phone:ph,
+      body: JSON.stringify({name:name, company:co, phone:ph, website_hp:(document.getElementById('lfHp')||{}).value||'',
         devices_interested: parseInt(dev,10)||null, message:'Interested in: '+plan+' ('+dev+' devices)', source:'website'})}).catch(()=>{}); } catch(err){}
   }
   window.open((window.WA_BASE||'https://wa.me/919000098877')+'?text='+encodeURIComponent(msg),'_blank');

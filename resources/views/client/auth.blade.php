@@ -120,6 +120,8 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     <button class="go" type="submit">Sign in →</button>
   </form>
   <form id="f-signup" style="display:none" onsubmit="return doSignup(event)">
+    {{-- Honeypot (Ejaz, 7-Aug): invisible to humans; bots that fill it get a fake success and no trial/OTP is created. --}}
+    <div style="position:absolute;left:-5000px;top:-5000px;height:1px;overflow:hidden" aria-hidden="true"><input type="text" name="website_hp" tabindex="-1" autocomplete="off"></div>
     <label>Company name</label><input name="company_name" required maxlength="190">
     <div class="row">
       <div><label>Your name</label><input name="contact_name" required maxlength="190"></div>
