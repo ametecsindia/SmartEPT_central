@@ -96,6 +96,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
         Route::get('tenants', [Admin\TenantApiController::class, 'index']);
         Route::get('tenants/{tenant}', [Admin\TenantApiController::class, 'show']);
         Route::get('licences', [Admin\LicenceApiController::class, 'index']);
+        Route::get('licences/{licence}/devices', [Admin\LicenceApiController::class, 'devices']); // 6-Aug: device seats (free a formatted/replaced PC)
         Route::get('orders', [Admin\BillingApiController::class, 'orders']);
         Route::get('credit-clients', [Admin\BillingApiController::class, 'creditClients']); // §10 credit table
         Route::get('invoices', [Admin\BillingApiController::class, 'invoices']);

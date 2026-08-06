@@ -59,7 +59,7 @@ class LicenceApiController extends Controller
 
     public function action(Request $request, Licence $licence)
     {
-        $action = $request->validate(['action' => ['required', 'in:renew,renew_amc,suspend,resume,revoke']])['action'];
+        $action = $request->validate(['action' => ['required', 'in:renew,renew_amc,suspend,resume,revoke,release_binding']])['action'];
 
         match ($action) {
             'renew' => $this->licences->renew($licence),
@@ -67,11 +67,36 @@ class LicenceApiController extends Controller
             'suspend' => $this->licences->suspend($licence),
             'resume' => $this->licences->resume($licence),
             'revoke' => $this->licences->revoke($licence),
+            // Ejaz, 6-Aug-2026: the client's server was formatted / damaged /
+            // replaced — clear the binding so the NEW server can validate and
+            // bind on its first phone-home. The old server stops validating.
+            'release_binding' => $licence->update(['server_fingerprint' => null]),
         };
 
         AuditLog::write("licence.$action", $licence, ['key' => $licence->key]);
 
         return response()->json($licence->fresh());
+    }
+
+    /**
+     * GET /admin/api/licences/{licence}/devices — every device seat on this
+     * licence, so the admin can free the seat of a formatted/damaged/replaced
+     * PC (the replacement then takes the free seat).
+     */
+    public function devices(Licence $licence)
+    {
+        return response()->json([
+            'licence' => $licence->only(['id', 'key', 'device_limit']),
+            'active' => $licence->activeDevices()->count(),
+            'devices' => $licence->devices()->orderByDesc('status')->orderBy('hostname')->get()
+                ->map(fn ($d) => [
+                    'device_uid' => $d->device_uid,
+                    'hostname' => $d->hostname,
+                    'status' => $d->status,
+                    'activated_at' => optional($d->activated_at)->toDateString(),
+                    'deactivated_at' => optional($d->deactivated_at)->toDateString(),
+                ]),
+        ]);
     }
 
     /**
@@ -91,16 +116,24 @@ class LicenceApiController extends Controller
             'fingerprint' => ['nullable', 'string', 'max:190'],
         ]);
 
-        $token = $signer->sign($licence, $data['fingerprint'] ?? null);
+        // Ejaz, 6-Aug-2026: remember the fingerprint used, so "Licence file" can
+        // RE-DOWNLOAD later without retyping it (a fresh signed file with the
+        // same lock is functionally identical to the original).
+        $fp = trim((string) ($data['fingerprint'] ?? ''));
+        if ($fp !== '' && $fp !== $licence->server_fingerprint) {
+            $licence->update(['server_fingerprint' => $fp]);
+        }
+
+        $token = $signer->sign($licence, $fp !== '' ? $fp : null);
         AuditLog::write('licence.file_issued', $licence, [
             'key' => $licence->key,
-            'locked' => ! empty($data['fingerprint']),
+            'locked' => $fp !== '',
         ]);
 
         return response()->json([
             'filename' => $signer->filename($licence),
             'token' => $token,
-            'locked' => ! empty($data['fingerprint']),
+            'locked' => $fp !== '',
         ]);
     }
 

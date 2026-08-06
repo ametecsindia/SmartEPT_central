@@ -1301,7 +1301,39 @@ async function loadLicences() {
   <td>${CAN_WRITE ? `<button class="link" onclick="renewLic(${l.id})">Renew</button>
   <button class="link" onclick="editLic(${l.id})">Edit</button>
   ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
-  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>
+  <button class="link" onclick="licDevices(${l.id},'${esc(l.key)}')">Devices</button>
+  ${l.server_fingerprint?`<button class="link" onclick="releaseBinding(${l.id})">Release binding</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+}
+// Ejaz, 6-Aug: the client's SERVER was formatted / damaged / replaced —
+// release the binding so the fresh install validates and binds itself.
+async function releaseBinding(id) {
+  if (!confirm('Release the server binding?\n\nUse this when the client\'s server PC was formatted, damaged or replaced. The NEW installation will bind itself on its first connection; the old server stops validating. If they use a .lic file, generate a fresh one with the new machine\'s fingerprint after this.')) return;
+  try { await api(`licences/${id}/action`, {method:'POST', body:{action:'release_binding'}}); toast('Server binding released — the new server can now activate'); loadLicences(); }
+  catch (e) { toast('Error: ' + e); }
+}
+// Device seats — free the seat of a formatted/damaged/replaced employee PC.
+async function licDevices(id, key) {
+  openModal(`<h2>Device seats — ${esc(key)}</h2><div class="sub" id="ld_sub">Loading…</div><div id="ld_list">…</div>
+  <div class="foot"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`, true);
+  await loadLicDevices(id);
+}
+async function loadLicDevices(id) {
+  try {
+    const d = await api(`licences/${id}/devices`);
+    document.getElementById('ld_sub').innerHTML = `<b>${d.active}/${d.licence.device_limit}</b> seats in use. If an employee's PC was <b>formatted, damaged or replaced</b>, free its seat here — the replacement PC takes the free seat automatically when its agent connects.`;
+    document.getElementById('ld_list').innerHTML = d.devices.length ? `<table>
+      <tr><th>PC / Hostname</th><th>Device ID</th><th>Status</th><th>Activated</th><th></th></tr>
+      ${d.devices.map(v => `<tr><td><b>${esc(v.hostname || '—')}</b></td><td class="mini">${esc(v.device_uid)}</td>
+      <td>${pill(v.status)}</td><td class="mini">${esc(v.activated_at || '—')}</td>
+      <td>${v.status === 'active' ? `<button class="link" onclick="freeSeat(${id},'${esc(v.device_uid)}')">Free seat</button>` : `<span class="mini">seat free</span>`}</td></tr>`).join('')}
+    </table>` : '<p class="mini">No devices have activated on this licence yet.</p>';
+  } catch (e) { document.getElementById('ld_list').textContent = 'Error: ' + e; }
+}
+async function freeSeat(id, uid) {
+  if (!confirm('Free this seat?\n\nDo this when that PC was formatted, damaged or replaced. Monitoring from the old PC stops; the new PC takes the free seat when its agent connects.')) return;
+  try { await api(`licences/${id}/deactivate-device`, {method:'POST', body:{device_uid: uid}}); toast('Seat freed'); await loadLicDevices(id); loadLicences(); }
+  catch (e) { toast('Error: ' + e); }
 }
 async function licAction(id, action) {
   if (action === 'revoke' && !confirm('Revoke this licence permanently?')) return;
@@ -1364,13 +1396,16 @@ async function saveLic(id){
   catch(e){ document.getElementById('ed_msg').textContent='Error: '+e; }
 }
 function licFile(id, key) {
-  openModal(`<h2>Generate licence file (.lic)</h2>
-    <div class="sub">Offline, node-locked licence for <b>${esc(key)}</b>. Paste the client's machine fingerprint (from their console's Licence screen). Leave blank for a file that runs on any machine.</div>
+  const l = _licById(id), fp = l.server_fingerprint || '';
+  openModal(`<h2>Licence file (.lic) — generate or re-download</h2>
+    <div class="sub">Offline, node-locked licence for <b>${esc(key)}</b>. ${fp
+      ? 'The fingerprint from the last generation is remembered below — just click the button to <b>re-download</b>. If the client\'s PC was formatted or changed, paste the NEW machine\'s fingerprint instead (from their console\'s Licence screen).'
+      : 'Paste the client\'s machine fingerprint (from their console\'s Licence screen). Leave blank for a file that runs on any machine.'}</div>
     <label>Client machine fingerprint</label>
-    <input id="lf_fp" placeholder="40-character fingerprint from the client" style="font-family:ui-monospace,monospace">
+    <input id="lf_fp" value="${esc(fp)}" placeholder="40-character fingerprint from the client" style="font-family:ui-monospace,monospace">
     <div class="mini" id="lf_msg" style="margin-top:6px"></div>
     <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-p" onclick="doLicFile(${id})">Generate &amp; download</button></div>`);
+    <button class="btn btn-p" onclick="doLicFile(${id})">${fp ? 'Re-download .lic' : 'Generate &amp; download'}</button></div>`);
 }
 async function doLicFile(id) {
   const fp = (document.getElementById('lf_fp').value || '').trim();
