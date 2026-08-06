@@ -60,6 +60,8 @@ font-size:14px;color:#0B6373;background:#fff;cursor:pointer;text-align:center;te
       @if (! $razorpayEnabled && ! $stripeEnabled)
         <div class="note"><b>Online payment is being enabled.</b><br>Meanwhile pay by NEFT/UPI and share the UTR on WhatsApp 90000 98877 — we activate within the hour.</div>
       @endif
+      {{-- 6-Aug: order copy / proforma invoice for the client's accounts team (pay link printed on it). --}}
+      <a class="alt" href="/pay/{{ $order->number }}/{{ $token }}/proforma" target="_blank">Download {{ $order->quote_number ? 'quotation' : 'order copy / proforma invoice' }} (print / save PDF)</a>
     @endif
     <div class="note">Ametecs India Private Limited · GST 36AAHCT0971F1ZB<br>Questions? WhatsApp 90000 98877 · sales@ametecsindia.com</div>
   </div>

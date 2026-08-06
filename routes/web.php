@@ -70,6 +70,7 @@ Route::post('/buy/quote', [\App\Http\Controllers\BuyController::class, 'quote'])
 // ---------- Public: checkout ----------
 Route::get('/pay/{number}/{token}', [CheckoutController::class, 'show']);
 Route::get('/pay/{number}/{token}/quote', [CheckoutController::class, 'quotePrint']); // Phase 3: printable quotation, token-secured
+Route::get('/pay/{number}/{token}/proforma', [CheckoutController::class, 'quotePrint']); // 6-Aug: same doc as proforma invoice for plain orders
 Route::post('/pay/{number}/{token}/razorpay-order', [CheckoutController::class, 'createRazorpayOrder']);
 Route::post('/pay/{number}/{token}/razorpay-callback', [CheckoutController::class, 'razorpayCallback']);
 Route::get('/pay/{number}/{token}/stripe', [CheckoutController::class, 'stripeRedirect']);
@@ -89,6 +90,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
     Route::get('/landing', [Admin\LandingAdminController::class, 'page'])->middleware('admin.role:super'); // Landing CMS editor
     Route::get('/invoices/{invoice}/print', [Admin\InvoicePrintController::class, 'show']);
     Route::get('/orders/{order}/quote-print', [Admin\InvoicePrintController::class, 'quote']);
+    Route::get('/orders/{order}/proforma', [Admin\InvoicePrintController::class, 'proforma']); // 6-Aug: proforma invoice for payment-pending orders
 
     Route::prefix('api')->group(function () {
         // Read endpoints — all roles

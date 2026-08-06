@@ -1499,7 +1499,7 @@ async function loadOrders() {
   o.status==='created' && CAN_WRITE ? `${o.provisioned_at && o.balance>0
     ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
     : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
-  <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:''}` :
+  <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:`<a class="link" href="/admin/orders/${o.id}/proforma" target="_blank">Proforma</a>`}` :
   (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
 }
 async function approveQuote(id) {

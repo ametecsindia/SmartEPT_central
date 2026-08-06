@@ -58,10 +58,25 @@ class InvoicePrintController extends Controller
         ];
     }
 
+    /**
+     * Ejaz, 6-Aug-2026: PROFORMA INVOICE for a payment-pending order (no quote
+     * number needed) — the order copy the client's accounts team can file, with
+     * the pay link printed on it. Same template, adaptive title.
+     */
+    public function proforma(Order $order)
+    {
+        return $this->orderDocument($order);
+    }
+
     public function quote(Order $order)
     {
         abort_unless($order->quote_number, 404);
 
+        return $this->orderDocument($order);
+    }
+
+    private function orderDocument(Order $order)
+    {
         return view('quote-print', [
             'order' => $order->load('tenant'),
             'payUrl' => url('/pay/' . $order->number . '/' . CheckoutController::token($order)),

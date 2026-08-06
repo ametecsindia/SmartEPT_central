@@ -5,7 +5,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=2">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 <meta charset="UTF-8">
-<title>Quotation {{ $order->quote_number }}</title>
+<title>{{ $order->quote_number ? 'Quotation ' . $order->quote_number : 'Proforma Invoice ' . $order->number }}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 @page{size:A4;margin:18mm}
@@ -35,20 +35,20 @@ td{padding:8px 10px;border-bottom:1px solid #F0F1F4}
 <body>
 <div class="noprint"><button onclick="window.print()">Print / Save PDF</button></div>
 <div class="top">
-  <div><img src="/img/smartept-logo-h-light.png" alt="SmartEPT by Ametecs" style="height:42px;width:auto;display:block;margin-bottom:8px"><h1>QUOTATION / PROFORMA INVOICE</h1>
-    <div style="font-size:12px;color:#565A66">{{ $order->quote_number }} · {{ $order->created_at->format('d M Y') }} · {{ $order->valid_until ? 'valid until ' . $order->valid_until->format('d M Y') : 'valid 7 days' }}</div></div>
+  <div><img src="/img/smartept-logo-h-light.png" alt="SmartEPT by Ametecs" style="height:42px;width:auto;display:block;margin-bottom:8px"><h1>{{ $order->quote_number ? 'QUOTATION / PROFORMA INVOICE' : 'PROFORMA INVOICE' }}</h1>
+    <div style="font-size:12px;color:#565A66">{{ $order->quote_number ?: $order->number }} · {{ $order->created_at->format('d M Y') }} · {{ $order->valid_until ? 'valid until ' . $order->valid_until->format('d M Y') : 'valid 7 days' }}</div></div>
   <div class="co"><b style="color:#15171C;font-size:13px">{{ $company['name'] }}</b><br>
     {{ $company['address'] }}<br>GSTIN: {{ $company['gstin'] }}<br>{{ $company['phone'] }} · {{ $company['email'] }}</div>
 </div>
 <div class="meta">
-  <div class="box"><b>Quoted To</b>{{ $order->tenant->company_name }}<br>
+  <div class="box"><b>{{ $order->quote_number ? 'Quoted To' : 'Billed To' }}</b>{{ $order->tenant->company_name }}<br>
     {{ $order->tenant->address }}<br>
     @if($order->tenant->gstin) GSTIN: {{ $order->tenant->gstin }}<br>@endif
     {{ $order->tenant->email }} · {{ $order->tenant->phone }}</div>
-  <div class="box"><b>Quotation Details</b>Reference order: {{ $order->number }}<br>
+  <div class="box"><b>{{ $order->quote_number ? 'Quotation Details' : 'Order Details' }}</b>Reference order: {{ $order->number }}<br>
     @if($order->requested_by) Requested by: {{ $order->requested_by }}<br>@endif
     @if($order->po_number) PO number: {{ $order->po_number }}<br>@endif
-    Status: {{ $order->status === 'quote' ? 'AWAITING MANAGEMENT APPROVAL' : strtoupper($order->status) }}</div>
+    Status: {{ $order->status === 'quote' ? 'AWAITING MANAGEMENT APPROVAL' : ($order->status === 'created' ? 'PAYMENT PENDING' : strtoupper($order->status)) }}</div>
 </div>
 @php
     // SAC shown per line (997331 = software licensing). The CGST/SGST-vs-IGST
@@ -74,12 +74,15 @@ td{padding:8px 10px;border-bottom:1px solid #F0F1F4}
 <p style="margin-top:8px;font-size:11px;color:#878C99">GST 18% under SAC {{ $sac }} (software licensing). The tax invoice issued on payment
   shows CGST 9% + SGST 9% for Telangana customers, or IGST 18% for other states, based on your billing profile.</p>
 @endif
-<div class="payline"><b>For Management — approve &amp; pay online:</b>
+<div class="payline"><b>{{ $order->quote_number ? 'For Management — approve & pay online:' : 'Pay online:' }}</b>
   {{ $payUrl }}<br>UPI · Cards · NetBanking (Razorpay) or international card (Stripe). Payment activates the licence instantly and the GST tax invoice is issued automatically. Bank transfer (NEFT/UPI) is equally welcome — share the UTR on WhatsApp 90000 98877.</div>
+@unless ($order->quote_number)
+<p style="margin-top:8px;font-size:11px;color:#878C99"><b>Note:</b> This is a proforma invoice / order copy — not a tax invoice. The GST tax invoice is issued automatically the moment payment is received.</p>
+@endunless
 <div class="terms">Terms: Prices exclude GST unless shown. @if($order->valid_until)Quotation valid until {{ $order->valid_until->format('d M Y') }}.@else Quotation valid 7 days from date above.@endif Licence per active endpoint device; web-only managers free. One-time Setup &amp; Onboarding fee applies on first order only. Subject to SmartEPT standard commercial terms.</div>
 <div class="foot">
   <span>SmartEPT — Employee Productivity Tracking & Intelligence · by {{ $company['name'] }}</span>
-  <span>This is a computer-generated quotation.</span>
+  <span>This is a computer-generated {{ $order->quote_number ? 'quotation' : 'proforma invoice' }}.</span>
 </div>
 </body>
 </html>

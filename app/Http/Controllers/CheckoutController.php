@@ -115,8 +115,9 @@ class CheckoutController extends Controller
      */
     public function quotePrint(string $number, string $token)
     {
+        // 6-Aug: also serves plain payment-pending orders — the template renders
+        // as a PROFORMA INVOICE when there is no quotation number.
         $order = $this->findOrder($number, $token);
-        abort_unless($order->quote_number, 404);
 
         return view('quote-print', [
             'order' => $order->load('tenant'),
