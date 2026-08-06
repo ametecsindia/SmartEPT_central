@@ -1437,7 +1437,7 @@ async function newOrder() {
   <label>Client</label><select id="no_tenant" onchange="refreshQuote()">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
   <div class="row">
   <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="smartept" selected>SmartEPT — all features</option></select></div>
-  <div><label>Kind</label><select id="no_kind" onchange="refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual</option></select></div>
+  <div><label>Kind</label><select id="no_kind" onchange="kindBillingUi('no_kind','no_billing');refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
   <div><label>Billing period</label><select id="no_billing" onchange="refreshQuote()"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="no_deploy" onchange="refreshQuote()"><option value="client_hosted">Client-Hosted</option><option value="cloud">SmartEPT Cloud</option></select></div>
   <div><label>Devices</label><input id="no_devices" type="number" value="25" min="1" oninput="refreshQuote()"></div>
@@ -1488,7 +1488,7 @@ async function newProspectQuote() {
   <div><label>Mobile</label><input id="pq_phone"></div>
   <div><label>State code (GST — e.g. 36 Telangana)</label><input id="pq_state" maxlength="2" placeholder="36"></div>
   <div><label>GSTIN (optional)</label><input id="pq_gstin" maxlength="15" style="text-transform:uppercase"></div>
-  <div><label>Kind</label><select id="pq_kind"><option value="subscription">Cloud subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
+  <div><label>Kind</label><select id="pq_kind" onchange="pqKindUi()"><option value="subscription">Cloud subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
   <div><label>Users</label><input id="pq_devices" type="number" value="25" min="1"></div>
   <div><label>Billing period</label><select id="pq_billing"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Currency</label><select id="pq_currency"><option value="INR">₹ INR (GST invoice)</option><option value="USD">$ USD (export invoice, Stripe)</option></select></div>
@@ -1497,7 +1497,17 @@ async function newProspectQuote() {
   <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="pq_send" checked style="width:auto"> Email the quotation + pay link to the client now</label>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="createProspectQuote()">Create quotation</button></div>`, true);
+  pqKindUi();
 }
+// Perpetual = one-time — the billing-period dropdown must say so (Ejaz, 6-Aug).
+const BILLING_OPTS = '<option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option>';
+function kindBillingUi(kindSel, billSel) {
+  const s = document.getElementById(billSel), perp = document.getElementById(kindSel)?.value === 'perpetual';
+  if (!s) return;
+  if (perp) { s.innerHTML = '<option value="annual">One-time — lifetime licence (no billing period)</option>'; s.disabled = true; }
+  else if (s.disabled || s.options.length < 3) { s.innerHTML = BILLING_OPTS; s.disabled = false; }
+}
+function pqKindUi() { kindBillingUi('pq_kind', 'pq_billing'); }
 async function createProspectQuote() {
   try {
     const r = await api('prospect-quote', {method:'POST', body:{
