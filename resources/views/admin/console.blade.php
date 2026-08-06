@@ -1182,6 +1182,7 @@ async audit() {
   <div class="row" style="margin-bottom:12px;align-items:flex-end">
     <div><label>Filter action</label><select id="aud-act" onchange="AUDIT_ACTION=this.value;go('audit')">${opts}</select></div>
     <button class="btn" onclick="go('audit')">Refresh</button>
+    ${CAN_WRITE ? '<button class="btn btn-l" onclick="purgeLogsModal()">🧹 Clean up logs</button>' : ''}
     <span class="mini" style="margin-left:auto">${(d.total ?? d.data.length)} entries${cur ? ' · filtered' : ''}</span>
   </div>
   <table><tr><th>When</th><th>Who</th><th>Action</th><th>Subject</th><th>Details</th></tr>
@@ -1352,6 +1353,7 @@ const LIC_HIST_LABELS = {
   'licence.machine_shifted':'Licence SHIFTED to a new machine',
   'licence.validation_rejected':'⚠ BLOCKED: wrong/blocked machine tried to use this licence (possible misuse)',
   'licence.verified':'✓ Verified — bound PC checked in (daily log)',
+  'licence.verified_summary':'✓ Verified — monthly summary (dailies cleaned up, history kept)',
   'licence.machine_bound':'Machine bound to this licence (first check-in)',
   'licence.file_issued':'Licence file (.lic) generated / downloaded',
   'licence.edited':'Details edited', 'licence.limit_changed':'Device limit changed',
@@ -1542,6 +1544,44 @@ async function loadOrders() {
     : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
   <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:`<a class="link" href="/admin/orders/${o.id}/proforma" target="_blank">Proforma</a>`}` :
   (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
+}
+// Ejaz, 6-Aug: log cleanup for performance — category + date range, with a
+// count preview before anything is deleted. Daily licence verifications are
+// ROLLED UP into monthly summaries so every licence's History stays complete.
+function purgeLogsModal() {
+  openModal(`<h2>Clean up logs</h2>
+  <div class="sub">Keeps the system fast as logs grow. <b>Permanent, never deleted:</b> licence lifecycle history (issued, shifted, bound, blocked, renewed, downloads, monthly summaries) and the money trail (orders, quotes, payments, invoices). Only routine bulk logs are cleanable — daily verifications are first rolled up into one monthly summary per licence, so every licence's History stays complete.</div>
+  <label>What to clean</label>
+  <select id="pl_cat">
+    <option value="audit|licence.verified">Daily licence verifications — roll up to monthly summaries (recommended)</option>
+    <option value="audit|logins">Admin sign-in/out entries</option>
+    <option value="mail|all">Email log (sent-mail records)</option>
+    <option value="audit|client">Client-activity entries (signups etc.)</option>
+    <option value="audit|all">All routine logs in the range (protected history is automatically kept)</option>
+  </select>
+  <div class="row"><div><label>From date</label><input id="pl_from" type="date"></div>
+  <div><label>To date</label><input id="pl_to" type="date"></div></div>
+  <div class="mini" style="margin-top:6px">Tip: keep at least the last 3–6 months. Older than that is safe to clean — summaries and the money records preserve the story.</div>
+  <div class="mini" id="pl_msg" style="margin-top:6px"></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" id="pl_btn" onclick="doPurgeLogs(false)">Count matching entries</button></div>`);
+}
+async function doPurgeLogs(confirmed) {
+  const [log, category] = document.getElementById('pl_cat').value.split('|');
+  const from = document.getElementById('pl_from').value, to = document.getElementById('pl_to').value;
+  const msg = document.getElementById('pl_msg'), btn = document.getElementById('pl_btn');
+  if (!from || !to) { msg.textContent = 'Pick both dates.'; return; }
+  try {
+    const r = await api('logs/purge', {method:'POST', body:{log, category, from, to, confirm: confirmed ? 1 : 0}});
+    if (r.preview) {
+      msg.innerHTML = '<b>' + r.count + '</b> log entr' + (r.count === 1 ? 'y' : 'ies') + ' match. Delete them now?' + (log === 'audit' ? ' (verified dailies become monthly summaries first)' : '');
+      btn.textContent = 'Yes — clean up ' + r.count + ' entries';
+      btn.onclick = () => doPurgeLogs(true);
+    } else {
+      toast('Cleaned ' + r.deleted + ' entries' + (r.summaries ? ' · ' + r.summaries + ' monthly summaries kept' : ''));
+      closeModal(); go('audit');
+    }
+  } catch (e) { msg.textContent = 'Error: ' + e; }
 }
 async function approveQuote(id) {
   try { await api(`orders/${id}/approve-quote`, {method:'POST'}); toast('Quotation approved — now payable'); loadOrders(); }

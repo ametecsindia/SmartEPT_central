@@ -153,6 +153,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::put('plans/{plan}/perpetual-bands', [Admin\ConfigApiController::class, 'savePerpetualBands']);
             Route::get('settings', [Admin\ConfigApiController::class, 'settings']);
             Route::put('settings', [Admin\ConfigApiController::class, 'updateSettings']);
+            Route::post('logs/purge', [Admin\ConfigApiController::class, 'purgeLogs']); // 6-Aug: category+date-range log cleanup (verified dailies roll up to monthly summaries)
             // ----- Landing CMS (super only) -----
             Route::get('landing/sections', [Admin\LandingAdminController::class, 'sections']);
             Route::put('landing/sections/{section}', [Admin\LandingAdminController::class, 'updateSection']);
