@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\LandingSection;
+
+/**
+ * Rebuilds the landing page HTML from landing_sections.
+ * Layout chrome (__head__) is always included; other sections only when visible.
+ * Concatenation in sort order == the original file byte-for-byte (proven by
+ * landing:import / landing:verify), so nothing about the page changes on go-live.
+ */
+class LandingRenderer
+{
+    public static function html(): string
+    {
+        return LandingSection::orderBy('sort')->get()
+            ->filter(fn ($r) => $r->is_layout || $r->is_visible)
+            ->pluck('html')
+            ->implode('');
+    }
+}
