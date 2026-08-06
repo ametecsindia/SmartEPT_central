@@ -150,6 +150,12 @@ class LicenceService
             return ['ok' => false, 'reason' => 'unknown_key'];
         }
         if ($licence->status !== 'active') {
+            // Anti-fraud trail (Ejaz, 6-Aug-2026): a revoked/suspended licence
+            // still being used somewhere is worth a History entry.
+            if (in_array($licence->status, ['revoked', 'suspended'], true)) {
+                $this->logRejection($licence, 'licence_' . $licence->status, $fingerprint);
+            }
+
             return ['ok' => false, 'reason' => 'licence_' . $licence->status];
         }
         if ($licence->isExpired()) {
@@ -158,17 +164,101 @@ class LicenceService
             return ['ok' => false, 'reason' => 'licence_expired'];
         }
         if ($fingerprint && $licence->server_fingerprint && $licence->server_fingerprint !== $fingerprint) {
+            // THE fraud tripwire (Ejaz, 6-Aug-2026): a DIFFERENT machine tried to
+            // validate this licence — e.g. the "damaged" old PC still running after
+            // a shift, or a cloned install. Recorded in the licence History and
+            // sales is alerted (once per day per licence).
+            $this->logRejection($licence, 'server_mismatch', $fingerprint);
+
             return ['ok' => false, 'reason' => 'server_mismatch'];
         }
 
+        $justBound = false;
         if ($fingerprint && ! $licence->server_fingerprint) {
             $licence->server_fingerprint = $fingerprint;
             $licence->activated_at = $licence->activated_at ?: now();
+            $justBound = true;
         }
         $licence->last_validated_at = now();
         $licence->save();
 
+        // Central verification LOG (Ejaz, 6-Aug-2026): the licence History keeps a
+        // dated record — "on this date, the bound PC verified successfully" — one
+        // entry per day (hourly phone-homes never flood it). Binding a machine for
+        // the first time is its own entry. Fail-soft: never breaks the phone-home.
+        try {
+            if ($justBound) {
+                \App\Models\AuditLog::write('licence.machine_bound', $licence, [
+                    'machine' => $fingerprint,
+                ]);
+            }
+            $todayLogged = \App\Models\AuditLog::where('action', 'licence.verified')
+                ->where('subject_type', Licence::class)
+                ->where('subject_id', $licence->id)
+                ->where('created_at', '>=', now()->startOfDay())
+                ->exists();
+            if (! $todayLogged) {
+                \App\Models\AuditLog::write('licence.verified', $licence, [
+                    'machine' => $fingerprint ?: ($licence->server_fingerprint ?: '(no fingerprint sent)'),
+                    'date' => now()->toDateString(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Licence verify log failed: ' . $e->getMessage());
+        }
+
         return ['ok' => true, 'bundle' => $this->entitlementBundle($licence)];
+    }
+
+    /**
+     * Anti-fraud logging (Ejaz, 6-Aug-2026). Writes a licence-History entry for
+     * a rejected validation and, for a machine mismatch, emails sales. Deduped
+     * to once per 24h per licence+reason so an hourly phone-home cannot flood
+     * History or the inbox. Fail-soft: never breaks the phone-home.
+     */
+    private function logRejection(Licence $licence, string $reason, ?string $attempted): void
+    {
+        try {
+            $already = \App\Models\AuditLog::where('action', 'licence.validation_rejected')
+                ->where('subject_type', Licence::class)
+                ->where('subject_id', $licence->id)
+                ->where('created_at', '>', now()->subDay())
+                ->where('meta', 'like', '%"reason":"' . $reason . '"%')
+                ->exists();
+            if ($already) {
+                return;
+            }
+
+            \App\Models\AuditLog::write('licence.validation_rejected', $licence, [
+                'reason' => $reason,
+                'attempted_machine' => $attempted ?: '(no fingerprint sent)',
+                'bound_machine' => $licence->server_fingerprint ?: '(not bound)',
+                'last_good_checkin' => optional($licence->last_validated_at)->toDateTimeString(),
+            ]);
+
+            if ($reason === 'server_mismatch') {
+                $subject = 'ALERT: licence ' . $licence->key . ' contacted by a DIFFERENT machine — '
+                    . ($licence->tenant->company_name ?? '') . ' (' . now()->toDateString() . ')';
+                if (! \App\Models\MailLog::where('subject', $subject)->exists()) {
+                    app(MailService::class)->send(
+                        \App\Models\Setting::get('sales_email', 'sales@ametecsindia.com'),
+                        $subject,
+                        "Possible licence misuse — please investigate.\n\n"
+                        . 'Licence   : ' . $licence->key . "\n"
+                        . 'Client    : ' . ($licence->tenant->company_name ?? '—') . "\n"
+                        . 'Bound to  : ' . ($licence->server_fingerprint ?: '(not bound)') . "\n"
+                        . 'Attempted : ' . ($attempted ?: '—') . "\n"
+                        . 'Last good check-in: ' . (optional($licence->last_validated_at)->toDateTimeString() ?: '—') . "\n\n"
+                        . "What this means: a machine OTHER than the bound one tried to validate this licence — "
+                        . "for example an old \"damaged\" PC still running after a machine shift, or a cloned installation.\n"
+                        . 'Investigate from /admin -> Licences -> History. If genuine (PC replaced), use "Shift machine".'
+                        . MailService::signature()
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Licence rejection log failed: ' . $e->getMessage());
+        }
     }
 
     /**

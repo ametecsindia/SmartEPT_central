@@ -1297,7 +1297,7 @@ async function loadLicences() {
   ${d.data.map(l => `<tr><td class="mini"><b>${esc(l.key)}</b></td><td>${esc(l.tenant?.company_name)}</td>
   <td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}${l.kind==='perpetual'?`<div class="mini">AMC: ${l.amc_expires_at?l.amc_expires_at.slice(0,10):'lapsed'}</div>`:''}</td>
   <td>${l.active_devices_count}/${l.device_limit}</td>
-  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}</td><td>${pill(l.status)}</td>
+  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}${(()=>{const lv=l.last_validated_at?l.last_validated_at.slice(0,10):null;const days=lv?Math.round((Date.now()-new Date(lv))/86400000):null;return `<div class="mini" style="${days!==null&&days>7?'color:var(--danger,#D02748);font-weight:700':''}">check-in: ${lv?lv+(days>0?' ('+days+'d ago)':' (today)'):'never'}</div>`})()}</td><td>${pill(l.status)}</td>
   <td>${CAN_WRITE ? `<button class="link" onclick="renewLic(${l.id})">Renew</button>
   <button class="link" onclick="editLic(${l.id})">Edit</button>
   ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
@@ -1311,9 +1311,16 @@ async function loadLicences() {
 // the old + new machine IDs forever.
 function shiftMachine(id, key) {
   const l = _licById(id), cur = l.server_fingerprint || '';
+  const lv = l.last_validated_at ? l.last_validated_at.replace('T',' ').slice(0,16) : null;
+  const hrs = l.last_validated_at ? Math.round((Date.now() - new Date(l.last_validated_at)) / 3600000) : null;
+  const fresh = hrs !== null && hrs < 48;
   openModal(`<h2>Shift licence to another machine — ${esc(key)}</h2>
     <div class="sub">Use this when the PC where SmartEPT is installed was <b>damaged, formatted or replaced</b>.
     Current bound machine: ${cur ? '<b style="font-family:ui-monospace,monospace">' + esc(cur) + '</b>' : '<b>not bound yet</b> (binds automatically on first connection)'}.</div>
+    ${lv ? `<div class="mini" style="padding:9px 12px;border-radius:8px;margin-bottom:8px;${fresh ? 'background:#FBE9ED;color:#D02748;font-weight:700' : 'background:#F0F6F7;color:#565A66'}">
+    ${fresh ? '⚠ INVESTIGATE FIRST: this licence checked in from the current machine ' + (hrs < 1 ? 'less than an hour' : hrs + ' hour(s)') + ' ago (' + esc(lv) + ') — a truly dead PC cannot check in. The client may still be running it.'
+            : 'Last check-in from the current machine: ' + esc(lv) + ' (' + Math.round(hrs/24) + ' day(s) ago) — consistent with a dead/offline PC.'}
+    </div>` : ''}
     <label>NEW machine's fingerprint (from its SmartEPT Activation / Licence screen)</label>
     <input id="sm_fp" placeholder="Paste the new machine's fingerprint" style="font-family:ui-monospace,monospace">
     <div class="mini" style="margin-top:6px">Don't have the new fingerprint yet? Leave it blank and click <b>Release only</b> — the new server then binds itself on its first connection. Either way the old machine stops validating, and the shift is recorded in History.</div>
@@ -1343,6 +1350,9 @@ const LIC_HIST_LABELS = {
   'licence.suspend':'Suspended', 'licence.resume':'Resumed', 'licence.revoke':'REVOKED',
   'licence.release_binding':'Server binding released (PC formatted/changed)',
   'licence.machine_shifted':'Licence SHIFTED to a new machine',
+  'licence.validation_rejected':'⚠ BLOCKED: wrong/blocked machine tried to use this licence (possible misuse)',
+  'licence.verified':'✓ Verified — bound PC checked in (daily log)',
+  'licence.machine_bound':'Machine bound to this licence (first check-in)',
   'licence.file_issued':'Licence file (.lic) generated / downloaded',
   'licence.edited':'Details edited', 'licence.limit_changed':'Device limit changed',
   'licence.device_deactivated':'Device seat freed',
