@@ -50,6 +50,10 @@ class ProductProvisioner
                     'admin_name'         => $tenant->contact_name,
                     'timezone'           => 'Asia/Kolkata',
                     'device_limit'       => optional($tenant->activeLicence)->device_limit,
+                    // Central owns the storage allocation: seats x per-user free storage
+                    // (+ any purchased top-up), pushed as MB. Re-pushed on every provision,
+                    // so a seat upgrade or storage purchase updates the cap automatically.
+                    'storage_quota_mb'   => $this->storageQuotaMb($tenant),
                     // Branded console slug (admin.smartept.com/<slug>). Editable per
                     // tenant; falls back to a clean slug of the company name.
                     'slug'               => $tenant->console_slug ?: Str::slug($tenant->company_name, ''),
@@ -69,6 +73,25 @@ class ProductProvisioner
             // Never let a provisioning hiccup roll back a real payment.
             Log::error('Cloud console provisioning threw', ['tenant' => $tenant->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Allocated storage for a tenant, in MB = seats x per-user free storage
+     * (Setting 'storage_per_user_gb', default 1 GB) + any purchased top-up
+     * (tenant->storage_addon_gb, 0 when none). Returns null when the tenant has
+     * no active licence yet, so the product keeps its default until seats exist.
+     */
+    private function storageQuotaMb(Tenant $tenant): ?int
+    {
+        $seats = (int) (optional($tenant->activeLicence)->device_limit ?: 0);
+        if ($seats <= 0) {
+            return null; // seats unknown yet — don't cap the console prematurely
+        }
+        $perUserGb = (float) (Setting::get('storage_per_user_gb') ?: 1);
+        $topUpGb   = (float) ($tenant->storage_addon_gb ?? 0); // extra the client purchased
+        $totalGb   = ($seats * $perUserGb) + $topUpGb;
+
+        return (int) round($totalGb * 1024); // GB -> MB
     }
 
     /** Push a suspend/enable to the tenant's hosted console (cloud tenants only). */
