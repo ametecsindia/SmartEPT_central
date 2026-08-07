@@ -120,6 +120,8 @@ class ConfigApiController extends Controller
         'pricing_annual_discount_pct', 'pricing_half_yearly_discount_pct', 'pricing_cloud_multiplier',
         'pricing_setup_base_inr', 'pricing_setup_included_devices', 'pricing_setup_per_extra_inr', 'pricing_amc_pct',
         'pricing_storage_min_gb', 'pricing_storage_min_inr', 'pricing_storage_slabs',
+        // Phase 4 (6-Aug-2026): international pricing + MD digest recipient.
+        'usd_inr_rate', 'md_digest_email',
         // Cloud console storage allocation: free storage granted per user seat.
         // A tenant's cap = seats x this (+ purchased top-up), pushed to the product on provision.
         'storage_per_user_gb',
@@ -142,8 +144,9 @@ class ConfigApiController extends Controller
         'pricing_amc_pct' => 18,
         'pricing_storage_min_gb' => 50,
         'pricing_storage_min_inr' => 150,
-        'storage_per_user_gb' => 1,
         'pricing_storage_slabs' => '[[1,500,3],[501,2048,2.5],[2049,null,2]]',
+        'usd_inr_rate' => 88,
+        'storage_per_user_gb' => 1,
     ];
 
     public function settings()
@@ -192,6 +195,111 @@ class ConfigApiController extends Controller
         \Illuminate\Support\Facades\Cache::forget('public_plans_v2');
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * POST /admin/api/logs/purge (Ejaz, 6-Aug-2026) — keep the log tables small
+     * without losing any client's individual history.
+     *
+     * Category + from/to date range. Two-step: first call returns a COUNT
+     * preview; confirm=1 actually deletes. Special rule for the volume driver:
+     * daily 'licence.verified' rows are ROLLED UP into one monthly summary per
+     * licence ("verified N days in <month>") before deletion — so every
+     * licence's History stays complete forever while the table shrinks ~30x.
+     * Money records (orders, invoices, payments) live in their own tables and
+     * are NEVER touched here. The purge itself is audit-logged.
+     */
+    public function purgeLogs(Request $request)
+    {
+        $data = $request->validate([
+            'log' => ['required', 'in:audit,mail'],
+            'category' => ['nullable', 'string', 'max:60'],
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date', 'after_or_equal:from'],
+            'confirm' => ['nullable', 'boolean'],
+        ]);
+
+        $from = \Illuminate\Support\Carbon::parse($data['from'])->startOfDay();
+        $to = \Illuminate\Support\Carbon::parse($data['to'])->endOfDay();
+        $cat = $data['category'] ?? 'all';
+
+        if ($data['log'] === 'mail') {
+            $q = \App\Models\MailLog::whereBetween('created_at', [$from, $to]);
+        } else {
+            $q = \App\Models\AuditLog::whereBetween('created_at', [$from, $to]);
+            if ($cat === 'licence.verified') {
+                $q->where('action', 'licence.verified');
+            } elseif ($cat === 'logins') {
+                $q->whereIn('action', ['admin.login', 'admin.logout']);
+            } elseif ($cat && $cat !== 'all') {
+                $q->where('action', 'like', $cat . '.%');
+            }
+
+            // PERMANENT HISTORY (Ejaz, 6-Aug-2026): licence lifecycle events
+            // (issued, shifted, bound, blocked, renewed, edited, .lic downloads,
+            // monthly verified summaries) and the money trail (orders, quotes,
+            // buys, setup invoices) can NEVER be deleted — whatever category or
+            // date range is chosen. Only routine volume logs are cleanable:
+            // daily licence.verified rows (rolled up first), sign-ins, client
+            // activity, and the email log.
+            $q->where(function ($w) {
+                $w->where('action', 'not like', 'licence.%')
+                  ->orWhere('action', 'licence.verified'); // dailies only — rolled up below
+            })
+            ->where('action', 'not like', 'order.%')
+            ->where('action', 'not like', 'quote.%')
+            ->where('action', 'not like', 'buy.%')
+            ->where('action', 'not like', 'setup.%')
+            ->where('action', '!=', 'logs.purged');
+        }
+
+        $count = (clone $q)->count();
+
+        if (! ($data['confirm'] ?? false)) {
+            return response()->json(['preview' => true, 'count' => $count]);
+        }
+
+        $summaries = 0;
+
+        // Roll up daily verification rows into monthly per-licence summaries so
+        // individual licence History is preserved (Ejaz's requirement).
+        if ($data['log'] === 'audit' && in_array($cat, ['licence.verified', 'all'], true)) {
+            $rows = \App\Models\AuditLog::whereBetween('created_at', [$from, $to])
+                ->where('action', 'licence.verified')
+                ->orderBy('created_at')
+                ->get(['id', 'subject_id', 'created_at', 'meta']);
+
+            foreach ($rows->groupBy(fn ($r) => $r->subject_id . '|' . $r->created_at->format('Y-m')) as $group) {
+                $first = $group->first();
+                if (! $first->subject_id) {
+                    continue;
+                }
+                \App\Models\AuditLog::create([
+                    'admin_user_id' => null,
+                    'action' => 'licence.verified_summary',
+                    'subject_type' => \App\Models\Licence::class,
+                    'subject_id' => $first->subject_id,
+                    'meta' => [
+                        'month' => $first->created_at->format('M Y'),
+                        'verified_days' => $group->count(),
+                        'first' => $group->first()->created_at->toDateString(),
+                        'last' => $group->last()->created_at->toDateString(),
+                        'machine' => $group->last()->meta['machine'] ?? '—',
+                    ],
+                ]);
+                $summaries++;
+            }
+        }
+
+        $deleted = $q->delete();
+
+        AuditLog::write('logs.purged', null, [
+            'log' => $data['log'], 'category' => $cat,
+            'from' => $from->toDateString(), 'to' => $to->toDateString(),
+            'deleted' => $deleted, 'monthly_summaries_created' => $summaries,
+        ]);
+
+        return response()->json(['ok' => true, 'deleted' => $deleted, 'summaries' => $summaries]);
     }
 
     /** POST config/test-email — send a test using the current SMTP settings. */
