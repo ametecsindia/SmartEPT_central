@@ -126,7 +126,7 @@ tr:hover td{background:var(--card2)}
 @media(max-width:520px){.stats{grid-template-columns:1fr}}
 </style>
 </head>
-<body data-role="{{ $user->role }}" data-default-console-url="{{ \App\Models\Setting::get('default_console_url','') }}">
+<body data-role="{{ $user->role }}" data-perms="{{ json_encode(\App\Services\PermissionService::mapFor($user->role)) }}" data-default-console-url="{{ \App\Models\Setting::get('default_console_url','') }}">
 
 <aside>
   <div class="brand" style="flex-direction:column;align-items:center;gap:7px"><img src="/img/smartept-logo-h-dark.png" alt="SmartEPT Central" style="width:150px;max-width:92%;height:auto;display:block"><small style="font-size:8.5px;letter-spacing:2px;color:#7FA8AF">CENTRAL &middot; SUPER ADMIN</small></div>
@@ -199,7 +199,12 @@ tr:hover td{background:var(--card2)}
 const CSRF = document.querySelector('meta[name=csrf-token]').content;
 const ROLE = document.body.dataset.role;
 const DEFAULT_CONSOLE_URL = document.body.dataset.defaultConsoleUrl || '';
-const CAN_WRITE = ROLE === 'super' || ROLE === 'sales';
+// 7-Aug permissions matrix: per-module levels from PermissionService (editable in Users & Roles).
+const PERMS = JSON.parse(document.body.dataset.perms || '{}');
+const PAGE_MODULE = { cms: 'landing' }; // console page ids match module keys except this one
+const permOf = p => ROLE === 'super' ? 'manage' : (PERMS[PAGE_MODULE[p] || p] || 'none');
+// CAN_WRITE now follows the CURRENT screen's module level (existing call sites unchanged).
+Object.defineProperty(window, 'CAN_WRITE', { get: () => permOf(PAGE) === 'manage' });
 const fmtMoney = (n, c='INR') => (c==='INR'?'₹':'$') + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2});
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const toast = m => { const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none', 3200); };
@@ -230,10 +235,13 @@ help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports'
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
-  if (el.dataset.super && ROLE !== 'super') { el.style.display = 'none'; return; }
-  el.onclick = () => go(el.dataset.page);
+  const pg = el.dataset.page;
+  if (!pg) { if (el.dataset.super && ROLE !== 'super') el.style.display = 'none'; return; } // e.g. Landing Editor link (super-only page)
+  if (permOf(pg) === 'none') { el.style.display = 'none'; return; }
+  el.onclick = () => go(pg);
 });
 function go(page) {
+  if (permOf(page) === 'none') { toast('Your role does not have access to that screen.'); return; }
   document.body.classList.remove('nav-open');
   PAGE = page;
   document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('on', e.dataset.page === page));
@@ -418,6 +426,13 @@ const HELP_KB_CENTRAL = [
       +'<p><b>How to check:</b> Run System Health above - the <b>Pricing plan</b> row will be red.</p>'
       +'<p><b>How to fix:</b> Run <code>migrate.bat</code> in the Central app folder (it now adds the plan automatically), then hard-refresh and try the order again. Advanced: in Laragon Terminal you can instead run <code>php artisan db:seed --class=PricingV2Seeder --force</code>.</p>'
       +'<p class="hkb-esc"><b>When to call the developer:</b> If the Pricing plan row is still red after running migrate.bat - WhatsApp '+WA+'.</p>' },
+  { id:'c-buy', tag:'Billing', cls:'p-info', title:'How the public Buy page works (/buy) - and what to check if a buyer reports a problem',
+    kw:'buy page purchase pay first cart razorpay stripe usd international quotation abandoned pending tenant',
+    body:'<p><b>What it is:</b> Since 6-Aug-2026 the website Buy buttons lead to <b>/buy</b> - the customer picks Cloud/Perpetual, users and period, sees the exact total, pays, and everything (account, licence, GST invoice, receipt, portal login) is created automatically. Trials are separate and also land in Leads.</p>'
+      +'<p><b>Client says "I paid but nothing happened":</b> Open Orders - find their order. If it shows PAID, licence + invoice exist (check the Licences tab); their portal is /client. If it shows created with money received, the webhook likely completed it - refresh. If truly stuck, use Record Payment with their Razorpay reference.</p>'
+      +'<p><b>Client abandoned at payment:</b> Their order stays as <i>created</i> with a <i>pending</i> client - the system automatically emails them their pay link after ~3 hours (abandoned-buy rescue). You can also copy the Pay Link from Orders and WhatsApp it.</p>'
+      +'<p><b>International (USD) buyers:</b> They choose USD on /buy and pay by card via Stripe; the invoice is a zero-GST export invoice. The USD price uses the USD → INR rate in Settings.</p>'
+      +'<p class="hkb-esc"><b>When to call the developer:</b> A paid order with no licence after 10 minutes - WhatsApp '+WA+'.</p>' },
   { id:'c-logstuck', tag:'Application log', cls:'p-warn', title:'The log is not updating / shows an old date',
     kw:'log not updating old date stale stuck validation error 422 laravel log today last written',
     body:'<p><b>What you see:</b> The Application log newest line is from days ago even though something just went wrong on screen.</p>'
@@ -495,12 +510,51 @@ async function helpRun() {
     box.innerHTML = (r.checks || []).map(c => {
       const cls = c.status === 'ok' ? 'hc-ok' : (c.status === 'warn' ? 'hc-warn' : 'hc-down');
       const fix = c.fix ? ' <a onclick="openHelpKb(\'' + c.fix + '\')">How to fix this &rarr;</a>' : '';
+      // 6-Aug: one-click scheduler tools right on the amber row — no terminal needed.
+      const schedBtns = (c.key === 'scheduler' && c.status !== 'ok')
+        ? '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'
+          + '<button class="btn btn-p" style="padding:7px 13px;font-size:12.5px" onclick="schedInstall(this)">⚙ Install auto-scheduler (one-time)</button>'
+          + '<button class="btn btn-l" style="padding:7px 13px;font-size:12.5px" onclick="schedRunNow(this)">▶ Run scheduled jobs now</button>'
+          + '<button class="btn btn-l" style="padding:7px 13px;font-size:12.5px" onclick="schedOptions()">📋 All hosting options</button></div>'
+        : '';
       return '<div class="hc-item ' + cls + '"><span class="dot"></span><div><b>'
-        + esc(c.label) + '</b><p>' + esc(c.detail) + fix + '</p></div></div>';
+        + esc(c.label) + '</b><p>' + esc(c.detail) + fix + '</p>' + schedBtns + '</div></div>';
     }).join('');
   } catch (e) {
     box.innerHTML = '<div class="mini" style="color:var(--danger)">Could not run checks: ' + esc(String(e)) + '</div>';
   }
+}
+// 6-Aug: scheduler control from the panel itself (Ejaz) — install the Windows
+// 1-minute task or run due jobs immediately, no terminal needed.
+async function schedInstall(btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Installing…';
+  try { const r = await api('scheduler/install', {method:'POST', body:{}}); toast(r.message || 'Installed'); setTimeout(helpRun, 1200); }
+  catch (e) { alert('Could not install automatically:\n\n' + e); }
+  btn.disabled = false; btn.textContent = old;
+}
+async function schedRunNow(btn) {
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Running…';
+  try { const r = await api('scheduler/run-now', {method:'POST', body:{}}); toast(r.message || 'Jobs ran'); setTimeout(helpRun, 800); }
+  catch (e) { toast('Error: ' + e); }
+  btn.disabled = false; btn.textContent = old;
+}
+// ALL hosting options in one place (Ejaz, 6-Aug) — Windows, Linux VPS, cPanel.
+async function schedOptions() {
+  let i = {};
+  try { i = await api('scheduler/instructions'); } catch (e) { toast('Error: ' + e); return; }
+  const copyBox = (id, val) => '<div style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input id="' + id + '" readonly value="' + esc(val) + '" style="flex:1;font-family:ui-monospace,monospace;font-size:11.5px"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById(\'' + id + '\').value);toast(\'Copied\')">Copy</button></div>';
+  openModal(`<h2>Scheduler setup — all hosting options</h2>
+  <div class="sub">The scheduler must run <b>every minute</b> — it powers renewal &amp; trial reminders, grace warnings, abandoned-buy rescue, the quote chaser and your daily money digest. Pick the option matching where SmartEPT Central is hosted (this server: <b>${esc(i.os || '')}</b>).</div>
+  <p style="font-weight:700;margin:10px 0 2px">1 · This machine, automatically (recommended)</p>
+  <p class="mini">Click <b>⚙ Install auto-scheduler</b> on the System Health row — works on Windows (creates a hidden Task Scheduler task) and on a Linux VPS (adds the cron line). One time only.</p>
+  <p style="font-weight:700;margin:10px 0 2px">2 · Linux VPS via SSH (if the button is refused)</p>
+  ${copyBox('so_ssh', i.ssh_install || '')}
+  <p style="font-weight:700;margin:6px 0 2px">3 · cPanel / Plesk shared hosting</p>
+  <p class="mini">cPanel → <b>Cron Jobs</b> → Add New Cron Job → Common Setting "Once Per Minute" → paste as the command:</p>
+  ${copyBox('so_cron', (i.cron_line || '').replace('* * * * * ', ''))}
+  <p style="font-weight:700;margin:6px 0 2px">4 · Windows Task Scheduler, manually</p>
+  <p class="mini">Task Scheduler → Create Task → trigger: repeat every 1 minute → action: start <code>wscript.exe</code> with argument <code>${esc((i.base || '') + '\\scheduler-tick.vbs')}</code> (the file is created by the auto-install button, or run the button once to generate it).</p>
+  <div class="foot"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`, true);
 }
 function helpPanelTab(name) {
   document.querySelectorAll('#page .htab').forEach(b => b.classList.toggle('on', b.dataset.ht === name));
@@ -669,7 +723,7 @@ async function tkSave(id) {
 
 // ---- Admin users & roles ----
 let AU_ROWS = {};
-const AU_ROLES = [['super', 'Super admin — full access'], ['sales', 'Sales — business & money'], ['support', 'Support — read + tickets']];
+let AU_ROLES = [['super', 'Super admin — full access'], ['sales', 'Sales'], ['support', 'Support']]; // refreshed from the live matrix in users()
 const AU_V = (id) => (document.getElementById(id) || {}).value || '';
 function auAdd() { auForm(null); }
 function auEdit(id) { auForm(AU_ROWS[id]); }
@@ -709,23 +763,61 @@ async function auDelete(id, name) {
   try { await api('admin-users/' + id, { method: 'DELETE' }); toast('Removed'); go('users'); }
   catch (e) { toast('Error: ' + e); }
 }
-function auMatrixCard() {
-  const M = [
-    ['Dashboard', 'view', 'view', 'view'], ['Clients / Tenants', 'manage', 'manage', 'view'],
-    ['Trials', 'manage', 'manage', 'view'], ['Leads', 'manage', 'manage', 'view'],
-    ['Support tickets', 'manage', 'manage', 'manage'], ['Licences', 'manage', 'manage', 'view'],
-    ['Plans & Pricing', 'manage', 'view', '—'], ['Orders & Payments', 'manage', 'manage', '—'],
-    ['Credit & Invoices', 'manage', 'manage', '—'], ['Cloud Storage', 'manage', 'manage', '—'],
-    ['Coupons', 'manage', 'manage', '—'], ['Accountant Reports', 'manage', 'manage', '—'],
-    ['Downloads', 'manage', '—', '—'], ['Landing CMS', 'manage', '—', '—'],
-    ['WhatsApp Templates', 'manage', '—', '—'], ['Settings', 'manage', '—', '—'],
-    ['Users & Roles', 'manage', '—', '—'], ['Audit Log', 'view', 'view', 'view'],
-  ];
-  const cell = (v) => v === 'manage' ? '<span class="pill p-ok">manage</span>' : (v === 'view' ? '<span class="pill p-info">view</span>' : '<span class="mini">—</span>');
-  const rows = M.map((m) => '<tr><td><b>' + esc(m[0]) + '</b></td><td>' + cell(m[1]) + '</td><td>' + cell(m[2]) + '</td><td>' + cell(m[3]) + '</td></tr>').join('');
-  return '<div class="card"><h3>Permission matrix <span class="mini">what each role can do — enforced on the server</span></h3>'
-    + '<table><tr><th>Module</th><th>Super admin</th><th>Sales</th><th>Support</th></tr>' + rows + '</table>'
-    + '<div class="mini" style="margin-top:8px"><b>manage</b> = view + create/edit · <b>view</b> = read only · <b>—</b> = no access</div></div>';
+// ---- Editable permissions matrix (7-Aug: custom roles + module level, server-enforced) ----
+let RM = null; // {modules:{key:label}, roles:[{key,label,builtin,perms,users}], super_users}
+function rmCard() {
+  if (!RM) return '';
+  const roleHead = RM.roles.map(r =>
+    '<th style="text-align:center">' + esc(r.label) + '<div class="mini" style="font-weight:400">' + esc(r.key) + ' · ' + r.users + ' user' + (r.users === 1 ? '' : 's')
+    + (!r.builtin && !r.users ? ' · <button class="link" style="color:var(--danger)" onclick="rmDelRole(\'' + esc(r.key) + '\')">remove</button>' : '')
+    + '</div></th>').join('');
+  const rows = Object.entries(RM.modules).map(([m, label]) =>
+    '<tr><td><b>' + esc(label) + '</b></td><td style="text-align:center"><span class="pill p-ok">manage</span></td>'
+    + RM.roles.map(r => {
+      const v = r.perms[m] || 'none';
+      return '<td style="text-align:center"><select id="rm-' + esc(r.key) + '-' + esc(m) + '" style="width:auto;padding:3px 6px">'
+        + ['none', 'view', 'manage'].map(o => '<option value="' + o + '"' + (o === v ? ' selected' : '') + '>' + (o === 'none' ? '—' : o) + '</option>').join('')
+        + '</select></td>';
+    }).join('') + '</tr>').join('');
+  return '<div class="card"><h3>Permission matrix <span class="mini">what each role can do — enforced on the server, applies on next page load</span></h3>'
+    + '<div style="overflow:auto"><table><tr><th>Module</th><th style="text-align:center">Super admin<div class="mini" style="font-weight:400">locked · ' + (RM.super_users || 0) + ' user' + (RM.super_users === 1 ? '' : 's') + '</div></th>' + roleHead + '</tr>' + rows + '</table></div>'
+    + '<div class="row" style="margin-top:10px;align-items:center;gap:10px">'
+    + '<button class="btn btn-p" onclick="rmSave()">Save matrix</button>'
+    + '<button class="btn btn-l" onclick="rmAddRole()">+ Add role</button>'
+    + '<span class="mini"><b>manage</b> = view + create/edit · <b>view</b> = read only · <b>—</b> = no access · Super is always full access</span></div></div>';
+}
+function rmCollect() {
+  RM.roles.forEach(r => Object.keys(RM.modules).forEach(m => {
+    const el = document.getElementById('rm-' + r.key + '-' + m);
+    if (el) r.perms[m] = el.value;
+  }));
+}
+function rmAddRole() {
+  const name = (prompt('Name for the new role (e.g. Accounts, Manager):') || '').trim();
+  if (!name) return;
+  const key = name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+  if (key.length < 2 || !/^[a-z]/.test(key)) { toast('Role name must start with a letter and be at least 2 characters.'); return; }
+  if (key === 'super' || RM.roles.some(r => r.key === key)) { toast('That role already exists.'); return; }
+  rmCollect();
+  const perms = {}; Object.keys(RM.modules).forEach(m => perms[m] = 'none');
+  RM.roles.push({ key, label: name, builtin: false, perms, users: 0 });
+  document.getElementById('rmWrap').innerHTML = rmCard();
+  toast('Role "' + name + '" added — set its permissions, then Save matrix.');
+}
+function rmDelRole(key) {
+  const r = RM.roles.find(x => x.key === key);
+  if (!r || r.builtin || r.users) return;
+  if (!confirm('Remove role "' + r.label + '"?')) return;
+  rmCollect();
+  RM.roles = RM.roles.filter(x => x.key !== key);
+  document.getElementById('rmWrap').innerHTML = rmCard();
+}
+async function rmSave() {
+  rmCollect();
+  const roles = {};
+  RM.roles.forEach(r => { roles[r.key] = { label: r.label, perms: r.perms }; });
+  try { await api('role-permissions', { method: 'PUT', body: { roles } }); toast('Permission matrix saved — takes effect on next page load / sign-in.'); go('users'); }
+  catch (e) { toast('Error: ' + e); }
 }
 
 const RENDER = {
@@ -816,7 +908,9 @@ async reports() {
 async users() {
   ACTIONS.innerHTML = '<button class="btn btn-p" onclick="auAdd()">+ Add user</button>';
   P.innerHTML = '<div class="mini">Loading…</div>';
-  const d = await api('admin-users');
+  const [d, rp] = await Promise.all([api('admin-users'), api('role-permissions')]);
+  RM = rp.data;
+  AU_ROLES = [['super', 'Super admin — full access']].concat(RM.roles.map(r => [r.key, r.label]));
   AU_ROWS = {}; (d.data || []).forEach(u => { AU_ROWS[u.id] = u; });
   const RP = { super: 'p-ok', sales: 'p-info', support: 'p-mut' };
   const rows = (d.data || []).map(u => {
@@ -833,7 +927,7 @@ async users() {
   P.innerHTML = '<div class="card"><h3>Admin users <span class="mini">who can sign in to SmartEPT Central</span></h3>'
     + '<table><tr><th>User</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr>'
     + (rows || '<tr><td colspan="5" class="mini">No users.</td></tr>') + '</table></div>'
-    + auMatrixCard();
+    + '<div id="rmWrap">' + rmCard() + '</div>';
 },
 
 // ============ SUPPORT DESK ============
@@ -842,17 +936,13 @@ async support() {
   P.innerHTML = '<div class="mini">Loading…</div>';
   const d = await api('tickets');
   TK_ROWS = {}; (d.data || []).forEach(t => { TK_ROWS[t.id] = t; });
-  const c = d.counts || {};
-  const chip = (s, l) => '<span class="pill ' + (TK_PILL[s] || 'p-mut') + '">' + (l || s) + ' ' + (c[s] || 0) + '</span>';
-  const rows = (d.data || []).map(t => '<tr onclick="tkOpen(' + t.id + ')" style="cursor:pointer">'
-    + '<td class="mini">' + esc(t.created_at_h || t.created_at || '') + '</td>'
-    + '<td><b>' + esc(t.tenant || '—') + '</b><div class="mini">' + esc(t.raised_by || '') + '</div></td>'
-    + '<td>' + esc(t.subject) + '<div class="mini">' + esc(t.category || '') + '</div></td>'
-    + '<td><span class="pill ' + (TK_PILL[t.status] || 'p-mut') + '">' + esc(String(t.status).replace('_', ' ')) + '</span></td>'
-    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at_h || t.replied_at)) : '') + (t.messages_count ? ' · ' + t.messages_count + ' msg' : '') + '</td></tr>').join('');
-  P.innerHTML = '<div class="card"><h3>Support tickets <span class="mini">' + chip('open', 'open') + ' · ' + chip('in_progress', 'in progress') + ' · ' + chip('resolved', 'resolved') + ' · ' + chip('closed', 'closed') + '</span></h3>'
-    + '<table><tr><th>Raised</th><th>Client</th><th>Subject</th><th>Status</th><th></th></tr>'
-    + (rows || '<tr><td colspan="5" class="mini">No tickets yet.</td></tr>') + '</table></div>';
+  window.TK_LIST = d.data || []; window.TK_COUNTS = d.counts || {};
+  P.innerHTML = `<div class="filters">
+    <input id="tkq" placeholder="Search client / subject / category…" oninput="tkRender()">
+    <select id="tkst" onchange="tkRender()"><option value="">All statuses</option><option value="open">open</option><option value="in_progress">in progress</option><option value="resolved">resolved</option><option value="closed">closed</option></select>
+    <select id="tksort" onchange="tkRender()"><option value="">Newest first</option><option value="oldest">Oldest first</option><option value="client">Client A → Z</option></select>
+  </div><div id="tklist"></div>`;
+  tkRender();
 },
 
 // ============ HELP & TROUBLESHOOTING ============
@@ -922,16 +1012,12 @@ async tenants() {
 // ============ TRIALS ============
 async trials() {
   const d = await api('trials');
-  const row = t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
-    <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
-    <td>${t.trial_ends_at ? new Date(t.trial_ends_at).toLocaleDateString() : '—'}</td>
-    <td>${CAN_WRITE ? `<button class="link" onclick="extendTrial(${t.id})">Extend</button>
-    <button class="link" onclick="convertTrial(${t.id}, '${esc(t.company_name)}')">Convert to Paid</button>` : ''}</td></tr>`;
-  P.innerHTML = `
-  <div class="card"><h3>Active Trials (${d.active.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ends</th><th></th></tr>
-  ${d.active.map(row).join('') || '<tr><td colspan="4" class="mini">No active trials</td></tr>'}</table></div>
-  <div class="card"><h3>Expired Trials (${d.expired.length})</h3><table><tr><th>Company</th><th>Contact</th><th>Ended</th><th></th></tr>
-  ${d.expired.map(row).join('') || '<tr><td colspan="4" class="mini">None</td></tr>'}</table></div>`;
+  window.TR_D = d;
+  P.innerHTML = `<div class="filters">
+    <input id="trq" placeholder="Search company / contact / email / phone…" oninput="trialsRender()">
+    <select id="trsort" onchange="trialsRender()"><option value="">Ends — soonest first</option><option value="ends_desc">Ends — latest first</option><option value="company">Company A → Z</option></select>
+  </div><div id="trlist"></div>`;
+  trialsRender();
 },
 
 // ============ LEADS (R3-7) ============
@@ -1009,11 +1095,13 @@ async plans() {
 
 // ============ ORDERS ============
 async orders() {
-  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button>';
+  if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button> <button class="btn btn-l" onclick="newProspectQuote()">+ Quote for NEW client</button>';
   P.innerHTML = `<div class="filters">
-    <select id="ost"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
-    <select id="ogw"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
-    <button class="btn btn-l" onclick="loadOrders()">Filter</button></div><div id="olist"></div>`;
+    <input id="oq" placeholder="Search order / quote no. / client…" onkeydown="if(event.key==='Enter')loadOrders()">
+    <select id="ost" onchange="loadOrders()"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
+    <select id="ogw" onchange="loadOrders()"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
+    <select id="osort" onchange="loadOrders()"><option value="">Newest first</option><option value="oldest">Oldest first</option><option value="total_desc">Total — high to low</option><option value="total_asc">Total — low to high</option></select>
+    <button class="btn btn-l" onclick="loadOrders()">Search</button></div><div id="olist"></div>`;
   loadOrders();
 },
 
@@ -1021,31 +1109,23 @@ async orders() {
 async credit() {
   P.innerHTML = '<div class="mini">Loading…</div>';
   const d = await api('credit-clients');
-  const rows = (d.data||[]).map(c => `<tr>
-    <td><b>${esc(c.tenant?.company_name)}</b><div class="mini">${esc(c.quote_number || c.number)}${c.invoice_number ? ' · ' + esc(c.invoice_number) : ''}</div></td>
-    <td class="mini">${esc(c.description)}</td>
-    <td><b>${fmtMoney(c.total, c.currency)}</b></td>
-    <td style="color:var(--ok);font-weight:700">${fmtMoney(c.received, c.currency)}</td>
-    <td><b style="color:${c.overdue ? 'var(--danger)' : 'var(--ink)'}">${fmtMoney(c.balance, c.currency)}</b></td>
-    <td style="${c.overdue ? 'color:var(--danger);font-weight:800' : ''}">${c.credit_due_date ? new Date(c.credit_due_date).toLocaleDateString() : '—'}${c.overdue ? ' ⚠ OVERDUE' : ''}</td>
-    <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick="recordBalance(${c.id}, ${c.balance}, '${esc(c.tenant?.company_name)}')">Record balance</button>` : ''}
-      <button class="link" onclick="navigator.clipboard.writeText('${esc(c.pay_url)}');toast('Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
-  P.innerHTML = `<div class="card"><h3>Provisioned on credit — balance outstanding (${(d.data||[]).length})</h3>
-  <table><tr><th>Client</th><th>Order</th><th>Total</th><th>Received</th><th>Balance</th><th>Payable by</th><th></th></tr>
-  ${rows || '<tr><td colspan="7" class="mini">No credit balances — every provisioned order is fully paid. 🎉</td></tr>'}</table>
-  <div class="mini" style="margin-top:10px">Overdue turns red as a reminder for <b>manual follow-up only</b> — nothing locks automatically. Credit is a commercial judgement. The client's original pay link stays alive and collects exactly the balance.</div></div>`;
+  window.CR_ROWS = d.data || [];
+  P.innerHTML = `<div class="filters">
+    <input id="crq" placeholder="Search client / order / invoice…" oninput="creditRender()">
+    <select id="crsort" onchange="creditRender()"><option value="">Payable-by date</option><option value="balance">Balance — high to low</option><option value="total">Total — high to low</option><option value="client">Client A → Z</option></select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--deep,#04252C)"><input type="checkbox" id="crov" onchange="creditRender()" style="width:auto"> Overdue only</label>
+  </div><div id="crlist"></div>`;
+  creditRender();
 },
 
 // ============ INVOICES ============
 async invoices() {
-  const d = await api('invoices');
-  P.innerHTML = `<div class="card"><table><tr><th>Invoice</th><th>Date</th><th>Client</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Status</th><th></th></tr>
-  ${d.data.map(i => `<tr><td><b>${esc(i.number)}</b></td><td class="mini">${i.date?.slice(0,10)}</td>
-  <td>${esc(i.tenant?.company_name)}</td><td>${fmtMoney(i.subtotal, i.currency)}</td>
-  <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
-  <td><b>${fmtMoney(i.total, i.currency)}</b></td>
-  <td>${i.status==='issued' && i.due_date ? `<span class="pill p-warn">DUE</span><div class="mini">by ${i.due_date.slice(0,10)}</div>` : pill(i.status)}</td>
-  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No invoices yet</td></tr>'}</table></div>`;
+  P.innerHTML = `<div class="filters">
+    <input id="iq" placeholder="Search invoice no. / client…" onkeydown="if(event.key==='Enter')loadInvoices()">
+    <select id="ist" onchange="loadInvoices()"><option value="">All statuses</option><option value="paid">paid</option><option value="issued">due</option></select>
+    <select id="isort" onchange="loadInvoices()"><option value="">Newest first</option><option value="oldest">Oldest first</option><option value="total_desc">Total — high to low</option><option value="total_asc">Total — low to high</option></select>
+    <button class="btn btn-l" onclick="loadInvoices()">Search</button></div><div id="ivlist" class="mini">Loading…</div>`;
+  loadInvoices();
 },
 
 // ============ STORAGE ============
@@ -1087,7 +1167,7 @@ async settings() {
   P.innerHTML = `
   <div class="card"><h3>Company & Tax</h3><div class="modal-body row" style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
   ${f('company_name','Company name')}${f('company_gstin','GSTIN')}${f('company_phone','Phone')}${f('company_email','Email')}
-  ${f('gst_rate','GST rate %')}${f('whatsapp_number','WhatsApp number')}${f('invoice_prefix','Invoice prefix (EPT → EPT-2026-27-07-0001)')}${f('quote_prefix','Quote prefix (EPT-Q)')}${f('order_prefix','Order number prefix')}</div>
+  ${f('gst_rate','GST rate %')}${f('whatsapp_number','WhatsApp number')}${f('invoice_prefix','Invoice prefix (EPT → EPT-2026-27-07-0001)')}${f('quote_prefix','Quote prefix (EPT-Q)')}${f('order_prefix','Order number prefix')}${f('usd_inr_rate','USD → INR rate (international buyers, e.g. 88)')}${f('md_digest_email','MD daily money-digest email (blank = company email)')}</div>
   <label>Registered address</label><textarea id="set_company_address" rows="2">${esc(s.company_address||'')}</textarea></div>
   <div class="card"><h3>SmartEPT Cloud</h3>
   <label>Default hosted console URL <span style="font-weight:400;color:#7A8B90">(prefilled into a new Cloud client's "Hosted console URL" — your shared Ametecs-hosted admin address)</span></label>
@@ -1169,12 +1249,13 @@ async audit() {
     if (typeof m !== 'object') return esc(String(m));
     return esc(Object.entries(m).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : (v && typeof v === 'object' ? JSON.stringify(v) : v))).join('  ·  ')).slice(0, 140) || '—';
   };
-  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
+  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'licence.verified', 'licence.validation_rejected', 'licence.machine_bound', 'licence.machine_shifted', 'licence.release_binding', 'licence.file_issued', 'licence.device_deactivated', 'licence.edited', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'quote.prospect_created', 'buy.order_created', 'buy.quote_requested', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
   const opts = ACTS.map((a) => '<option value="' + a + '"' + (a === cur ? ' selected' : '') + '>' + (a || 'All actions') + '</option>').join('');
   P.innerHTML = `<div class="card">
   <div class="row" style="margin-bottom:12px;align-items:flex-end">
     <div><label>Filter action</label><select id="aud-act" onchange="AUDIT_ACTION=this.value;go('audit')">${opts}</select></div>
     <button class="btn" onclick="go('audit')">Refresh</button>
+    ${CAN_WRITE ? '<button class="btn btn-l" onclick="purgeLogsModal()">🧹 Clean up logs</button>' : ''}
     <span class="mini" style="margin-left:auto">${(d.total ?? d.data.length)} entries${cur ? ' · filtered' : ''}</span>
   </div>
   <table><tr><th>When</th><th>Who</th><th>Action</th><th>Subject</th><th>Details</th></tr>
@@ -1294,11 +1375,117 @@ async function loadLicences() {
   ${d.data.map(l => `<tr><td class="mini"><b>${esc(l.key)}</b></td><td>${esc(l.tenant?.company_name)}</td>
   <td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}${l.kind==='perpetual'?`<div class="mini">AMC: ${l.amc_expires_at?l.amc_expires_at.slice(0,10):'lapsed'}</div>`:''}</td>
   <td>${l.active_devices_count}/${l.device_limit}</td>
-  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}</td><td>${pill(l.status)}</td>
+  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}${(()=>{const lv=l.last_validated_at?l.last_validated_at.slice(0,10):null;const days=lv?Math.round((Date.now()-new Date(lv))/86400000):null;return `<div class="mini" style="${days!==null&&days>7?'color:var(--danger,#D02748);font-weight:700':''}">check-in: ${lv?lv+(days>0?' ('+days+'d ago)':' (today)'):'never'}</div>`})()}</td><td>${pill(l.status)}</td>
   <td>${CAN_WRITE ? `<button class="link" onclick="renewLic(${l.id})">Renew</button>
   <button class="link" onclick="editLic(${l.id})">Edit</button>
   ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
-  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+  ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>
+  <button class="link" onclick="licDevices(${l.id},'${esc(l.key)}')">Devices</button>
+  <button class="link" onclick="licHistory(${l.id},'${esc(l.key)}')">History</button>
+  ${l.deployment==='client_hosted'||l.server_fingerprint?`<button class="link" onclick="shiftMachine(${l.id},'${esc(l.key)}')">Shift machine</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+}
+// Ejaz, 6-Aug: the installed PC was damaged/formatted/replaced — shift the
+// licence to the new machine ID (or just release the binding). History keeps
+// the old + new machine IDs forever.
+function shiftMachine(id, key) {
+  const l = _licById(id), cur = l.server_fingerprint || '';
+  const lv = l.last_validated_at ? l.last_validated_at.replace('T',' ').slice(0,16) : null;
+  const hrs = l.last_validated_at ? Math.round((Date.now() - new Date(l.last_validated_at)) / 3600000) : null;
+  const fresh = hrs !== null && hrs < 48;
+  openModal(`<h2>Shift licence to another machine — ${esc(key)}</h2>
+    <div class="sub">Use this when the PC where SmartEPT is installed was <b>damaged, formatted or replaced</b>.
+    Current bound machine: ${cur ? '<b style="font-family:ui-monospace,monospace">' + esc(cur) + '</b>' : '<b>not bound yet</b> (binds automatically on first connection)'}.</div>
+    ${lv ? `<div class="mini" style="padding:9px 12px;border-radius:8px;margin-bottom:8px;${fresh ? 'background:#FBE9ED;color:#D02748;font-weight:700' : 'background:#F0F6F7;color:#565A66'}">
+    ${fresh ? '⚠ INVESTIGATE FIRST: this licence checked in from the current machine ' + (hrs < 1 ? 'less than an hour' : hrs + ' hour(s)') + ' ago (' + esc(lv) + ') — a truly dead PC cannot check in. The client may still be running it.'
+            : 'Last check-in from the current machine: ' + esc(lv) + ' (' + Math.round(hrs/24) + ' day(s) ago) — consistent with a dead/offline PC.'}
+    </div>` : ''}
+    <label>NEW machine's fingerprint (from its SmartEPT Activation / Licence screen)</label>
+    <input id="sm_fp" placeholder="Paste the new machine's fingerprint" style="font-family:ui-monospace,monospace">
+    <div class="mini" style="margin-top:6px">Don't have the new fingerprint yet? Leave it blank and click <b>Release only</b> — the new server then binds itself on its first connection. Either way the old machine stops validating, and the shift is recorded in History.</div>
+    <div class="mini" id="sm_msg" style="margin-top:6px"></div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    ${cur ? '<button class="btn btn-l" onclick="doReleaseOnly(' + id + ')">Release only</button>' : ''}
+    <button class="btn btn-p" onclick="doShiftMachine(${id})">Shift to this machine</button></div>`);
+}
+async function doShiftMachine(id) {
+  const fp = (document.getElementById('sm_fp').value || '').trim(), msg = document.getElementById('sm_msg');
+  if (!fp) { msg.textContent = 'Paste the new machine\'s fingerprint — or use "Release only".'; return; }
+  try {
+    const r = await api(`licences/${id}/shift-machine`, {method:'POST', body:{fingerprint: fp}});
+    closeModal(); toast(r.message || 'Licence shifted to the new machine'); loadLicences();
+  } catch (e) { msg.textContent = 'Error: ' + e; }
+}
+async function doReleaseOnly(id) {
+  try {
+    await api(`licences/${id}/action`, {method:'POST', body:{action:'release_binding'}});
+    closeModal(); toast('Binding released — the new server binds itself on first connection'); loadLicences();
+  } catch (e) { toast('Error: ' + e); }
+}
+// Ejaz, 6-Aug: full licence history — every action + order in one timeline.
+const LIC_HIST_LABELS = {
+  'licence.created':'Licence issued', 'licence.issued':'Licence issued',
+  'licence.renew':'Renewed', 'licence.renew_amc':'AMC renewed',
+  'licence.suspend':'Suspended', 'licence.resume':'Resumed', 'licence.revoke':'REVOKED',
+  'licence.release_binding':'Server binding released (PC formatted/changed)',
+  'licence.machine_shifted':'Licence SHIFTED to a new machine',
+  'licence.validation_rejected':'⚠ BLOCKED: wrong/blocked machine tried to use this licence (possible misuse)',
+  'licence.verified':'✓ Verified — bound PC checked in (daily log)',
+  'licence.verified_summary':'✓ Verified — monthly summary (dailies cleaned up, history kept)',
+  'licence.machine_bound':'Machine bound to this licence (first check-in)',
+  'licence.file_issued':'Licence file (.lic) generated / downloaded',
+  'licence.edited':'Details edited', 'licence.limit_changed':'Device limit changed',
+  'licence.device_deactivated':'Device seat freed',
+  'order.paid':'Order PAID', 'order.created':'Order raised', 'order.quote':'Quotation raised', 'order.failed':'Order failed', 'order.refunded':'Order refunded',
+};
+function licHistMeta(m){
+  if(!m) return '';
+  return Object.entries(m).filter(([k,v])=>v!==null&&v!==''&&v!==undefined&&k!=='key')
+    .map(([k,v])=>esc(k.replace(/_/g,' '))+': <b>'+esc(typeof v==='object'?JSON.stringify(v):String(v))+'</b>').join(' · ');
+}
+async function licHistory(id, key) {
+  openModal(`<h2>Licence history — ${esc(key)}</h2><div class="sub">The complete life story: every issue, renewal, edit, suspension, .lic download, binding release, freed seat and order — newest first.</div>
+  <div id="lh_list">Loading…</div>
+  <div class="foot"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`, true);
+  try {
+    const d = await api(`licences/${id}/history`);
+    document.getElementById('lh_list').innerHTML = d.timeline.length ? `<table>
+      <tr><th>When</th><th>What happened</th><th>By</th><th>Details</th></tr>
+      ${d.timeline.map(e => `<tr><td class="mini" style="white-space:nowrap">${esc(e.at)}</td>
+      <td><b>${esc(LIC_HIST_LABELS[e.action] || e.action)}</b></td>
+      <td class="mini">${esc(e.by || '—')}</td>
+      <td class="mini">${licHistMeta(e.meta)}</td></tr>`).join('')}
+    </table>` : '<p class="mini">No history recorded yet.</p>';
+  } catch (e) { document.getElementById('lh_list').textContent = 'Error: ' + e; }
+}
+// Ejaz, 6-Aug: the client's SERVER was formatted / damaged / replaced —
+// release the binding so the fresh install validates and binds itself.
+async function releaseBinding(id) {
+  if (!confirm('Release the server binding?\n\nUse this when the client\'s server PC was formatted, damaged or replaced. The NEW installation will bind itself on its first connection; the old server stops validating. If they use a .lic file, generate a fresh one with the new machine\'s fingerprint after this.')) return;
+  try { await api(`licences/${id}/action`, {method:'POST', body:{action:'release_binding'}}); toast('Server binding released — the new server can now activate'); loadLicences(); }
+  catch (e) { toast('Error: ' + e); }
+}
+// Device seats — free the seat of a formatted/damaged/replaced employee PC.
+async function licDevices(id, key) {
+  openModal(`<h2>Device seats — ${esc(key)}</h2><div class="sub" id="ld_sub">Loading…</div><div id="ld_list">…</div>
+  <div class="foot"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`, true);
+  await loadLicDevices(id);
+}
+async function loadLicDevices(id) {
+  try {
+    const d = await api(`licences/${id}/devices`);
+    document.getElementById('ld_sub').innerHTML = `<b>${d.active}/${d.licence.device_limit}</b> seats in use. If an employee's PC was <b>formatted, damaged or replaced</b>, free its seat here — the replacement PC takes the free seat automatically when its agent connects.`;
+    document.getElementById('ld_list').innerHTML = d.devices.length ? `<table>
+      <tr><th>PC / Hostname</th><th>Device ID</th><th>Status</th><th>Activated</th><th></th></tr>
+      ${d.devices.map(v => `<tr><td><b>${esc(v.hostname || '—')}</b></td><td class="mini">${esc(v.device_uid)}</td>
+      <td>${pill(v.status)}</td><td class="mini">${esc(v.activated_at || '—')}</td>
+      <td>${v.status === 'active' ? `<button class="link" onclick="freeSeat(${id},'${esc(v.device_uid)}')">Free seat</button>` : `<span class="mini">seat free</span>`}</td></tr>`).join('')}
+    </table>` : '<p class="mini">No devices have activated on this licence yet.</p>';
+  } catch (e) { document.getElementById('ld_list').textContent = 'Error: ' + e; }
+}
+async function freeSeat(id, uid) {
+  if (!confirm('Free this seat?\n\nDo this when that PC was formatted, damaged or replaced. Monitoring from the old PC stops; the new PC takes the free seat when its agent connects.')) return;
+  try { await api(`licences/${id}/deactivate-device`, {method:'POST', body:{device_uid: uid}}); toast('Seat freed'); await loadLicDevices(id); loadLicences(); }
+  catch (e) { toast('Error: ' + e); }
 }
 async function licAction(id, action) {
   if (action === 'revoke' && !confirm('Revoke this licence permanently?')) return;
@@ -1348,6 +1535,17 @@ function editLic(id){
     <div class="mini" id="ed_msg" style="margin-top:6px"></div>
     <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
     <button class="btn btn-p" onclick="saveLic(${id})">Save changes</button></div>`);
+  const edk = document.getElementById('ed_kind');
+  if (edk) { edk.onchange = () => edKindUi(l.billing); edKindUi(l.billing); }
+}
+// Perpetual/trial = no billing period — Edit-licence modal (Ejaz, 6-Aug).
+const ED_BILL_OPTS = [['monthly','Monthly'],['quarterly','Quarterly'],['half_yearly','Half-yearly'],['annual','Annual']];
+function edKindUi(cur){
+  const k = document.getElementById('ed_kind'), b = document.getElementById('ed_bill');
+  if (!k || !b) return;
+  if (k.value === 'perpetual') { b.innerHTML = '<option value="annual">One-time — lifetime licence (no billing period)</option>'; b.disabled = true; }
+  else if (k.value === 'trial') { b.innerHTML = '<option value="annual">Trial — 7 days (free, no billing period)</option>'; b.disabled = true; }
+  else { b.innerHTML = ED_BILL_OPTS.map(o => `<option value="${o[0]}"${o[0]===cur?' selected':''}>${o[1]}</option>`).join(''); b.disabled = false; }
 }
 async function saveLic(id){
   const body={
@@ -1361,13 +1559,16 @@ async function saveLic(id){
   catch(e){ document.getElementById('ed_msg').textContent='Error: '+e; }
 }
 function licFile(id, key) {
-  openModal(`<h2>Generate licence file (.lic)</h2>
-    <div class="sub">Offline, node-locked licence for <b>${esc(key)}</b>. Paste the client's machine fingerprint (from their console's Licence screen). Leave blank for a file that runs on any machine.</div>
+  const l = _licById(id), fp = l.server_fingerprint || '';
+  openModal(`<h2>Licence file (.lic) — generate or re-download</h2>
+    <div class="sub">Offline, node-locked licence for <b>${esc(key)}</b>. ${fp
+      ? 'The fingerprint from the last generation is remembered below — just click the button to <b>re-download</b>. If the client\'s PC was formatted or changed, paste the NEW machine\'s fingerprint instead (from their console\'s Licence screen).'
+      : 'Paste the client\'s machine fingerprint (from their console\'s Licence screen). Leave blank for a file that runs on any machine.'}</div>
     <label>Client machine fingerprint</label>
-    <input id="lf_fp" placeholder="40-character fingerprint from the client" style="font-family:ui-monospace,monospace">
+    <input id="lf_fp" value="${esc(fp)}" placeholder="40-character fingerprint from the client" style="font-family:ui-monospace,monospace">
     <div class="mini" id="lf_msg" style="margin-top:6px"></div>
     <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-p" onclick="doLicFile(${id})">Generate &amp; download</button></div>`);
+    <button class="btn btn-p" onclick="doLicFile(${id})">${fp ? 'Re-download .lic' : 'Generate &amp; download'}</button></div>`);
 }
 async function doLicFile(id) {
   const fp = (document.getElementById('lf_fp').value || '').trim();
@@ -1386,7 +1587,7 @@ async function issueLicence() {
   openModal(`<h2>Issue Licence</h2><div class="sub">Direct issue without an order — use Orders for the full payment flow.</div>
   <label>Client</label><select id="il_tenant">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
   <div class="row"><div><label>Plan</label><select id="il_plan"><option value="smartept" selected>SmartEPT (all features)</option></select></div>
-  <div><label>Kind</label><select id="il_kind"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
+  <div><label>Kind</label><select id="il_kind" onchange="kindBillingUi('il_kind','il_billing')"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
   <div><label>Billing period</label><select id="il_billing"><option value="annual">Annual — 12 months (best price, 25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="il_deploy"><option value="client_hosted">Client-Hosted</option><option value="cloud">Cloud</option></select></div>
   <div><label>User limit</label><input id="il_devices" type="number" value="10" min="1"></div></div>
@@ -1401,9 +1602,15 @@ async function doIssue() {
   } catch (e) { toast('Error: ' + e); }
 }
 
+// ---------- shared list tools (Ejaz, 7-Aug: search + sort on every money screen, all roles) ----------
+function normNum(v){const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n;}
+function listSort(rows,key,dir){const m=dir==='desc'?-1:1;return [...rows].sort((a,b)=>{const x=key.split('.').reduce((o,k)=>o?.[k],a),y=key.split('.').reduce((o,k)=>o?.[k],b);const nx=normNum(x),ny=normNum(y);if(nx!==null&&ny!==null&&String(x).match(/^[0-9.\- ₹$,]+$/))return (nx-ny)*m;if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;return String(x).localeCompare(String(y))*m;});}
+function rowMatch(o,q){if(!q)return true;try{return JSON.stringify(o).toLowerCase().includes(q.toLowerCase());}catch(e){return true;}}
+
 // ---------- orders helpers ----------
 async function loadOrders() {
-  const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}`);
+  const oq = document.getElementById('oq'), osort = document.getElementById('osort');
+  const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}&q=${encodeURIComponent(oq?oq.value.trim():'')}&sort=${osort?osort.value:''}`);
   document.getElementById('olist').innerHTML = `<div class="card"><table>
   <tr><th>Order</th><th>Client</th><th>Licence</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
   ${d.data.map(o => `<tr><td><b>${esc(o.quote_number || o.number)}</b><div class="mini">${o.quote_number ? esc(o.number) + ' · ' : ''}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}</div></td>
@@ -1418,8 +1625,123 @@ async function loadOrders() {
   o.status==='created' && CAN_WRITE ? `${o.provisioned_at && o.balance>0
     ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
     : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
-  <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:''}` :
+  <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:`<a class="link" href="/admin/orders/${o.id}/proforma" target="_blank">Proforma</a>`}` :
   (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
+}
+// Trials list with instant search + sort (7-Aug, all roles).
+function trialsRender() {
+  const d = window.TR_D || {active:[], expired:[]};
+  const q = (document.getElementById('trq')?.value || '').trim();
+  const sort = document.getElementById('trsort')?.value || '';
+  const prep = arr => {
+    let r = (arr || []).filter(t => rowMatch(t, q));
+    if (sort === 'company') r = listSort(r, 'company_name', 'asc');
+    else r = [...r].sort((a,b) => (new Date(a.trial_ends_at||0) - new Date(b.trial_ends_at||0)) * (sort === 'ends_desc' ? -1 : 1));
+    return r;
+  };
+  const row = t => `<tr><td><b>${esc(t.company_name)}</b><div class="mini">${esc(t.email)}</div></td>
+    <td>${esc(t.contact_name||'—')}<div class="mini">${esc(t.phone||'')}</div></td>
+    <td>${t.trial_ends_at ? new Date(t.trial_ends_at).toLocaleDateString() : '—'}</td>
+    <td>${CAN_WRITE ? `<button class="link" onclick="extendTrial(${t.id})">Extend</button>
+    <button class="link" onclick="convertTrial(${t.id}, '${esc(t.company_name)}')">Convert to Paid</button>` : ''}</td></tr>`;
+  const act = prep(d.active), exp = prep(d.expired);
+  document.getElementById('trlist').innerHTML = `
+  <div class="card"><h3>Active Trials (${act.length}${act.length !== (d.active||[]).length ? ' of ' + d.active.length : ''})</h3><table><tr><th>Company</th><th>Contact</th><th>Ends</th><th></th></tr>
+  ${act.map(row).join('') || '<tr><td colspan="4" class="mini">No matching active trials</td></tr>'}</table></div>
+  <div class="card"><h3>Expired Trials (${exp.length}${exp.length !== (d.expired||[]).length ? ' of ' + d.expired.length : ''})</h3><table><tr><th>Company</th><th>Contact</th><th>Ended</th><th></th></tr>
+  ${exp.map(row).join('') || '<tr><td colspan="4" class="mini">None</td></tr>'}</table></div>`;
+}
+// Support tickets with instant search / status / sort (7-Aug, all roles).
+function tkRender() {
+  const q = (document.getElementById('tkq')?.value || '').trim();
+  const st = document.getElementById('tkst')?.value || '';
+  const sort = document.getElementById('tksort')?.value || '';
+  const c = window.TK_COUNTS || {};
+  const chip = (s, l) => '<span class="pill ' + (TK_PILL[s] || 'p-mut') + '">' + (l || s) + ' ' + (c[s] || 0) + '</span>';
+  let list = (window.TK_LIST || []).filter(t => rowMatch(t, q) && (!st || t.status === st));
+  if (sort === 'client') list = listSort(list, 'tenant', 'asc');
+  else list = [...list].sort((a,b) => (new Date(a.created_at||0) - new Date(b.created_at||0)) * (sort === 'oldest' ? 1 : -1));
+  const rows = list.map(t => '<tr onclick="tkOpen(' + t.id + ')" style="cursor:pointer">'
+    + '<td class="mini">' + esc(t.created_at_h || t.created_at || '') + '</td>'
+    + '<td><b>' + esc(t.tenant || '—') + '</b><div class="mini">' + esc(t.raised_by || '') + '</div></td>'
+    + '<td>' + esc(t.subject) + '<div class="mini">' + esc(t.category || '') + '</div></td>'
+    + '<td><span class="pill ' + (TK_PILL[t.status] || 'p-mut') + '">' + esc(String(t.status).replace('_', ' ')) + '</span></td>'
+    + '<td class="mini">' + (t.replied_at ? ('replied ' + esc(t.replied_at_h || t.replied_at)) : '') + (t.messages_count ? ' · ' + t.messages_count + ' msg' : '') + '</td></tr>').join('');
+  document.getElementById('tklist').innerHTML = '<div class="card"><h3>Support tickets <span class="mini">' + chip('open', 'open') + ' · ' + chip('in_progress', 'in progress') + ' · ' + chip('resolved', 'resolved') + ' · ' + chip('closed', 'closed') + '</span></h3>'
+    + '<table><tr><th>Raised</th><th>Client</th><th>Subject</th><th>Status</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">No matching tickets.</td></tr>') + '</table></div>';
+}
+// Credit-clients list with instant search / sort / overdue filter (7-Aug, all roles).
+function creditRender() {
+  const q = (document.getElementById('crq')?.value || '').trim();
+  const sort = document.getElementById('crsort')?.value || '';
+  const ovOnly = document.getElementById('crov')?.checked;
+  let rowsArr = (window.CR_ROWS || []).filter(c => rowMatch(c, q) && (!ovOnly || c.overdue));
+  if (sort === 'balance') rowsArr = listSort(rowsArr, 'balance', 'desc');
+  else if (sort === 'total') rowsArr = listSort(rowsArr, 'total', 'desc');
+  else if (sort === 'client') rowsArr = listSort(rowsArr, 'tenant.company_name', 'asc');
+  const rows = rowsArr.map(c => `<tr>
+    <td><b>${esc(c.tenant?.company_name)}</b><div class="mini">${esc(c.quote_number || c.number)}${c.invoice_number ? ' · ' + esc(c.invoice_number) : ''}</div></td>
+    <td class="mini">${esc(c.description)}</td>
+    <td><b>${fmtMoney(c.total, c.currency)}</b></td>
+    <td style="color:var(--ok);font-weight:700">${fmtMoney(c.received, c.currency)}</td>
+    <td><b style="color:${c.overdue ? 'var(--danger)' : 'var(--ink)'}">${fmtMoney(c.balance, c.currency)}</b></td>
+    <td style="${c.overdue ? 'color:var(--danger);font-weight:800' : ''}">${c.credit_due_date ? new Date(c.credit_due_date).toLocaleDateString() : '—'}${c.overdue ? ' ⚠ OVERDUE' : ''}</td>
+    <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick="recordBalance(${c.id}, ${c.balance}, '${esc(c.tenant?.company_name)}')">Record balance</button>` : ''}
+      <button class="link" onclick="navigator.clipboard.writeText('${esc(c.pay_url)}');toast('Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
+  document.getElementById('crlist').innerHTML = `<div class="card"><h3>Provisioned on credit — balance outstanding (${rowsArr.length}${rowsArr.length !== (window.CR_ROWS||[]).length ? ' of ' + (window.CR_ROWS||[]).length : ''})</h3>
+  <table><tr><th>Client</th><th>Order</th><th>Total</th><th>Received</th><th>Balance</th><th>Payable by</th><th></th></tr>
+  ${rows || '<tr><td colspan="7" class="mini">No matching credit balances.</td></tr>'}</table>
+  <div class="mini" style="margin-top:10px">Overdue turns red as a reminder for <b>manual follow-up only</b> — nothing locks automatically. Credit is a commercial judgement. The client's original pay link stays alive and collects exactly the balance.</div></div>`;
+}
+async function loadInvoices() {
+  const iq = document.getElementById('iq'), ist = document.getElementById('ist'), isort = document.getElementById('isort');
+  const d = await api(`invoices?status=${ist?ist.value:''}&q=${encodeURIComponent(iq?iq.value.trim():'')}&sort=${isort?isort.value:''}`);
+  document.getElementById('ivlist').innerHTML = `<div class="card"><table><tr><th>Invoice</th><th>Date</th><th>Client</th><th>Subtotal</th><th>GST</th><th>Total</th><th>Status</th><th></th></tr>
+  ${d.data.map(i => `<tr><td><b>${esc(i.number)}</b></td><td class="mini">${i.date?.slice(0,10)}</td>
+  <td>${esc(i.tenant?.company_name)}</td><td>${fmtMoney(i.subtotal, i.currency)}</td>
+  <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
+  <td><b>${fmtMoney(i.total, i.currency)}</b></td>
+  <td>${i.status==='issued' && i.due_date ? `<span class="pill p-warn">DUE</span><div class="mini">by ${i.due_date.slice(0,10)}</div>` : pill(i.status)}</td>
+  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No matching invoices</td></tr>'}</table></div>`;
+}
+// Ejaz, 6-Aug: log cleanup for performance — category + date range, with a
+// count preview before anything is deleted. Daily licence verifications are
+// ROLLED UP into monthly summaries so every licence's History stays complete.
+function purgeLogsModal() {
+  openModal(`<h2>Clean up logs</h2>
+  <div class="sub">Keeps the system fast as logs grow. <b>Permanent, never deleted:</b> licence lifecycle history (issued, shifted, bound, blocked, renewed, downloads, monthly summaries) and the money trail (orders, quotes, payments, invoices). Only routine bulk logs are cleanable — daily verifications are first rolled up into one monthly summary per licence, so every licence's History stays complete.</div>
+  <label>What to clean</label>
+  <select id="pl_cat">
+    <option value="audit|licence.verified">Daily licence verifications — roll up to monthly summaries (recommended)</option>
+    <option value="audit|logins">Admin sign-in/out entries</option>
+    <option value="mail|all">Email log (sent-mail records)</option>
+    <option value="audit|client">Client-activity entries (signups etc.)</option>
+    <option value="audit|all">All routine logs in the range (protected history is automatically kept)</option>
+  </select>
+  <div class="row"><div><label>From date</label><input id="pl_from" type="date"></div>
+  <div><label>To date</label><input id="pl_to" type="date"></div></div>
+  <div class="mini" style="margin-top:6px">Tip: keep at least the last 3–6 months. Older than that is safe to clean — summaries and the money records preserve the story.</div>
+  <div class="mini" id="pl_msg" style="margin-top:6px"></div>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" id="pl_btn" onclick="doPurgeLogs(false)">Count matching entries</button></div>`);
+}
+async function doPurgeLogs(confirmed) {
+  const [log, category] = document.getElementById('pl_cat').value.split('|');
+  const from = document.getElementById('pl_from').value, to = document.getElementById('pl_to').value;
+  const msg = document.getElementById('pl_msg'), btn = document.getElementById('pl_btn');
+  if (!from || !to) { msg.textContent = 'Pick both dates.'; return; }
+  try {
+    const r = await api('logs/purge', {method:'POST', body:{log, category, from, to, confirm: confirmed ? 1 : 0}});
+    if (r.preview) {
+      msg.innerHTML = '<b>' + r.count + '</b> log entr' + (r.count === 1 ? 'y' : 'ies') + ' match. Delete them now?' + (log === 'audit' ? ' (verified dailies become monthly summaries first)' : '');
+      btn.textContent = 'Yes — clean up ' + r.count + ' entries';
+      btn.onclick = () => doPurgeLogs(true);
+    } else {
+      toast('Cleaned ' + r.deleted + ' entries' + (r.summaries ? ' · ' + r.summaries + ' monthly summaries kept' : ''));
+      closeModal(); go('audit');
+    }
+  } catch (e) { msg.textContent = 'Error: ' + e; }
 }
 async function approveQuote(id) {
   try { await api(`orders/${id}/approve-quote`, {method:'POST'}); toast('Quotation approved — now payable'); loadOrders(); }
@@ -1434,7 +1756,7 @@ async function newOrder() {
   <label>Client</label><select id="no_tenant" onchange="refreshQuote()">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
   <div class="row">
   <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="smartept" selected>SmartEPT — all features</option></select></div>
-  <div><label>Kind</label><select id="no_kind" onchange="refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual</option></select></div>
+  <div><label>Kind</label><select id="no_kind" onchange="kindBillingUi('no_kind','no_billing');refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
   <div><label>Billing period</label><select id="no_billing" onchange="refreshQuote()"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="no_deploy" onchange="refreshQuote()"><option value="client_hosted">Client-Hosted</option><option value="cloud">SmartEPT Cloud</option></select></div>
   <div><label>Devices</label><input id="no_devices" type="number" value="25" min="1" oninput="refreshQuote()"></div>
@@ -1471,6 +1793,58 @@ async function createOrder() {
       as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null, po_number:(document.getElementById('no_po')?.value||null),
       coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null}});
     closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
+  } catch (e) { toast('Error: ' + e); }
+}
+// Phase 3 (6-Aug-2026): one-screen quotation for a brand-new prospect — no
+// pre-created client needed. Creates the prospect + quotation together and
+// emails it with the pay link; the client activates automatically on payment.
+async function newProspectQuote() {
+  openModal(`<h2>Quote for a NEW client</h2><div class="sub">No need to create the client first — fill their details and the quotation together. The quotation is emailed with a secure pay link; payment activates their workspace instantly (portal login is auto-created too).</div>
+  <div class="row">
+  <div><label>Company name</label><input id="pq_company"></div>
+  <div><label>Contact person</label><input id="pq_name"></div>
+  <div><label>Email (quotation goes here)</label><input id="pq_email" type="email"></div>
+  <div><label>Mobile</label><input id="pq_phone"></div>
+  <div><label>State code (GST — e.g. 36 Telangana)</label><input id="pq_state" maxlength="2" placeholder="36"></div>
+  <div><label>GSTIN (optional)</label><input id="pq_gstin" maxlength="15" style="text-transform:uppercase"></div>
+  <div><label>Kind</label><select id="pq_kind" onchange="pqKindUi()"><option value="subscription">Cloud subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
+  <div><label>Users</label><input id="pq_devices" type="number" value="25" min="1"></div>
+  <div><label>Billing period</label><select id="pq_billing"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
+  <div><label>Currency</label><select id="pq_currency"><option value="INR">₹ INR (GST invoice)</option><option value="USD">$ USD (export invoice, Stripe)</option></select></div>
+  <div><label>Coupon code (optional)</label><input id="pq_coupon" style="text-transform:uppercase"></div>
+  <div><label>Include one-time Setup &amp; Onboarding</label><select id="pq_setup"><option value="1">Yes (first order)</option><option value="0">No</option></select></div></div>
+  <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="pq_send" checked style="width:auto"> Email the quotation + pay link to the client now</label>
+  <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-p" onclick="createProspectQuote()">Create quotation</button></div>`, true);
+  pqKindUi();
+}
+// Perpetual = one-time — the billing-period dropdown must say so (Ejaz, 6-Aug).
+const BILLING_OPTS = '<option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option>';
+function kindBillingUi(kindSel, billSel) {
+  const s = document.getElementById(billSel), kind = document.getElementById(kindSel)?.value;
+  if (!s) return;
+  if (kind === 'perpetual') { s.innerHTML = '<option value="annual">One-time — lifetime licence (no billing period)</option>'; s.disabled = true; }
+  else if (kind === 'trial') { s.innerHTML = '<option value="annual">Trial — 7 days (free, no billing period)</option>'; s.disabled = true; }
+  else if (s.disabled || s.options.length < 3) { s.innerHTML = BILLING_OPTS; s.disabled = false; }
+}
+function pqKindUi() { kindBillingUi('pq_kind', 'pq_billing'); }
+async function createProspectQuote() {
+  try {
+    const r = await api('prospect-quote', {method:'POST', body:{
+      company_name:pq_company.value.trim(), contact_name:pq_name.value.trim(), email:pq_email.value.trim(),
+      phone:pq_phone.value.trim()||null, state_code:pq_state.value.trim(), gstin:pq_gstin.value.trim().toUpperCase()||null,
+      currency:pq_currency.value, kind:pq_kind.value, devices:+pq_devices.value, billing:pq_billing.value,
+      as_quote:true, include_setup:pq_setup.value==='1', send_email:document.getElementById('pq_send').checked,
+      coupon_code:(pq_coupon.value||'').trim().toUpperCase()||null}});
+    const o = r.order;
+    openModal(`<h2>Quotation created — ${esc(o.quote_number || o.number)}</h2>
+    <div class="sub"><b>${esc(o.tenant?.company_name)}</b> · total ${fmtMoney(o.total, o.currency)}${document.getElementById('pq_send')?.checked===false?'':' · emailed to the client'}</div>
+    <label>Pay link (send on WhatsApp too)</label>
+    <div style="display:flex;gap:8px;align-items:center"><input id="pq_link" value="${esc(r.pay_url)}" readonly style="flex:1"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById('pq_link').value);toast('Link copied')">Copy</button></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-l" target="_blank" href="${esc(r.print_url)}">Open printable quotation</a>
+      <a class="btn btn-l" target="_blank" href="https://wa.me/?text=${encodeURIComponent('Your SmartEPT quotation: ' + r.pay_url)}">Send on WhatsApp</a></div>
+    <div class="foot"><button class="btn btn-p" onclick="closeModal();go('orders')">Done</button></div>`);
   } catch (e) { toast('Error: ' + e); }
 }
 async function raiseSetup(tenantId, company) {
