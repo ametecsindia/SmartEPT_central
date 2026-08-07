@@ -76,22 +76,16 @@ class ProductProvisioner
     }
 
     /**
-     * Allocated storage for a tenant, in MB = seats x per-user free storage
-     * (Setting 'storage_per_user_gb', default 1 GB) + any purchased top-up
-     * (tenant->storage_addon_gb, 0 when none). Returns null when the tenant has
-     * no active licence yet, so the product keeps its default until seats exist.
+     * Allocated storage for a tenant, in MB, from the single source of truth
+     * Tenant::storageQuotaGb() (per-client override -> plan GB -> seats x per-user).
+     * Returns null when that resolves to 0 (no override, no plan GB, no seats yet),
+     * so the product keeps its default rather than capping the console prematurely.
      */
     private function storageQuotaMb(Tenant $tenant): ?int
     {
-        $seats = (int) (optional($tenant->activeLicence)->device_limit ?: 0);
-        if ($seats <= 0) {
-            return null; // seats unknown yet — don't cap the console prematurely
-        }
-        $perUserGb = (float) (Setting::get('storage_per_user_gb') ?: 1);
-        $topUpGb   = (float) ($tenant->storage_addon_gb ?? 0); // extra the client purchased
-        $totalGb   = ($seats * $perUserGb) + $topUpGb;
+        $gb = $tenant->storageQuotaGb();
 
-        return (int) round($totalGb * 1024); // GB -> MB
+        return $gb > 0 ? (int) round($gb * 1024) : null; // GB -> MB
     }
 
     /** Push a suspend/enable to the tenant's hosted console (cloud tenants only). */

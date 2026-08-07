@@ -158,10 +158,18 @@ class TenantApiController extends Controller
             'deployment' => ['sometimes', 'in:client_hosted,cloud'],
             'console_url' => ['nullable', 'url', 'max:255'],
             'console_slug' => ['nullable', 'string', 'max:40', 'regex:/^[a-z0-9][a-z0-9-]*$/', 'unique:tenants,console_slug,' . $tenant->id],
-            'status' => ['sometimes', 'in:trial,active,suspended,expired,churned'],
+            'status' => ['sometimes', 'in:pending,trial,active,suspended,expired,churned'],
             'ecosystem_customer' => ['boolean'],
+            // Per-client storage allowance (GB). Blank/0 = automatic (seats x per-user).
+            // Re-pushed to the client's console below so a change takes effect on Save.
+            'storage_gb_override' => ['nullable', 'integer', 'min:0', 'max:1048576'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        // Blank or 0 means "back to automatic" — store null, not 0.
+        if (array_key_exists('storage_gb_override', $data) && ! $data['storage_gb_override']) {
+            $data['storage_gb_override'] = null;
+        }
 
         $tenant->update($data);
 
