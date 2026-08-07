@@ -16,6 +16,11 @@ Artisan::command('inspire', function () {
 // makes the abandoned-buy rescue timely.
 Schedule::command('smartept:dunning')->hourly();
 
+// Live USD->INR exchange rate (7-Aug-2026): keeps usd_inr_rate current from a
+// free FX feed so USD pricing tracks the market. Last-good value is kept on any
+// failure, so checkout never breaks. Twice daily is ample for pricing.
+Schedule::command('smartept:refresh-fx')->twiceDaily(6, 18);
+
 // Scheduler heartbeat (Ametecs troubleshooting standard): stamps a cache key every minute
 // so Help -> System Health can tell whether "php artisan schedule:run" is actually running.
 Schedule::call(function () {
