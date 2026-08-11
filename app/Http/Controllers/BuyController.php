@@ -82,8 +82,14 @@ class BuyController extends Controller
         }
 
         $kind = $data['kind'] === 'perpetual' ? 'perpetual' : 'subscription';
-        if ($kind === 'perpetual' && $pricing->perpetualBandFor($plan, (int) $data['users']) === null) {
-            return response()->json(['error' => 'For more than 5,000 users we prepare a custom quotation — WhatsApp 90000 98877 and we will have it ready the same day.'], 422);
+        if ($kind === 'perpetual') {
+            $calc = $pricing->calculateLifetimeLicencePrice($plan, (int) $data['users']);
+            if ($calc['below_min']) {
+                return response()->json(['error' => sprintf('Minimum On-Premise licence capacity is %d users.', (int) $calc['min_users'])], 422);
+            }
+            if ($calc['custom']) {
+                return response()->json(['error' => ($calc['max_priced_users'] ? 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users' : 'For this configuration') . ' we prepare a custom quotation — WhatsApp 90000 98877 and we will have it ready the same day.'], 422);
+            }
         }
 
         [$tenant, $order] = DB::transaction(function () use ($data, $billing, $plan, $kind) {
@@ -194,8 +200,14 @@ class BuyController extends Controller
         }
 
         $kind = $data['kind'] === 'perpetual' ? 'perpetual' : 'subscription';
-        if ($kind === 'perpetual' && $pricing->perpetualBandFor($plan, (int) $data['users']) === null) {
-            return response()->json(['error' => 'For more than 5,000 users we prepare a custom quotation — WhatsApp 90000 98877.'], 422);
+        if ($kind === 'perpetual') {
+            $calc = $pricing->calculateLifetimeLicencePrice($plan, (int) $data['users']);
+            if ($calc['below_min']) {
+                return response()->json(['error' => sprintf('Minimum On-Premise licence capacity is %d users.', (int) $calc['min_users'])], 422);
+            }
+            if ($calc['custom']) {
+                return response()->json(['error' => ($calc['max_priced_users'] ? 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users' : 'For this configuration') . ' we prepare a custom quotation — WhatsApp 90000 98877.'], 422);
+            }
         }
 
         [$tenant, $order] = DB::transaction(function () use ($data, $billing, $plan, $kind) {

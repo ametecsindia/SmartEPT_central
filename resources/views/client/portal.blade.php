@@ -575,7 +575,7 @@ async function calcQuote() {
   try {
     const q = await api('quote', {method:'POST', body:{kind:BUY.kind, devices:BUY.devices, billing:BUY.billing, coupon_code:BUY.coupon || null}});
     if (seq !== CALC_SEQ) return;
-    if (q.custom) { box.innerHTML = '<span class="mini">' + esc(q.message || 'For more than 5,000 users, please request a custom quotation.') + '</span>'; return; }
+    if (q.custom) { box.innerHTML = '<span class="mini">' + esc(q.message || 'This user count needs a custom quotation — please contact us.') + '</span>'; return; }
     const cfg = `${BUY.kind === 'perpetual' ? 'SmartEPT Perpetual (one-time)' : 'SmartEPT Cloud'} · ${BUY.devices} user${BUY.devices === 1 ? '' : 's'}${BUY.kind === 'perpetual' ? '' : ' · ' + (PERIOD_LABEL[BUY.billing] || 'annual') + ' in advance'}`;
     const explain = `<div class="calc-ex"><div class="calc-cfg">${esc(cfg)}</div><div class="mini">GST is added on top; \u201CTotal payable\u201D below is the final amount.</div></div>`;
     box.innerHTML = explain + q.lines.map(l => {
@@ -593,7 +593,8 @@ async function calcQuote() {
 }
 async function doBuy(asQuote) {
   try {
-    if (BUY.kind === 'perpetual' && BUY.devices > 5000) { toast('For more than 5,000 users, please request a custom quotation.'); return; }
+    // Progressive pricing (11-Aug-2026): the server decides below-minimum /
+    // custom-quote counts from the admin-saved bands — no hard-coded limits here.
     const out = await api('orders', {method:'POST', body:{kind:BUY.kind, devices:BUY.devices, billing:BUY.billing, as_quote:asQuote, coupon_code:BUY.coupon || null}});
     if (asQuote) {
       modal(`<h2 style="font-size:17px;font-weight:800;margin-bottom:4px">Quotation ${esc(out.order.quote_number)} raised</h2>

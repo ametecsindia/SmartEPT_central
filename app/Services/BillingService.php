@@ -124,6 +124,15 @@ class BillingService
             ? $this->pricing->perpetualQuote($tenant, $plan, $devices)
             : $this->pricing->subscriptionQuote($tenant, $plan, $devices, $billing, $opts['deployment'] ?? null, $opts['include_setup'] ?? true);
 
+        // HARD GUARD (11-Aug-2026): a perpetual count that resolves to Custom
+        // Quote or below the configured minimum must NEVER become a ₹0/free
+        // lifetime licence — controllers validate first, this is the last door.
+        if ($kind === 'perpetual' && (! empty($quote['custom']) || ! empty($quote['below_min']) || empty($quote['lines']))) {
+            throw new \RuntimeException(! empty($quote['below_min'])
+                ? sprintf('Minimum On-Premise licence capacity is %d users.', (int) ($quote['min_users'] ?? 1))
+                : 'This user count needs a custom quotation — an automatic lifetime price is not available for it.');
+        }
+
         // R3-7 + master prompt §7: coupon — a visible negative line item BEFORE
         // GST, applied AFTER the advance-period discount (they stack knowingly).
         // Captured on a quotation it is LOCKED into that quote: the discount line

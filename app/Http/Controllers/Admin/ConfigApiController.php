@@ -67,29 +67,71 @@ class ConfigApiController extends Controller
         return response()->json($plan->fresh('volumeTiers'));
     }
 
-    /** Full-control On-Premise Lifetime bands (PlanPerpetualBand): replace-all editor. Super only. */
+    /**
+     * Full-control On-Premise Lifetime bands (PlanPerpetualBand): replace-all editor. Super only.
+     * Progressive pricing (11-Aug-2026): each price = one-time price AT the band's
+     * max-users MILESTONE (interpolated in between); open-ended top band = Custom
+     * Quote and stores price NULL. Validated hard so an invalid configuration can
+     * never produce a wrong (or ₹0) lifetime price.
+     */
     public function savePerpetualBands(Request $request, Plan $plan)
     {
         $data = $request->validate([
             'bands' => ['present', 'array'],
             'bands.*.min_users' => ['required', 'integer', 'min:1'],
             'bands.*.max_users' => ['nullable', 'integer', 'min:1'],
-            'bands.*.price_inr' => ['required', 'numeric', 'min:0'],
+            'bands.*.price_inr' => ['nullable', 'numeric', 'min:0'],
         ]);
-        foreach ($data['bands'] as $b) {
-            if ($b['max_users'] !== null && (int) $b['max_users'] < (int) $b['min_users']) {
-                return response()->json(['message' => 'Max users of each band must be greater than or equal to its Min users, or left blank for the open-ended top band.'], 422);
+
+        $bands = collect($data['bands'])->map(fn ($b) => [
+            'min_users' => (int) $b['min_users'],
+            'max_users' => ($b['max_users'] === null || $b['max_users'] === '') ? null : (int) $b['max_users'],
+            'price_inr' => ($b['price_inr'] === null || $b['price_inr'] === '') ? null : (int) round((float) $b['price_inr']),
+        ])->sortBy('min_users')->values();
+
+        $fail = fn (string $msg) => response()->json(['message' => $msg], 422);
+
+        $prev = null;
+        $prevPrice = null;
+        foreach ($bands as $i => $b) {
+            $isLast = $i === $bands->count() - 1;
+            $isOpen = $b['max_users'] === null;
+
+            if ($isOpen && ! $isLast) {
+                return $fail('Only the final band may be open-ended (Max users blank = Custom Quote).');
+            }
+            if (! $isOpen && $b['max_users'] < $b['min_users']) {
+                return $fail('Max users of each band must be greater than or equal to its Min users, or left blank for the open-ended top band.');
+            }
+            if (! $isOpen && ($b['price_inr'] === null || $b['price_inr'] <= 0)) {
+                return $fail('Every automatically priced band needs a positive milestone price (band ' . $b['min_users'] . '–' . $b['max_users'] . '). Only the open-ended Custom Quote band has no price.');
+            }
+            if ($prev !== null) {
+                if ($b['min_users'] <= $prev) {
+                    return $fail('Bands must not overlap or duplicate: a band starting at ' . $b['min_users'] . ' clashes with the previous band ending at ' . $prev . '.');
+                }
+                if ($b['min_users'] !== $prev + 1) {
+                    return $fail('No gaps allowed between bands: after a band ending at ' . $prev . ' the next must start at ' . ($prev + 1) . ' (got ' . $b['min_users'] . ').');
+                }
+                if (! $isOpen && $prevPrice !== null && $b['price_inr'] < $prevPrice) {
+                    return $fail('Milestone prices must not decrease as capacity grows: ₹' . number_format($b['price_inr']) . ' at ' . $b['max_users'] . ' users is below the previous milestone ₹' . number_format($prevPrice) . '.');
+                }
+            }
+            if (! $isOpen) {
+                $prev = $b['max_users'];
+                $prevPrice = $b['price_inr'];
             }
         }
-        $bands = collect($data['bands'])->sortBy('min_users')->values();
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($plan, $bands) {
             $plan->perpetualBands()->delete();
             $i = 0;
             foreach ($bands as $b) {
                 $plan->perpetualBands()->create([
-                    'min_users' => (int) $b['min_users'],
-                    'max_users' => ($b['max_users'] === null || $b['max_users'] === '') ? null : (int) $b['max_users'],
-                    'price_inr' => (int) round((float) $b['price_inr']),
+                    'min_users' => $b['min_users'],
+                    'max_users' => $b['max_users'],
+                    // Open-ended band = Custom Quote: price stored NULL, never 0.
+                    'price_inr' => $b['max_users'] === null ? null : $b['price_inr'],
                     'sort' => $i++,
                 ]);
             }

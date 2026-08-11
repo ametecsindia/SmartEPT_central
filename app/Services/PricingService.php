@@ -252,25 +252,142 @@ class PricingService
     }
 
     /**
-     * Build the line items for a PERPETUAL (own-it) order — pricing v2.
-     * One-time lifetime licence priced by licensed-user capacity band, all features,
-     * client-hosted. Setup is always extra. Above the top band → custom quote.
+     * PROGRESSIVE / PROPORTIONAL On-Premise Lifetime pricing (Ejaz, 11-Aug-2026).
+     *
+     * Each configured band's price_inr means "one-time price AT the band's
+     * max_users milestone" — NOT a flat price for every count inside the band.
+     * Counts between two milestones are priced by straight-line interpolation:
+     *
+     *   price = prevMilestonePrice
+     *         + (users - prevMilestoneUsers)
+     *         × (currMilestonePrice - prevMilestonePrice) / (currMilestoneUsers - prevMilestoneUsers)
+     *
+     * Rules:
+     *  - FIRST band = the minimum licence package: flat first-band price for any
+     *    count inside it — never proportionately reduced below it.
+     *  - Below the first band's min_users → below_min (validation, not a price).
+     *  - Open-ended band (max_users NULL) or above the last priced milestone
+     *    → custom quote. NEVER a ₹0 price.
+     *  - All maths on integers with ONE final round, so every configured
+     *    milestone lands exactly on its configured price and there is no
+     *    cumulative float drift.
+     *
+     * Everything is derived from the admin-saved bands — nothing hard-coded.
+     */
+    public function calculateLifetimeLicencePrice(Plan $plan, int $requestedUsers): array
+    {
+        $result = [
+            'requested_users'    => $requestedUsers,
+            'price'              => null,   // int rupees, null when custom/below_min
+            'previous_milestone' => null,   // ['users' => int, 'price' => int]
+            'next_milestone'     => null,   // ['users' => int, 'price' => int]
+            'per_user_rate'      => null,   // float ₹/additional user in this segment
+            'custom'             => false,  // true = Custom Quote / Contact Sales
+            'below_min'          => false,  // true = below the minimum licence capacity
+            'min_users'          => null,   // configured minimum (first band min_users)
+            'max_priced_users'   => null,   // last automatically priced milestone
+        ];
+
+        // Only bands with a max milestone AND a price participate in automatic
+        // pricing; an open-ended band (max NULL) is the explicit Custom Quote band.
+        $priced = $plan->perpetualBands
+            ->filter(fn ($b) => $b->max_users !== null && $b->price_inr !== null && (int) $b->price_inr > 0)
+            ->sortBy('min_users')->values();
+
+        if ($priced->isEmpty()) {
+            $result['custom'] = true;
+
+            return $result;
+        }
+
+        $first = $priced->first();
+        $last = $priced->last();
+        $result['min_users'] = (int) $first->min_users;
+        $result['max_priced_users'] = (int) $last->max_users;
+
+        if ($requestedUsers < (int) $first->min_users) {
+            $result['below_min'] = true;
+
+            return $result;
+        }
+
+        if ($requestedUsers > (int) $last->max_users) {
+            $result['custom'] = true;
+
+            return $result;
+        }
+
+        // First band = minimum licence package: flat price, never reduced.
+        if ($requestedUsers <= (int) $first->max_users) {
+            $result['price'] = (int) $first->price_inr;
+            $result['previous_milestone'] = ['users' => (int) $first->max_users, 'price' => (int) $first->price_inr];
+            $next = $priced->get(1);
+            $result['next_milestone'] = $next
+                ? ['users' => (int) $next->max_users, 'price' => (int) $next->price_inr]
+                : $result['previous_milestone'];
+            $result['per_user_rate'] = 0.0;
+
+            return $result;
+        }
+
+        // Interpolate between the previous band's milestone and this band's milestone.
+        $prev = $first;
+        foreach ($priced->slice(1) as $band) {
+            if ($requestedUsers <= (int) $band->max_users) {
+                $prevUsers = (int) $prev->max_users;
+                $prevPrice = (int) $prev->price_inr;
+                $currUsers = (int) $band->max_users;
+                $currPrice = (int) $band->price_inr;
+                $span = max(1, $currUsers - $prevUsers);
+                $deltaPrice = $currPrice - $prevPrice;
+
+                // Integer numerator, ONE final round → milestones stay exact.
+                $price = (int) round($prevPrice + (($requestedUsers - $prevUsers) * $deltaPrice) / $span);
+
+                $result['price'] = $price;
+                $result['previous_milestone'] = ['users' => $prevUsers, 'price' => $prevPrice];
+                $result['next_milestone'] = ['users' => $currUsers, 'price' => $currPrice];
+                $result['per_user_rate'] = round($deltaPrice / $span, 4);
+
+                return $result;
+            }
+            $prev = $band;
+        }
+
+        // Unreachable when bands are contiguous (validated on save) — safety net.
+        $result['custom'] = true;
+
+        return $result;
+    }
+
+    /**
+     * Build the line items for a PERPETUAL (own-it) order — pricing v2,
+     * PROGRESSIVE since 11-Aug-2026 (see calculateLifetimeLicencePrice()).
+     * One-time lifetime licence priced proportionately by exact user count,
+     * all features, client-hosted. Setup is always extra.
+     * Above the last priced milestone → custom quote (never ₹0).
+     * Below the configured minimum → below_min (validation, never a price).
      */
     public function perpetualQuote(Tenant $tenant, Plan $plan, int $devices): array
     {
         $users = max(1, $devices);
-        $band = $this->perpetualBandFor($plan, $users);
-        if (! $band) {
-            return ['lines' => [], 'subtotal' => 0.0, 'custom' => true];
+        $calc = $this->calculateLifetimeLicencePrice($plan, $users);
+
+        if ($calc['below_min']) {
+            return ['lines' => [], 'subtotal' => 0.0, 'custom' => false,
+                'below_min' => true, 'min_users' => $calc['min_users'], 'pricing' => $calc];
+        }
+        if ($calc['custom'] || $calc['price'] === null || $calc['price'] <= 0) {
+            return ['lines' => [], 'subtotal' => 0.0, 'custom' => true,
+                'max_priced_users' => $calc['max_priced_users'], 'pricing' => $calc];
         }
 
-        $capLabel = $band->max_users === null ? ($band->min_users . '+') : ('up to ' . $band->max_users);
         $lines = [[
             'type' => 'perpetual_licence',
-            'description' => sprintf('SmartEPT Perpetual — lifetime licence (%s users, all features)', $capLabel),
+            'description' => sprintf('SmartEPT Perpetual — lifetime licence (%d users, all features)', $users),
             'qty' => 1,
-            'unit' => (float) $band->price_inr,
-            'amount' => (float) $band->price_inr,
+            'unit' => (float) $calc['price'],
+            'amount' => (float) $calc['price'],
         ]];
 
         if (! $tenant->setup_fee_paid) {
@@ -286,32 +403,33 @@ class PricingService
 
         $subtotal = round(array_sum(array_column($lines, 'amount')), 2);
 
-        return ['lines' => $lines, 'subtotal' => $subtotal];
+        return ['lines' => $lines, 'subtotal' => $subtotal, 'pricing' => $calc];
     }
 
     /**
      * Optional Annual Maintenance & Support for a perpetual client — pricing v2.
      * Priced at pricing_amc_pct (default 18%, the mid of the 15–20% band) of the
-     * PREVAILING perpetual band price, not the originally-paid price.
+     * PREVAILING price — since 11-Aug-2026 the progressive/interpolated price
+     * for the client's exact user count (Ejaz's decision), not the band-max price.
      */
     public function amcQuote(Tenant $tenant, Plan $plan, int $users, ?float $pct = null): array
     {
-        $band = $this->perpetualBandFor($plan, max(1, $users));
-        if (! $band) {
-            return ['lines' => [], 'subtotal' => 0.0, 'custom' => true];
+        $users = max(1, $users);
+        $calc = $this->calculateLifetimeLicencePrice($plan, $users);
+        if ($calc['below_min'] || $calc['custom'] || $calc['price'] === null || $calc['price'] <= 0) {
+            return ['lines' => [], 'subtotal' => 0.0, 'custom' => true, 'pricing' => $calc];
         }
 
         $pct = $pct ?? (float) Setting::get('pricing_amc_pct', 18);
-        $amc = round($band->price_inr * $pct / 100, 2);
-        $capLabel = $band->max_users === null ? ($band->min_users . '+') : ('up to ' . $band->max_users);
+        $amc = round($calc['price'] * $pct / 100, 2);
 
         return ['lines' => [[
             'type' => 'amc',
-            'description' => sprintf('Annual Maintenance & Support — %s%% of prevailing licence (%s users)',
-                rtrim(rtrim(number_format($pct, 2), '0'), '.'), $capLabel),
+            'description' => sprintf('Annual Maintenance & Support — %s%% of prevailing licence (%d users)',
+                rtrim(rtrim(number_format($pct, 2), '0'), '.'), $users),
             'qty' => 1,
             'unit' => $amc,
             'amount' => $amc,
-        ]], 'subtotal' => $amc];
+        ]], 'subtotal' => $amc, 'pricing' => $calc];
     }
 }

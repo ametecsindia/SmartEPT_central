@@ -43,7 +43,8 @@ class PublicController extends Controller
                         'perpetual_bands' => $p->perpetualBands->map(fn ($b) => [
                             'min' => (int) $b->min_users,
                             'max' => $b->max_users === null ? null : (int) $b->max_users,
-                            'price' => (int) $b->price_inr,
+                            // NULL price = the open-ended Custom Quote band (never 0).
+                            'price' => $b->price_inr === null ? null : (int) $b->price_inr,
                         ])->all(),
                     ])->all(),
                 'cloud_multiplier' => $cfg['cloud_multiplier'],

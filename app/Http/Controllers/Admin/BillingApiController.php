@@ -44,10 +44,16 @@ class BillingApiController extends Controller
             ? $this->pricing->perpetualQuote($tenant, $plan, $data['devices'])
             : $this->pricing->subscriptionQuote($tenant, $plan, $data['devices'], $data['billing'] ?? 'annual', null);
 
-        // Pricing v2: above the top band → custom quotation.
+        // Progressive lifetime pricing: below the configured minimum = validation.
+        if (! empty($quote['below_min'])) {
+            return response()->json(['message' => sprintf('Minimum On-Premise licence capacity is %d users.',
+                (int) ($quote['min_users'] ?? 1))], 422);
+        }
+
+        // Above the last priced milestone → custom quotation (never ₹0).
         if (! empty($quote['custom'])) {
             return response()->json(['custom' => true,
-                'message' => 'For more than 5,000 users, please request a custom quotation.'], 200);
+                'message' => 'For more than ' . number_format((int) ($quote['max_priced_users'] ?? 0)) . ' users, please request a custom quotation.'], 200);
         }
 
         // Coupon preview — same maths as the order (negative line before GST).
@@ -166,10 +172,15 @@ class BillingApiController extends Controller
         ]);
 
         $plan = Plan::where('code', $data['plan_code'] ?? 'smartept')->firstOrFail();
-        if ($data['kind'] === 'perpetual'
-            && $this->pricing->perpetualBandFor($plan, (int) $data['devices']) === null) {
-            return response()->json(['custom' => true,
-                'message' => 'For more than 5,000 users, please request a custom quotation.'], 422);
+        if ($data['kind'] === 'perpetual') {
+            $calc = $this->pricing->calculateLifetimeLicencePrice($plan, (int) $data['devices']);
+            if ($calc['below_min']) {
+                return response()->json(['message' => sprintf('Minimum On-Premise licence capacity is %d users.', (int) $calc['min_users'])], 422);
+            }
+            if ($calc['custom']) {
+                return response()->json(['custom' => true,
+                    'message' => 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users, please request a custom quotation.'], 422);
+            }
         }
         $data['plan_code'] = $plan->code;
 
@@ -218,9 +229,14 @@ class BillingApiController extends Controller
         }
 
         $plan = Plan::where('code', 'smartept')->firstOrFail();
-        if ($data['kind'] === 'perpetual'
-            && $this->pricing->perpetualBandFor($plan, (int) $data['devices']) === null) {
-            return response()->json(['error' => 'For more than 5,000 users prepare a custom quotation.'], 422);
+        if ($data['kind'] === 'perpetual') {
+            $calc = $this->pricing->calculateLifetimeLicencePrice($plan, (int) $data['devices']);
+            if ($calc['below_min']) {
+                return response()->json(['error' => sprintf('Minimum On-Premise licence capacity is %d users.', (int) $calc['min_users'])], 422);
+            }
+            if ($calc['custom']) {
+                return response()->json(['error' => 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users prepare a custom quotation.'], 422);
+            }
         }
 
         $tenant = \App\Models\Tenant::create([

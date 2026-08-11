@@ -1073,8 +1073,8 @@ async plans() {
   </div>
 
   <div class="card"><h3>On-Premise — Buy Once, use for a Lifetime (by users)</h3>
-    <div class="sub">One-time perpetual licence price for each user-capacity band. Leave <b>Max users</b> blank for the top band (above it = custom quotation).</div>
-    <table id="perpBands"><tr><th style="width:22%">Min users</th><th style="width:30%">Max users (blank = &infin;)</th><th style="width:34%">₹ one-time (lifetime)</th><th></th></tr>${perpRows}</table>
+    <div class="sub">Each price is the one-time price <b>AT that band's Max users (milestone)</b> — e.g. 200 users may cost ₹90,000, but 151 users do <b>not</b> automatically cost ₹90,000. <b>Prices between user milestones are calculated proportionately. The first band is the minimum licence price.</b> Leave <b>Max users</b> blank on the final band to make it <b>Custom Quote</b> (no automatic price above the last milestone).</div>
+    <table id="perpBands"><tr><th style="width:22%">Min users</th><th style="width:30%">Max users (blank = Custom Quote)</th><th style="width:34%">₹ price at Max users (milestone)</th><th></th></tr>${perpRows}</table>
     ${canW?`<div style="margin-top:8px"><button class="btn btn-l" onclick="pcAddPerp()">+ Add band</button> <button class="btn btn-p" onclick="pcSavePerp()">Save Lifetime pricing</button></div>`:''}
   </div>
 
@@ -1986,7 +1986,7 @@ function editPlan(p) {
   <div><label>Cloud storage included (GB)</label><input id="ep_sg" type="number" value="${p.storage_gb!=null?p.storage_gb:50}"></div>
   <div><label>USD annual</label><input id="ep_ua" type="number" step="0.01" value="${p.usd_annual}"></div>
   <div><label>USD monthly</label><input id="ep_um" type="number" step="0.01" value="${p.usd_monthly}"></div>
-  <div style="grid-column:1/-1"><label>Perpetual pricing (by user band)</label><div class="mini">${(p.perpetual_bands||[]).length ? p.perpetual_bands.map(b=>`${b.min_users}${b.max_users?'–'+b.max_users:'+'} users: ₹${Number(b.price_inr).toLocaleString('en-IN')}`).join(' · ') : 'Set via the Pricing v2 seeder / perpetual bands'}</div></div>
+  <div style="grid-column:1/-1"><label>Perpetual pricing (milestones — proportional in between)</label><div class="mini">${(p.perpetual_bands||[]).length ? p.perpetual_bands.map(b=>b.max_users?`${b.min_users}–${b.max_users} users: ₹${Number(b.price_inr).toLocaleString('en-IN')} at ${b.max_users}`:`${b.min_users}+ users: Custom Quote`).join(' · ') : 'Set via the Pricing v2 seeder / perpetual bands'}</div></div>
   <div><label>Min devices</label><input id="ep_md" type="number" value="${p.min_devices}"></div>
   <div><label>INR monthly (legacy — not offered)</label><input id="ep_im" type="number" value="${p.inr_monthly}"></div></div>
   <div class="mini" id="ep_cyc" style="margin:6px 2px 2px">Derived: Quarterly ₹${q(p.inr_annual)} · Half-Yearly ₹${h(p.inr_annual)} · Annual ₹${p.inr_annual} /device/mo</div>
@@ -2009,7 +2009,9 @@ async function savePlan(id) {
 
 // ---- Full pricing control (Cloud rental + On-Premise Lifetime bands) ----
 function pcCloudRow(min,max,rate,canW){const ro=canW?'':'readonly';return `<tr><td><input type="number" class="cb-min" value="${min??''}" ${ro}></td><td><input type="number" class="cb-max" value="${max??''}" placeholder="∞" ${ro}></td><td><input type="number" step="0.01" class="cb-rate" value="${rate??''}" ${ro}></td><td>${canW?`<button class="link" onclick="this.closest('tr').remove()">✕</button>`:''}</td></tr>`;}
-function pcPerpRow(min,max,price,canW){const ro=canW?'':'readonly';return `<tr><td><input type="number" class="pb-min" value="${min??''}" ${ro}></td><td><input type="number" class="pb-max" value="${max??''}" placeholder="∞" ${ro}></td><td><input type="number" class="pb-price" value="${price??''}" ${ro}></td><td>${canW?`<button class="link" onclick="this.closest('tr').remove()">✕</button>`:''}</td></tr>`;}
+function pcPerpRow(min,max,price,canW){const ro=canW?'':'readonly';const open=(max===null||max===undefined||max==='');return `<tr><td><input type="number" class="pb-min" value="${min??''}" ${ro}></td><td><input type="number" class="pb-max" value="${max??''}" placeholder="Custom Quote" oninput="pcPerpMaxChg(this)" ${ro}></td><td><input type="number" class="pb-price" value="${open?'':(price??'')}" placeholder="${open?'Custom Quote':''}" ${open?'disabled':''} ${ro}></td><td>${canW?`<button class="link" onclick="this.closest('tr').remove()">✕</button>`:''}</td></tr>`;}
+// Blank Max users = the open-ended Custom Quote band: it has NO price (never ₹0).
+function pcPerpMaxChg(el){const priceEl=el.closest('tr').querySelector('.pb-price');const open=el.value==='';priceEl.disabled=open;priceEl.placeholder=open?'Custom Quote':'';if(open)priceEl.value='';}
 function pcAddCloud(){document.getElementById('cloudBands').insertAdjacentHTML('beforeend', pcCloudRow('','','',true));}
 function pcAddPerp(){document.getElementById('perpBands').insertAdjacentHTML('beforeend', pcPerpRow('','','',true));}
 async function pcSaveCloud(){
@@ -2027,11 +2029,15 @@ async function pcSaveCloud(){
 }
 async function pcSavePerp(){
   const p=window.__PLAN;
-  const bands=[...document.querySelectorAll('#perpBands tr')].slice(1).map(r=>({
-    min_users:+r.querySelector('.pb-min').value||0,
-    max_users:r.querySelector('.pb-max').value===''?null:(+r.querySelector('.pb-max').value),
-    price_inr:+r.querySelector('.pb-price').value||0,
-  })).filter(b=>b.min_users>0);
+  const bands=[...document.querySelectorAll('#perpBands tr')].slice(1).map(r=>{
+    const open=r.querySelector('.pb-max').value==='';
+    return {
+      min_users:+r.querySelector('.pb-min').value||0,
+      max_users:open?null:(+r.querySelector('.pb-max').value),
+      // Open-ended band = Custom Quote → price NULL (never 0).
+      price_inr:open?null:(r.querySelector('.pb-price').value===''?null:+r.querySelector('.pb-price').value),
+    };
+  }).filter(b=>b.min_users>0);
   try{
     await api('plans/'+p.id+'/perpetual-bands',{method:'PUT',body:{bands}});
     toast('Lifetime pricing saved — landing follows in ~5 min'); go('plans');

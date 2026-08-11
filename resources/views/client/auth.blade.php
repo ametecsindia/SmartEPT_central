@@ -174,8 +174,21 @@ let PLANS=[], GST=18, SETUP={base:5000,included:30,per:100}, ANN_DISC=0.25, HALF
 // Per-user/month cloud rate — mirrors backend PricingService::deviceRate exactly (config-driven, rounded).
 function cloudRate(annual,cyc){ const base=annual/Math.max(0.1,1-ANN_DISC); if(cyc==='y') return annual; if(cyc==='h') return Math.round(base*(1-HALF_DISC)*100)/100; return Math.round(base*100)/100; }
 let SEL='smartept', KIND='subscription', CYC='y', COUPON=null;
-const PERP_BANDS=[{cap:30,price:25000},{cap:100,price:50000},{cap:250,price:85000},{cap:500,price:125000},{cap:1000,price:200000},{cap:2000,price:325000},{cap:5000,price:500000}];
-function perpBandFor(u){for(const b of PERP_BANDS)if(u<=b.cap)return b;return null;}
+// Progressive lifetime pricing (11-Aug-2026) — mirrors backend PricingService::
+// calculateLifetimeLicencePrice(): milestone price AT each max-users point,
+// straight-line interpolation between milestones, flat minimum first band.
+// Fallback values only — overwritten by the live admin-saved bands from /api/plans.
+const PERP_CFG={min:1,miles:[{u:30,p:25000},{u:100,p:50000},{u:250,p:85000},{u:500,p:125000},{u:1000,p:200000},{u:2000,p:325000},{u:5000,p:500000}]};
+function perpPriceFor(u){
+  const m=PERP_CFG.miles; if(!m.length) return {custom:true,top:0};
+  if(u<PERP_CFG.min) return {belowMin:true,min:PERP_CFG.min};
+  if(u<=m[0].u) return {price:m[0].p};
+  for(let i=1;i<m.length;i++){
+    if(u<=m[i].u){const a=m[i-1],b=m[i];
+      return {price:Math.round(a.p+(u-a.u)*(b.p-a.p)/(b.u-a.u))};}
+  }
+  return {custom:true,top:m[m.length-1].u};
+}
 const PERIOD = {q:{m:3,d:0,label:'Quarterly (3 months)'}, h:{m:6,d:0.10,label:'6-month advance'}, y:{m:12,d:0.25,label:'12-month advance'}};
 
 const STATES=[['37','Andhra Pradesh'],['12','Arunachal Pradesh'],['18','Assam'],['10','Bihar'],['22','Chhattisgarh'],['30','Goa'],['24','Gujarat'],['06','Haryana'],['02','Himachal Pradesh'],['20','Jharkhand'],['29','Karnataka'],['32','Kerala'],['23','Madhya Pradesh'],['27','Maharashtra'],['14','Manipur'],['17','Meghalaya'],['15','Mizoram'],['13','Nagaland'],['21','Odisha'],['03','Punjab'],['08','Rajasthan'],['11','Sikkim'],['33','Tamil Nadu'],['36','Telangana'],['16','Tripura'],['09','Uttar Pradesh'],['05','Uttarakhand'],['19','West Bengal'],['07','Delhi'],['04','Chandigarh'],['01','Jammu & Kashmir'],['26','Dadra & Nagar Haveli and Daman & Diu'],['31','Lakshadweep'],['35','Andaman & Nicobar'],['38','Ladakh'],['34','Puducherry']];
@@ -204,25 +217,35 @@ function render(){
 
   if(KIND==='perpetual'){
     dr.style.display='none';
-    const band=perpBandFor(dev);
-    if(!band){
-      document.getElementById('ivSubLbl').textContent='Perpetual · 5,000+ users';
+    const pc=perpPriceFor(dev);
+    if(pc.belowMin){
+      document.getElementById('ivSubLbl').textContent='Perpetual licence';
+      document.getElementById('ivSub').textContent='—';
+      cr.style.display='none';
+      document.getElementById('ivGst').textContent='—';
+      document.getElementById('ivTotLbl').textContent='Below minimum';
+      document.getElementById('ivTot').textContent='—';
+      document.getElementById('ivEff').textContent='Minimum On-Premise licence capacity is '+pc.min.toLocaleString('en-IN')+' users.';
+      return;
+    }
+    if(pc.custom){
+      document.getElementById('ivSubLbl').textContent='Perpetual · '+(pc.top?pc.top.toLocaleString('en-IN')+'+ users':'custom');
       document.getElementById('ivSub').textContent='Custom';
       cr.style.display='none';
       document.getElementById('ivGst').textContent='—';
       document.getElementById('ivTotLbl').textContent='Custom quotation';
       document.getElementById('ivTot').textContent='—';
-      document.getElementById('ivEff').textContent='For 5,000+ users we prepare a custom quote.';
+      document.getElementById('ivEff').textContent='For '+(pc.top?pc.top.toLocaleString('en-IN')+'+':'this many')+' users we prepare a custom quote.';
       return;
     }
-    let taxable=band.price+setup, coupDisc=0;
+    let taxable=pc.price+setup, coupDisc=0;
     if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
       cr.style.display='';document.getElementById('ivCoupLbl').textContent='Coupon '+COUPON.code+(COUPON.type==='percent'?' ('+COUPON.value+'% off)':'');
       document.getElementById('ivCoup').textContent='− '+inr(coupDisc);taxable-=coupDisc;}
     else cr.style.display='none';
     const gstAmt=taxable*GST/100, total=taxable+gstAmt;
-    document.getElementById('ivSubLbl').textContent='Perpetual licence · up to '+band.cap+' users';
-    document.getElementById('ivSub').textContent=inr(band.price);
+    document.getElementById('ivSubLbl').textContent='Perpetual licence · '+dev.toLocaleString('en-IN')+' user'+(dev>1?'s':'');
+    document.getElementById('ivSub').textContent=inr(pc.price);
     document.getElementById('ivGst').textContent=inr(gstAmt);
     document.getElementById('ivTotLbl').textContent='One-time total';
     document.getElementById('ivTot').textContent=inr(total);
@@ -313,7 +336,7 @@ function render(){
     if(j.setup)SETUP={base:j.setup.base,included:j.setup.included,per:j.setup.per_extra};
     if(j.cycles){if(j.cycles.annual_discount!=null)ANN_DISC=+j.cycles.annual_discount;if(j.cycles.half_yearly_discount!=null)HALF_DISC=+j.cycles.half_yearly_discount;}
     {const oh=document.querySelector('#cH .off');if(oh)oh.textContent=Math.round(HALF_DISC*100)+'% off';const oy=document.querySelector('#cY .off');if(oy)oy.textContent=Math.round(ANN_DISC*100)+'% off';}
-    if(PLANS[0]&&Array.isArray(PLANS[0].perpetual_bands)){const pb=PLANS[0].perpetual_bands.filter(b=>b.max!=null).map(b=>({cap:b.max,price:b.price})).sort((a,b)=>a.cap-b.cap);if(pb.length){PERP_BANDS.length=0;pb.forEach(b=>PERP_BANDS.push(b));}}
+    if(PLANS[0]&&Array.isArray(PLANS[0].perpetual_bands)){const pb=PLANS[0].perpetual_bands.filter(b=>b.max!=null&&b.price!=null&&b.price>0).map(b=>({u:b.max,p:b.price,min:b.min})).sort((a,b)=>a.u-b.u);if(pb.length){PERP_CFG.min=Math.min(...pb.map(b=>b.min));PERP_CFG.miles=pb.map(b=>({u:b.u,p:b.p}));}}
     document.getElementById('sumPlan').textContent='SmartEPT';
     document.getElementById('sumTag').textContent='Every feature included — free for the first 7 days.';
     render();

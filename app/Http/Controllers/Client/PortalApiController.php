@@ -265,9 +265,14 @@ class PortalApiController extends Controller
             ? $this->pricing->perpetualQuote($tenant, $plan, $data['devices'])
             : $this->pricing->subscriptionQuote($tenant, $plan, $data['devices'], $data['billing'] ?? 'annual', null);
 
+        if (! empty($quote['below_min'])) {
+            return response()->json(['message' => sprintf('Minimum On-Premise licence capacity is %d users.',
+                (int) ($quote['min_users'] ?? 1))], 422);
+        }
+
         if (! empty($quote['custom'])) {
             return response()->json(['custom' => true,
-                'message' => 'For more than 5,000 users, please request a custom quotation.'], 200);
+                'message' => 'For more than ' . number_format((int) ($quote['max_priced_users'] ?? 0)) . ' users, please request a custom quotation.'], 200);
         }
 
         // R3-7: apply a valid coupon as a negative line before GST.
@@ -316,9 +321,14 @@ class PortalApiController extends Controller
         $tenant = $this->tenant();
         $plan = Plan::where('code', $data['plan_code'] ?? 'smartept')->firstOrFail();
         $kind = $data['kind'] ?? 'subscription';
-        if ($kind === 'perpetual'
-            && $this->pricing->perpetualBandFor($plan, (int) $data['devices']) === null) {
-            return response()->json(['error' => 'For more than 5,000 users, please request a custom quotation.'], 422);
+        if ($kind === 'perpetual') {
+            $calc = $this->pricing->calculateLifetimeLicencePrice($plan, (int) $data['devices']);
+            if ($calc['below_min']) {
+                return response()->json(['error' => sprintf('Minimum On-Premise licence capacity is %d users.', (int) $calc['min_users'])], 422);
+            }
+            if ($calc['custom']) {
+                return response()->json(['error' => 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users, please request a custom quotation.'], 422);
+            }
         }
 
         $order = $this->billing->createOrder($tenant, $plan, $data['devices'], [
