@@ -8,7 +8,8 @@ deployment models. Items marked <b>&#9873; to confirm</b> are being verified wit
 engineering and will be finalised before they are presented as guarantees.</p>
 
 <h2>1. Client Hosted — your infrastructure</h2>
-<p>Screenshots, activity records, camera events and productivity data remain within your
+<p>Policy-controlled screenshots, activity records, optional camera events (enabled only under a
+written, employee-acknowledged policy) and productivity data remain within your
 organisation&rsquo;s own server or private cloud. Ametecs receives only the licence and support
 metadata needed to keep the product activated.</p>
 

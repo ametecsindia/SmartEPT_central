@@ -33,7 +33,7 @@ footer a{color:#0B6373;text-decoration:none}
 <header><div class="wrap"><a class="brand" href="/"><span class="mk">EPT</span><span><b>SmartEPT</b><small>BY AMETECS</small></span></a></div></header>
 <main>
 <h1>@yield('title')</h1>
-<div class="upd">Last updated: 15 July 2026 · Ametecs India Private Limited</div>
+<div class="upd">Last updated: 11 August 2026 · Ametecs India Private Limited</div>
 @yield('content')
 </main>
 <footer>

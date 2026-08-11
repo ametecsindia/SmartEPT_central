@@ -38,7 +38,8 @@ is received. Quotations are valid for 15 days. Refunds are governed by our
 <a href="/refunds">Refund Policy</a>.</p>
 
 <h2>3. Your responsibilities as an employer</h2>
-<p>SmartEPT is a workplace monitoring tool. You are responsible for using it lawfully: informing
+<p>SmartEPT is a transparent, consent-first workplace productivity and monitoring tool — it is
+never covert surveillance software. You are responsible for using it lawfully: informing
 your employees, obtaining any consent your jurisdiction requires, and configuring monitoring
 policies proportionately. SmartEPT is transparent and policy-driven by design — you must not attempt
 to use it as covert surveillance, on devices you do not manage, or against individuals outside an

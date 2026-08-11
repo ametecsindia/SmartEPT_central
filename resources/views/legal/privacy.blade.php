@@ -24,8 +24,10 @@ what data we hold and what we do with it. It covers two very different things: <
 </ul>
 
 <h2>2. What the SmartEPT product stores (your infrastructure)</h2>
-<p>The monitoring data SmartEPT produces — screenshots, application and website activity, idle time,
-attendance and camera events — is stored on the deployment your employer chooses:</p>
+<p>The work-evidence and productivity data SmartEPT produces under your employer&rsquo;s disclosed,
+consent-based policy — policy-controlled screenshots, application and website activity, idle time,
+attendance and optional camera events (off by default; enabled only under a written,
+employee-acknowledged policy, where lawful) — is stored on the deployment your employer chooses:</p>
 <ul>
   <li><b>Client-hosted</b> (the default): operational data — screenshots, activity records, camera
   events and productivity data — remains within your organisation's own server or private cloud.
