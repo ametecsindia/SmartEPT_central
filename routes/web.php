@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 // ---------- Public: landing ----------
 Route::get('/', fn () => response()->file(public_path('landing.html'), ['Cache-Control' => 'no-cache, no-store, must-revalidate']));
-Route::get('/cms-preview', [\App\Http\Controllers\LandingController::class, 'show']); // CMS draft preview (Task 4) — '/' stays static until publish
+Route::get('/cms-preview', [\App\Http\Controllers\LandingController::class, 'show'])->middleware(\App\Http\Middleware\NoIndex::class); // CMS draft preview (Task 4) — '/' stays static until publish
 Route::get('/thank-you', [\App\Http\Controllers\LandingController::class, 'thanks']); // conversion / thank-you page
 Route::get('/robots.txt', [\App\Http\Controllers\LandingController::class, 'robots']);
 Route::get('/sitemap.xml', [\App\Http\Controllers\LandingController::class, 'sitemap']);
@@ -23,8 +23,8 @@ Route::view('/security', 'legal.security')->name('legal.security');
 Route::view('/system-requirements', 'legal.system-requirements')->name('legal.system-requirements');
 
 // ---------- Client portal (Phase 3): auth ----------
-Route::get('/client/login', [Client\AuthController::class, 'showAuth'])->name('client.login');
-Route::get('/client/signup', [Client\AuthController::class, 'showAuth']);
+Route::get('/client/login', [Client\AuthController::class, 'showAuth'])->name('client.login')->middleware(\App\Http\Middleware\NoIndex::class);
+Route::get('/client/signup', [Client\AuthController::class, 'showAuth'])->middleware(\App\Http\Middleware\NoIndex::class);
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/client/login', [Client\AuthController::class, 'login']);
     Route::post('/client/signup/request-otp', [Client\AuthController::class, 'signupRequestOtp'])->middleware('throttle:5,1');
@@ -35,7 +35,7 @@ Route::middleware('throttle:10,1')->group(function () {
 Route::post('/client/logout', [Client\AuthController::class, 'logout']);
 
 // ---------- Client portal: tenant self-service (auth-walled) ----------
-Route::middleware('client.auth')->prefix('client')->group(function () {
+Route::middleware(['client.auth', \App\Http\Middleware\NoIndex::class])->prefix('client')->group(function () {
     Route::get('/', [Client\PortalController::class, 'index']);
     Route::get('/console', [Client\PortalController::class, 'console']); // one-click SSO into hosted console
     Route::get('/invoices/{invoice}/print', [Client\PortalController::class, 'invoicePrint']);
@@ -63,17 +63,17 @@ Route::middleware('client.auth')->prefix('client')->group(function () {
 });
 
 // ---------- Public: BUY front door (Phase 1 money rework — pay first, account after) ----------
-Route::get('/buy', [\App\Http\Controllers\BuyController::class, 'show']);
+Route::get('/buy', [\App\Http\Controllers\BuyController::class, 'show'])->middleware(\App\Http\Middleware\NoIndex::class);
 Route::post('/buy/order', [\App\Http\Controllers\BuyController::class, 'order'])->middleware('throttle:10,1');
 Route::post('/buy/quote', [\App\Http\Controllers\BuyController::class, 'quote'])->middleware('throttle:6,1'); // Phase 3: self-serve quotation
 
 // ---------- Public: checkout ----------
-Route::get('/pay/{number}/{token}', [CheckoutController::class, 'show']);
-Route::get('/pay/{number}/{token}/quote', [CheckoutController::class, 'quotePrint']); // Phase 3: printable quotation, token-secured
-Route::get('/pay/{number}/{token}/proforma', [CheckoutController::class, 'quotePrint']); // 6-Aug: same doc as proforma invoice for plain orders
+Route::get('/pay/{number}/{token}', [CheckoutController::class, 'show'])->middleware(\App\Http\Middleware\NoIndex::class);
+Route::get('/pay/{number}/{token}/quote', [CheckoutController::class, 'quotePrint'])->middleware(\App\Http\Middleware\NoIndex::class); // Phase 3: printable quotation, token-secured
+Route::get('/pay/{number}/{token}/proforma', [CheckoutController::class, 'quotePrint'])->middleware(\App\Http\Middleware\NoIndex::class); // 6-Aug: same doc as proforma invoice for plain orders
 Route::post('/pay/{number}/{token}/razorpay-order', [CheckoutController::class, 'createRazorpayOrder']);
 Route::post('/pay/{number}/{token}/razorpay-callback', [CheckoutController::class, 'razorpayCallback']);
-Route::get('/pay/{number}/{token}/stripe', [CheckoutController::class, 'stripeRedirect']);
+Route::get('/pay/{number}/{token}/stripe', [CheckoutController::class, 'stripeRedirect'])->middleware(\App\Http\Middleware\NoIndex::class);
 
 // ---------- Public: gateway webhooks (CSRF-exempt in bootstrap/app.php) ----------
 Route::post('/webhooks/razorpay', [WebhookController::class, 'razorpay']);
