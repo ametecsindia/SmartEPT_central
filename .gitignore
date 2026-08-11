@@ -26,5 +26,4 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# licence signing keys (SECRET)
-storage/app/keys/
+# licence signing keys — committed by OWNER OVERRIDE (Ejaz, 11-Aug-2026); repo must stay PRIVATE
