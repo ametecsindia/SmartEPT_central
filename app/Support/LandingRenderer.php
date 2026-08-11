@@ -43,7 +43,8 @@ class LandingRenderer
             return $html;
         }
 
-        $base = rtrim((string) config('app.url'), '/');
+        // Canonical/OG URLs must NEVER be http:// — upgrade scheme even if APP_URL drifts (12-Aug-2026, GSC).
+        $base = rtrim(preg_replace('#^http://#i', 'https://', (string) config('app.url')), '/');
         $abs = function ($u) use ($base) {
             $u = trim($u);
             if ($u === '') return '';
