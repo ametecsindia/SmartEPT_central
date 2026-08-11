@@ -54,10 +54,21 @@ class LandingController extends Controller
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
 
+    /**
+     * Canonical public base URL for SEO surfaces (sitemap.xml / robots.txt).
+     * Production is HTTPS-only; if APP_URL is still http:// (the root cause of
+     * Google Search Console seeing http URLs), upgrade the scheme here so the
+     * sitemap NEVER emits http:// regardless of .env drift. (12-Aug-2026)
+     */
+    private function canonicalBase(): string
+    {
+        return rtrim(preg_replace('#^http://#i', 'https://', (string) config('app.url')), '/');
+    }
+
     /** robots.txt — welcomes search + AI crawlers, points to the sitemap. */
     public function robots()
     {
-        $base = rtrim((string) config('app.url'), '/');
+        $base = $this->canonicalBase();
         $bots = ['GPTBot','OAI-SearchBot','ChatGPT-User','ClaudeBot','Claude-Web','anthropic-ai','PerplexityBot','Perplexity-User','Google-Extended','Applebot-Extended','CCBot','meta-externalagent'];
         $txt = "User-agent: *\nAllow: /\n\n";
         foreach ($bots as $b) { $txt .= "User-agent: {$b}\nAllow: /\n\n"; }
@@ -68,8 +79,10 @@ class LandingController extends Controller
     /** sitemap.xml */
     public function sitemap()
     {
-        $base = rtrim((string) config('app.url'), '/');
-        $paths = ['/', '/privacy', '/terms', '/refunds', '/security', '/system-requirements'];
+        $base = $this->canonicalBase();
+        // Explicit allow-list of PUBLIC, indexable, 200-direct pages ONLY —
+        // never auth/checkout/admin/portal routes. /thank-you is noindex by design.
+        $paths = ['/', '/contact', '/privacy', '/terms', '/refunds', '/security', '/system-requirements'];
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
         foreach ($paths as $p) { $xml .= '  <url><loc>'.htmlspecialchars($base.$p, ENT_QUOTES).'</loc></url>'."\n"; }
