@@ -163,7 +163,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
   <div class="foot">Prefer a human? WhatsApp <a href="https://wa.me/919000098877?text=Hi%20Ametecs" target="_blank">90000 98877</a><br>
   Ametecs India Private Limited · sales@ametecsindia.com<br>
   <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a><br>
-  <span style="opacity:.8">SmartEPT™ · Developed by Ametecs India Private Limited · © 2026. All rights reserved.</span></div>
+  <span style="opacity:.8">SmartEPT · Developed by Ametecs India Private Limited · © 2026. All rights reserved.</span></div>
   </div>
 </div>
 
