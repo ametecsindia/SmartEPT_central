@@ -839,6 +839,17 @@ function npxKey(){ return npxMode==='perp'?'price':'rate'; }
 function npxBottomMin(b){ return b.length?Math.min.apply(null,b.map(x=>x.min)):1; }
 function npxTopMax(b){ let m=0; b.forEach(x=>{ const v=(x.max==null?x.min:x.max); if(v>m)m=v; }); return m||5000; }
 function npxBandFor(b,n){ for(const x of b){ if(n>=x.min && (x.max==null||n<=x.max)) return x; } return null; }
+/* Progressive lifetime pricing (11-Aug-2026) — mirrors backend PricingService::calculateLifetimeLicencePrice():
+   each band price = one-time price AT that band's max-users MILESTONE; counts between milestones are
+   interpolated proportionately; the first band is the flat minimum licence package. One final round only. */
+function npxPerpPrice(n){
+  const m=NPX_PERP.filter(x=>x.max!=null&&Number(x.price)>0).slice().sort((a,b)=>a.max-b.max);
+  if(!m.length) return NaN;
+  if(n<=m[0].max) return Number(m[0].price);
+  for(let i=1;i<m.length;i++){ if(n<=m[i].max){ const a=m[i-1],c=m[i];
+    return Math.round(Number(a.price)+(n-a.max)*(Number(c.price)-Number(a.price))/(c.max-a.max)); } }
+  return NaN;
+}
 function npxSyncSlider(){
   const sl=document.getElementById('npxUsers'); if(!sl) return;
   const b=npxActiveBands(); const lo=npxBottomMin(b), realTop=npxTopMax(b);
@@ -889,7 +900,7 @@ function npxRender(){
     if(custom){
       pamt.textContent='Custom'; pper.textContent=' quotation · '+nStr+' users'; pset.innerHTML='Volume licence + setup, quoted for you.'; pamc.innerHTML='+ Optional AMC '+npxAmc+'%/year on prevailing prices.';
     } else {
-      pamt.textContent=Number(val).toLocaleString('en-IN');
+      pamt.textContent=Number(npxPerpPrice(n)).toLocaleString('en-IN');
       pper.textContent='one-time · '+nStr+' users ('+band.label.toLowerCase()+')';
       pset.innerHTML='+ <b>'+npxINR(npxSetup(n))+'</b> one-time Remote Assisted Setup (optional)';
       pamc.innerHTML='+ Optional AMC <b>'+npxAmc+'%/year</b> (updates & support), on prevailing prices.';
