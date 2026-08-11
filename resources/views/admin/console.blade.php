@@ -1626,7 +1626,8 @@ async function loadOrders() {
     ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
     : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
   <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:`<a class="link" href="/admin/orders/${o.id}/proforma" target="_blank">Proforma</a>`}` :
-  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
+  (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}
+  ${ROLE==='super' && !(o.received>0) && !o.licence ? ` <button class="link" style="color:var(--danger)" onclick="delOrder(${o.id},'${esc(o.quote_number||o.number)}')">Delete</button>`:''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
 }
 // Trials list with instant search + sort (7-Aug, all roles).
 function trialsRender() {
@@ -1703,7 +1704,16 @@ async function loadInvoices() {
   <td class="mini">${fmtMoney(i.gst_amount, i.currency)} (${i.gst_rate}%)</td>
   <td><b>${fmtMoney(i.total, i.currency)}</b></td>
   <td>${i.status==='issued' && i.due_date ? `<span class="pill p-warn">DUE</span><div class="mini">by ${i.due_date.slice(0,10)}</div>` : pill(i.status)}</td>
-  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a></td></tr>`).join('') || '<tr><td colspan="8" class="mini">No matching invoices</td></tr>'}</table></div>`;
+  <td><a class="link" href="/admin/invoices/${i.id}/print" target="_blank">Print</a>${ROLE==='super' ? ` <button class="link" style="color:var(--danger)" onclick="delInvoice(${i.id},'${esc(i.number)}')">Delete</button>`:''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No matching invoices</td></tr>'}</table></div>`;
+}
+// ---- Garbage cleanup (Ejaz, 11-Aug-2026): super-only deletes, confirmed + audit-logged ----
+async function delOrder(id, num) {
+  if (!confirm('Delete ' + num + ' permanently?\n\nAllowed only because nothing has been received on it (no ledger entries, no licence). Its unpaid invoice, if any, is removed with it.\n\nThis cannot be undone.')) return;
+  try { await api('orders/' + id, {method:'DELETE'}); toast('Deleted ' + num); loadOrders(); } catch (e) { toast('Error: ' + e); }
+}
+async function delInvoice(id, num) {
+  if (!confirm('Delete invoice ' + num + ' permanently?\n\n⚠ GST invoice numbers are FY-consecutive and never reused — deleting one mid-series leaves a PERMANENT GAP in the series. Meant for cleaning test data before go-live only.\n\nThis cannot be undone.')) return;
+  try { await api('invoices/' + id, {method:'DELETE'}); toast('Deleted invoice ' + num); loadInvoices(); } catch (e) { toast('Error: ' + e); }
 }
 // Ejaz, 6-Aug: log cleanup for performance — category + date range, with a
 // count preview before anything is deleted. Daily licence verifications are

@@ -547,4 +547,56 @@ class BillingApiController extends Controller
     {
         return response()->json(WebhookEvent::latest()->paginate(25));
     }
+
+    // ---------- Garbage cleanup (Ejaz, 11-Aug-2026) ----------
+
+    /**
+     * Hard-delete a QUOTE / unpaid order — super only (route group).
+     * Allowed ONLY when not a single rupee is on the payments ledger and no
+     * licence hangs off the order. Its (unpaid) invoice, if any, goes with it.
+     * Money-bearing orders can never be deleted — refund / credit note instead.
+     */
+    public function deleteOrder(Order $order)
+    {
+        $received = $order->received();
+        if ($received > 0) {
+            return response()->json(['error' => 'This order has ' . number_format($received, 2)
+                . ' recorded on the payments ledger — money-bearing orders can never be deleted. Use refund / credit note instead.'], 422);
+        }
+        if ($order->licence_id) {
+            return response()->json(['error' => 'This order is linked to licence '
+                . ($order->licence?->key ?? '#' . $order->licence_id) . ' — deletion blocked.'], 422);
+        }
+
+        $meta = ['number' => $order->number, 'quote_number' => $order->quote_number,
+            'total' => (float) $order->total, 'tenant_id' => $order->tenant_id,
+            'invoice' => $order->invoice?->number, 'description' => $order->description];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+            $order->invoice?->delete();   // unpaid invoice of an unpaid order
+            $order->payments()->delete(); // zero rows — belt & braces
+            $order->delete();
+        });
+        AuditLog::write('order.deleted', null, $meta);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Hard-delete an invoice — super only (route group). Pre-launch decision
+     * (Ejaz, 11-Aug-2026): any invoice may be deleted for test-data cleanup;
+     * the UI shows a strong warning first, because FY-consecutive invoice
+     * numbers are never reused — deleting mid-series leaves a permanent gap.
+     */
+    public function deleteInvoice(Invoice $invoice)
+    {
+        $meta = ['number' => $invoice->number, 'total' => (float) $invoice->total,
+            'tenant_id' => $invoice->tenant_id, 'order_id' => $invoice->order_id,
+            'status' => $invoice->status];
+
+        $invoice->delete();
+        AuditLog::write('invoice.deleted', null, $meta);
+
+        return response()->json(['ok' => true]);
+    }
 }

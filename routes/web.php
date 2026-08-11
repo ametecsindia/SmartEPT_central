@@ -154,6 +154,9 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::put('plans/{plan}', [Admin\ConfigApiController::class, 'updatePlan']);
             Route::put('plans/{plan}/volume-tiers', [Admin\ConfigApiController::class, 'saveVolumeTiers']);
             Route::put('plans/{plan}/perpetual-bands', [Admin\ConfigApiController::class, 'savePerpetualBands']);
+            // 11-Aug: garbage cleanup — delete quotes/unpaid orders + invoices (super only, audit-logged)
+            Route::delete('orders/{order}', [Admin\BillingApiController::class, 'deleteOrder']);
+            Route::delete('invoices/{invoice}', [Admin\BillingApiController::class, 'deleteInvoice']);
             Route::get('settings', [Admin\ConfigApiController::class, 'settings']);
             Route::put('settings', [Admin\ConfigApiController::class, 'updateSettings']);
             Route::post('logs/purge', [Admin\ConfigApiController::class, 'purgeLogs']); // 6-Aug: category+date-range log cleanup (verified dailies roll up to monthly summaries)
