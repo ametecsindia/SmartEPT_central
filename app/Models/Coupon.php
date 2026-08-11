@@ -77,6 +77,20 @@ class Coupon extends Model
             ->first();
     }
 
+    /**
+     * Is ANY coupon currently usable (active + inside its validity window +
+     * uses left)? Drives whether the /buy page shows the coupon box at all —
+     * a disabled/expired/exhausted-only coupon list hides it (Ejaz, 11-Aug-2026).
+     */
+    public static function anyLive(): bool
+    {
+        return static::where('active', true)
+            ->where(fn ($q) => $q->whereNull('valid_from')->orWhere('valid_from', '<=', now()->startOfDay()))
+            ->where(fn ($q) => $q->whereNull('valid_until')->orWhere('valid_until', '>=', now()->startOfDay()))
+            ->where(fn ($q) => $q->whereNull('max_uses')->orWhereColumn('used_count', '<', 'max_uses'))
+            ->exists();
+    }
+
     /** ₹ discount for a given subtotal (never exceeds the subtotal). */
     public function discountFor(float $subtotal): float
     {

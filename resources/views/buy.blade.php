@@ -87,6 +87,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
       <input type="checkbox" id="setupChk" style="width:auto;margin-top:2px;accent-color:#22B8CF">
       <span>Add <b>Remote Assisted Setup &amp; Onboarding</b> <span style="color:#7FA8AF">(one-time — installation assistance, configuration guidance, administrator orientation and go-live support). Optional — you can self-install and add it later.</span></span>
     </label>
+    @if($couponsLive ?? true)
     <div class="ctrl" id="couponCtrl"><label>Coupon code</label>
       <div style="display:flex;gap:6px">
         <input id="couponInp" placeholder="e.g. DIWALI25" style="flex:1;padding:7px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.2);color:#fff;font-size:12px;text-transform:uppercase">
@@ -94,6 +95,7 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
       </div>
       <div id="couponMsg" style="font-size:10.5px;margin-top:5px;color:#7FE0EC"></div>
     </div>
+    @endif
 
     <div class="inv" id="inv">
       <div class="ln"><span id="ivSubLbl">Subtotal</span><b id="ivSub">—</b></div>
@@ -329,11 +331,16 @@ async function doQuote(){
     }catch(e){if(!quiet){cMsg.style.color='#FFB3C0';cMsg.textContent='Could not check the code — try again.';}}
     render();
   }
-  document.getElementById('couponBtn').onclick=()=>applyCoupon(document.getElementById('couponInp').value,false);
-  document.getElementById('couponInp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyCoupon(e.target.value,false);}});
+  // Coupon box is server-hidden when no coupon is live — guard all wiring (11-Aug-2026).
+  const cBtn=document.getElementById('couponBtn'),cInp=document.getElementById('couponInp');
+  if(cBtn&&cInp){
+    cBtn.onclick=()=>applyCoupon(cInp.value,false);
+    cInp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();applyCoupon(e.target.value,false);}});
+  }
   // ---- Exclusive-offer catch: email typed → quietly check for a personal coupon ----
   const emailInp=document.querySelector('#f-buy [name=email]');
   if(emailInp)emailInp.addEventListener('blur',async()=>{
+    if(!document.getElementById('couponInp'))return;
     const email=emailInp.value.trim();
     if(!email||COUPON)return;
     try{

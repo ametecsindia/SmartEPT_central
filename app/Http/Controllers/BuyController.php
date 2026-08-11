@@ -28,7 +28,9 @@ class BuyController extends Controller
 {
     public function show()
     {
-        return view('buy');
+        // Coupon box only appears when at least one coupon is actually usable
+        // (active + valid window + uses left) — Ejaz, 11-Aug-2026.
+        return view('buy', ['couponsLive' => \App\Models\Coupon::anyLive()]);
     }
 
     public function order(Request $request, BillingService $billing, PricingService $pricing)
