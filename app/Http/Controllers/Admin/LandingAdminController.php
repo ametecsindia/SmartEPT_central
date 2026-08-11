@@ -59,6 +59,15 @@ class LandingAdminController extends Controller
 
     public function publish(Request $r)
     {
+        // Self-heal (12-Aug-2026): on a fresh deployment landing_sections is empty
+        // (landing:import not yet run), so "Publish -> make live" rendered EMPTY and
+        // silently changed nothing — root cause of saved GA4/tracking settings never
+        // reaching the live page. Import the current landing.html verbatim first,
+        // exactly what `php artisan landing:import` does.
+        if (\App\Models\LandingSection::count() === 0) {
+            \Illuminate\Support\Facades\Artisan::call('landing:import');
+        }
+
         $html = LandingRenderer::html();
         if (trim($html) === '') {
             return response()->json(['ok' => false, 'error' => 'Render was empty — nothing published.'], 422);

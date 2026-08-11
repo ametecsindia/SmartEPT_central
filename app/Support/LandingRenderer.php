@@ -37,6 +37,11 @@ class LandingRenderer
         $chead  = (string) Setting::get('track_head_html', '');
         $cbody  = (string) Setting::get('track_body_html', '');
 
+        // Strip any previously-injected CMS block FIRST — so clearing every field
+        // also clears stale tags from an earlier publish (12-Aug-2026).
+        $html = preg_replace('/<!--CMS_HEAD_START-->.*?<!--CMS_HEAD_END-->\s*/s', '', $html);
+        $html = preg_replace('/<!--CMS_BODY_START-->.*?<!--CMS_BODY_END-->\s*/s', '', $html);
+
         $anything = ($title || $desc || $kw || $canon || $robots || $ogimg || $site || $tw || $fav || $logo
             || $ga4 || $gtm || $fbp || $ads || trim($chead) !== '' || trim($cbody) !== '');
         if (! $anything) {
@@ -51,9 +56,6 @@ class LandingRenderer
             if (preg_match('#^https?://#i', $u)) return $u;
             return $base.'/'.ltrim($u, '/');
         };
-
-        $html = preg_replace('/<!--CMS_HEAD_START-->.*?<!--CMS_HEAD_END-->\s*/s', '', $html);
-        $html = preg_replace('/<!--CMS_BODY_START-->.*?<!--CMS_BODY_END-->\s*/s', '', $html);
 
         if ($title !== '') {
             $html = preg_replace('/<title>.*?<\/title>/s', '<title>'.self::esc($title).'</title>', $html, 1);
@@ -131,6 +133,27 @@ class LandingRenderer
         }
 
         return $html;
+    }
+
+    /**
+     * Analytics/pixel tags for the OTHER public pages (legal pages, /buy) —
+     * SAME settings, SAME emitters as the landing publish (12-Aug-2026).
+     * Empty settings emit nothing; one include per layout = one tag per page.
+     */
+    public static function trackingTags(): string
+    {
+        $g = fn ($k) => trim((string) Setting::get($k, ''));
+        $ga4 = $g('track_ga4');
+        $gtm = $g('track_gtm');
+        $fbp = $g('track_fb_pixel');
+        $ads = $g('track_google_ads');
+
+        $b = '';
+        if ($gtm !== '')                { $b .= self::gtmHead($gtm); }
+        if ($ga4 !== '' || $ads !== '') { $b .= self::gtag($ga4, $ads); }
+        if ($fbp !== '')                { $b .= self::fbPixel($fbp); }
+
+        return $b;
     }
 
     private static function gtmHead(string $id): string

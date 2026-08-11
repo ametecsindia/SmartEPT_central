@@ -8,6 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 {{-- Self-referencing canonical (12-Aug-2026, GSC): absolute HTTPS, no query/fragment. --}}
 <link rel="canonical" href="{{ rtrim(preg_replace('#^http://#i', 'https://', config('app.url')), '/') . '/' . trim(request()->path(), '/') }}">
+{!! \App\Support\LandingRenderer::trackingTags() !!}
 <title>@yield('title') — SmartEPT by Ametecs</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
