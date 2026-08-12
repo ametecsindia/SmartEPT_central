@@ -472,7 +472,11 @@ async function pgLicence() {
   <div class="card">
     <h3>${esc(l.plan)} · <span class="keybox">${esc(l.key)}</span> ${statusPill(l.status)}</h3>
     <p class="mini" style="margin-bottom:10px">${esc(l.kind)} · ${esc(l.billing)} · ${esc(l.deployment).replace('_','-')} ·
-      up to <b>${l.device_limit}</b> users${l.expires_at ? ' · expires ' + l.expires_at : ''}</p>
+      up to <b>${l.device_limit}</b> users${l.renewal_device_limit ? ' · <b style="color:#B7791F">reduces to ' + l.renewal_device_limit + ' at renewal</b>' : ''}${l.expires_at ? ' · expires ' + l.expires_at : ''}</p>
+    ${l.deployment === 'client_hosted' && l.status === 'active' ? `
+    <p class="mini" style="margin-bottom:10px">${l.has_fingerprint
+      ? '<button class="btn btn-l" onclick="doLicFileDownload(' + l.id + ')">Download licence file (.lic)</button> <span class="mini">fresh signed copy, locked to your server — re-download after any upgrade and import it on the Licence screen</span>'
+      : 'Licence file (.lic): available once your server has validated online once (or send us its fingerprint on WhatsApp and we will issue it).'}</p>` : ''}
     ${l.devices.length ? `<table><thead><tr><th>Device</th><th>Hostname</th><th>Status</th><th>Activated</th></tr></thead><tbody>
       ${l.devices.map(d => `<tr><td>${esc(d.device_uid)}</td><td>${esc(d.hostname || '—')}</td><td>${statusPill(d.status)}</td><td class="mini">${esc(d.activated_at || '—')}</td></tr>`).join('')}
     </tbody></table>` : '<p class="mini">No devices activated yet. Install the SmartEPT agent on a workstation and it appears here with its licence seat.</p>'}
@@ -524,7 +528,41 @@ async function pgBuy() {
     </div>
   </div>` : '';
 
-  el.innerHTML = renewCard + upgradeCard + `
+  // 12-Aug-2026: perpetual (lifetime) upgrade — one-time payment of the
+  // progressive price difference. Once purchased, seats only go up.
+  const perpUpgradeCard = (l && l.kind === 'perpetual' && l.status === 'active') ? `
+  <div class="card">
+    <h3>Add users to your lifetime licence</h3>
+    <p class="mini" style="margin-bottom:10px">Your perpetual licence covers <b>${l.device_limit} users</b>. Upgrade any time — you pay only the <b>one-time difference</b> between the lifetime price at the new count and what your current count is priced at today. Your next AMC simply follows the new size. After payment, re-download your licence file below (Licences page) and import it on your server's Licence screen.</p>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div><label>New total users</label><input type="number" id="upDevices" min="${l.device_limit + 1}" value="${l.device_limit + 5}" style="width:130px"></div>
+      <button class="btn btn-p" onclick="doUpgrade(${l.id})">Get upgrade amount &amp; pay →</button>
+    </div>
+    <p class="mini" style="margin-top:8px">Lifetime licences never reduce once purchased — for a smaller team on a new project, talk to us.</p>
+  </div>` : '';
+
+  // 12-Aug-2026: downgrade-at-renewal — schedule a smaller size for the next
+  // renewal (mid-period reductions are not possible). Never below devices in use.
+  const reduceCard = (l && l.kind === 'subscription' && l.status === 'active') ? `
+  <div class="card">
+    <h3>Reduce users at next renewal</h3>
+    <p class="mini" style="margin-bottom:10px">Team shrinking? Schedule a smaller licence for your <b>next renewal</b> — the renewal bill is calculated on the reduced size and it applies the moment you renew. Reductions can't apply mid-period (the current period is already paid), and can't go below the <b>${l.devices_active} device(s)</b> currently in use.${l.renewal_device_limit ? `<br><b style="color:#B7791F">Scheduled: your next renewal reduces to ${l.renewal_device_limit} users.</b>` : ''}</p>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div><label>Users from next renewal</label><input type="number" id="rdDevices" min="${Math.max(1, l.devices_active)}" max="${l.device_limit - 1}" value="${l.renewal_device_limit || Math.max(l.devices_active, l.device_limit - 5)}" style="width:130px"></div>
+      <button class="btn btn-l" onclick="doScheduleReduction(${l.id}, false)">Schedule reduction</button>
+      ${l.renewal_device_limit ? `<button class="btn btn-l" onclick="doScheduleReduction(${l.id}, true)">Cancel schedule</button>` : ''}
+    </div>
+  </div>` : '';
+
+  // Why-can't-I-upgrade note (12-Aug): when no self-service card applies, say why.
+  const whyNot = (l && !upgradeCard && !perpUpgradeCard) ? `
+  <div class="card"><p class="mini">${
+    l.kind === 'trial' ? 'Trials upgrade by buying a plan below — pick Cloud or Perpetual and pay; your data carries over.'
+    : l.status !== 'active' ? 'Your licence is ' + esc(l.status) + ' — renew or contact us below, then upgrades become self-service again.'
+    : 'Need a change to this licence? Use the calculator below or WhatsApp us — we respond fast.'
+  }</p></div>` : '';
+
+  el.innerHTML = renewCard + upgradeCard + perpUpgradeCard + reduceCard + whyNot + `
   <div class="card">
     <h3>Price calculator — buy or upgrade</h3>
     <div class="plan-grid" id="buyTypeGrid"></div>
@@ -620,7 +658,27 @@ async function doUpgrade(id) {
   try {
     const devices = Math.max(1, parseInt(document.getElementById('upDevices').value || '0', 10));
     const out = await api('licences/' + id + '/upgrade', {method:'POST', body:{devices}});
-    location.href = out.pay_url; // the pay page shows the exact pro-rata amount before any money moves
+    location.href = out.pay_url; // the pay page shows the exact amount before any money moves
+  } catch (err) { toast(err.message); }
+}
+// 12-Aug-2026: downgrade-at-renewal — schedule (or cancel) a reduced size.
+async function doScheduleReduction(id, cancel) {
+  try {
+    const devices = cancel ? null : Math.max(1, parseInt(document.getElementById('rdDevices').value || '0', 10));
+    const out = await api('licences/' + id + '/schedule-reduction', {method:'POST', body:{devices}});
+    toast(out.message || 'Saved');
+    OV = null; pgBuy(); // refresh the cards with the new schedule
+  } catch (err) { toast(err.message); }
+}
+// 12-Aug-2026: self-service .lic re-download (fresh signed file, same machine
+// lock) — e.g. right after a lifetime upgrade so the new seat count applies.
+async function doLicFileDownload(id) {
+  try {
+    const r = await api('licences/' + id + '/license-file', {method:'POST'});
+    const blob = new Blob([r.token + '\n'], {type:'application/octet-stream'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = r.filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    toast('Downloaded ' + r.filename + ' — import it on your server\'s Licence screen.');
   } catch (err) { toast(err.message); }
 }
 

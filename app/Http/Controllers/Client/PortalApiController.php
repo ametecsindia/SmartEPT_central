@@ -62,6 +62,7 @@ class PortalApiController extends Controller
                 'billing' => $licence->billing,
                 'deployment' => $licence->deployment,
                 'device_limit' => $licence->device_limit,
+                'renewal_device_limit' => $licence->renewal_device_limit,
                 'devices_active' => $licence->activeDevices()->count(),
                 'status' => $licence->status,
                 'expires_at' => optional($licence->expires_at)->toDateString(),
@@ -83,6 +84,9 @@ class PortalApiController extends Controller
                 'id' => $l->id, 'key' => $l->key, 'plan' => $l->plan->name, 'kind' => $l->kind,
                 'billing' => $l->billing, 'deployment' => $l->deployment, 'status' => $l->status,
                 'device_limit' => $l->device_limit,
+                'renewal_device_limit' => $l->renewal_device_limit,
+                // .lic self-download is offered only when we already know the machine.
+                'has_fingerprint' => (bool) $l->server_fingerprint,
                 'expires_at' => optional($l->expires_at)->toDateString(),
                 'devices' => $l->devices->map(fn ($d) => [
                     'device_uid' => $d->device_uid, 'hostname' => $d->hostname, 'status' => $d->status,
@@ -396,6 +400,8 @@ class PortalApiController extends Controller
     /**
      * Phase 5 (6-Aug-2026): pro-rata MID-PERIOD UPGRADE — add users today, pay
      * only the difference for the remaining days; expiry date unchanged.
+     * 12-Aug-2026: PERPETUAL licences upgrade here too — one-time payment of the
+     * progressive lifetime price difference (once purchased, seats only go UP).
      */
     public function upgrade(Request $request, Licence $licence)
     {
@@ -406,7 +412,9 @@ class PortalApiController extends Controller
         ]);
 
         try {
-            $order = $this->billing->createUpgradeOrder($licence, (int) $data['devices']);
+            $order = $licence->kind === 'perpetual'
+                ? $this->billing->createPerpetualUpgradeOrder($licence, (int) $data['devices'])
+                : $this->billing->createUpgradeOrder($licence, (int) $data['devices']);
         } catch (\RuntimeException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
@@ -414,12 +422,99 @@ class PortalApiController extends Controller
         AuditLog::write('client.upgrade_order', $order, [
             'by' => auth('client')->user()->email,
             'from' => $licence->device_limit, 'to' => (int) $data['devices'],
+            'kind' => $licence->kind,
         ]);
 
         return response()->json([
             'order' => $order->only(['id', 'number', 'description', 'total', 'currency', 'status']),
             'pay_url' => $this->payUrl($order),
         ], 201);
+    }
+
+    /**
+     * Downgrade-at-renewal (Ejaz, 12-Aug-2026): schedule a SEAT REDUCTION for
+     * the next renewal of a Cloud subscription. Mid-period reductions stay
+     * impossible; the renewal order bills the reduced size and provisioning
+     * applies it. devices = null cancels the schedule. Never below the seats
+     * currently in use, never at/above the current limit (that's an upgrade).
+     */
+    public function scheduleReduction(Request $request, Licence $licence)
+    {
+        abort_unless($licence->tenant_id === $this->tenant()->id, 404);
+
+        if ($licence->kind !== 'subscription') {
+            return response()->json(['error' => 'Only Cloud subscriptions reduce at renewal — a lifetime licence never reduces once purchased.'], 422);
+        }
+
+        $data = $request->validate([
+            'devices' => ['nullable', 'integer', 'min:1', 'max:100000'],
+        ]);
+
+        $devices = $data['devices'] ?? null;
+
+        if ($devices !== null) {
+            if ((int) $devices >= (int) $licence->device_limit) {
+                return response()->json(['error' => 'That is not a reduction — to add users, use the mid-period upgrade above.'], 422);
+            }
+            $active = $licence->activeDevices()->count();
+            if ((int) $devices < $active) {
+                return response()->json(['error' => "You currently have $active device(s) in use — free seats first, or schedule $active or more."], 422);
+            }
+        }
+
+        $licence->update(['renewal_device_limit' => $devices !== null ? (int) $devices : null]);
+
+        AuditLog::write('client.schedule_reduction', $licence, [
+            'by' => auth('client')->user()->email,
+            'current' => $licence->device_limit,
+            'scheduled' => $devices,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'renewal_device_limit' => $licence->fresh()->renewal_device_limit,
+            'message' => $devices !== null
+                ? "Done — your next renewal will bill and apply $devices user(s). You can cancel any time before renewing."
+                : 'Scheduled reduction cancelled — renewals bill your current size again.',
+        ]);
+    }
+
+    /**
+     * Self-service .lic re-download (Ejaz, 12-Aug-2026) — after a perpetual
+     * upgrade (or any reissue need) the client fetches a FRESH signed licence
+     * file locked to the SAME machine we already know. Deliberately never
+     * accepts a new fingerprint — moving machines stays a support action
+     * (admin Shift machine), so a licence can't quietly migrate to a second PC.
+     */
+    public function licenseFile(Licence $licence, \App\Services\LicenseSigner $signer)
+    {
+        abort_unless($licence->tenant_id === $this->tenant()->id, 404);
+
+        if (! in_array($licence->kind, ['perpetual', 'subscription'], true) || $licence->deployment !== 'client_hosted') {
+            return response()->json(['error' => 'Licence files are for self-hosted servers — your Cloud console is licensed automatically.'], 422);
+        }
+        if ($licence->status !== 'active') {
+            return response()->json(['error' => 'This licence is not active — renew or contact us first.'], 422);
+        }
+        if (! $signer->available()) {
+            return response()->json(['error' => 'Licence file signing is temporarily unavailable — WhatsApp 90000 98877 and we will send your file.'], 422);
+        }
+        if (! $licence->server_fingerprint) {
+            return response()->json(['error' => 'This licence is not bound to a machine yet. Validate once online from your server, or WhatsApp us the fingerprint shown on your SmartEPT Licence screen and we will issue the file.'], 422);
+        }
+
+        $token = $signer->sign($licence, $licence->server_fingerprint);
+        AuditLog::write('licence.file_issued', $licence, [
+            'key' => $licence->key,
+            'locked' => true,
+            'by' => 'client:' . auth('client')->user()->email,
+        ]);
+
+        return response()->json([
+            'filename' => $signer->filename($licence),
+            'token' => $token,
+            'locked' => true,
+        ]);
     }
 
     // ---------- Account ----------

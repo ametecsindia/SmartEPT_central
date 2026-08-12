@@ -53,7 +53,9 @@ Route::middleware(['client.auth', \App\Http\Middleware\NoIndex::class])->prefix(
         Route::post('quote', [Client\PortalApiController::class, 'quote']);
         Route::post('orders', [Client\PortalApiController::class, 'createOrder']);
         Route::post('licences/{licence}/renew', [Client\PortalApiController::class, 'renew']);
-        Route::post('licences/{licence}/upgrade', [Client\PortalApiController::class, 'upgrade']); // Phase 5: pro-rata mid-period upgrade
+        Route::post('licences/{licence}/upgrade', [Client\PortalApiController::class, 'upgrade']); // Phase 5: pro-rata mid-period upgrade; 12-Aug: perpetual lifetime-difference upgrade too
+        Route::post('licences/{licence}/schedule-reduction', [Client\PortalApiController::class, 'scheduleReduction']); // 12-Aug: downgrade-at-renewal
+        Route::post('licences/{licence}/license-file', [Client\PortalApiController::class, 'licenseFile']); // 12-Aug: self-service .lic re-download (stored fingerprint only)
         Route::get('account/billing', [Client\PortalApiController::class, 'billingProfile']);
         Route::put('account/billing', [Client\PortalApiController::class, 'updateBillingProfile']);
         Route::post('account/password', [Client\PortalApiController::class, 'changePassword']);
@@ -132,6 +134,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::post('licences/{licence}/license-file', [Admin\LicenceApiController::class, 'licenseFile']);
             Route::put('licences/{licence}', [Admin\LicenceApiController::class, 'update']);
             Route::put('licences/{licence}/limit', [Admin\LicenceApiController::class, 'updateLimit']);
+            Route::post('licences/{licence}/upgrade-order', [Admin\LicenceApiController::class, 'upgradeOrder']); // 12-Aug: BILLED upgrade (cloud pro-rata / perpetual difference) with the GST paper trail
             Route::post('licences/{licence}/deactivate-device', [Admin\LicenceApiController::class, 'deactivateDevice']);
             Route::post('licences/{licence}/shift-machine', [Admin\LicenceApiController::class, 'shiftMachine']); // 6-Aug: shift licence to a new machine ID (damaged/replaced PC), history kept
             Route::post('orders', [Admin\BillingApiController::class, 'createOrder']);

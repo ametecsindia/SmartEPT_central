@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Licence extends Model
 {
     protected $fillable = ['key','tenant_id','plan_id','kind','billing','deployment','device_limit',
-        'features','addons','status','starts_at','expires_at','grace_days','amc_expires_at',
+        'renewal_device_limit','features','addons','status','starts_at','expires_at','grace_days','amc_expires_at',
         'server_fingerprint','activated_at','last_validated_at','pricing_model','legacy_baseline_inr'];
     protected $casts = ['features'=>'array','addons'=>'array','starts_at'=>'date','expires_at'=>'date',
         'amc_expires_at'=>'date','activated_at'=>'datetime','last_validated_at'=>'datetime','legacy_baseline_inr'=>'decimal:2'];

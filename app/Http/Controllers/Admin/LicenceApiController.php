@@ -231,6 +231,42 @@ class LicenceApiController extends Controller
     }
 
     /**
+     * POST /admin/api/licences/{licence}/upgrade-order (12-Aug-2026)
+     * The BILLED upgrade — the same engines the client portal uses, so an
+     * admin-raised upgrade carries the full GST paper trail instead of a silent
+     * limit edit. Cloud subscription → pro-rata difference for the remaining
+     * days; Perpetual → one-time progressive lifetime price difference.
+     * The order is payable (pay link) or settleable via Billing → Record payment.
+     */
+    public function upgradeOrder(Request $request, Licence $licence, \App\Services\BillingService $billing)
+    {
+        $data = $request->validate([
+            'devices' => ['required', 'integer', 'min:2', 'max:100000'],
+        ]);
+
+        try {
+            $order = $licence->kind === 'perpetual'
+                ? $billing->createPerpetualUpgradeOrder($licence, (int) $data['devices'])
+                : $billing->createUpgradeOrder($licence, (int) $data['devices']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        AuditLog::write('licence.upgrade_order', $licence, [
+            'order' => $order->number,
+            'from' => $licence->device_limit,
+            'to' => (int) $data['devices'],
+            'total' => $order->total,
+            'kind' => $licence->kind,
+        ]);
+
+        return response()->json([
+            'order' => $order->only(['id', 'number', 'description', 'subtotal', 'tax_amount', 'total', 'currency', 'status']),
+            'pay_url' => url('/pay/' . $order->number . '/' . \App\Http\Controllers\CheckoutController::token($order)),
+        ], 201);
+    }
+
+    /**
      * PUT /admin/api/licences/{licence}
      * Edit a licence — correct the expiry date, device limit, plan, kind, billing or
      * deployment (e.g. a wrong date entered by mistake). Also used by "Renew" to set
@@ -241,6 +277,8 @@ class LicenceApiController extends Controller
         $data = $request->validate([
             'expires_at'   => ['nullable', 'date'],
             'device_limit' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            // 12-Aug: scheduled downgrade-at-renewal (null clears the schedule).
+            'renewal_device_limit' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'kind'         => ['nullable', 'in:trial,subscription,perpetual'],
             'billing'      => ['nullable', 'in:annual,half_yearly,quarterly,monthly'],
             'deployment'   => ['nullable', 'in:client_hosted,cloud'],
@@ -265,6 +303,17 @@ class LicenceApiController extends Controller
         // expires_at is sent on every save: a date sets it, blank clears it (perpetual).
         if ($request->has('expires_at')) {
             $update['expires_at'] = $data['expires_at'] ?: null;
+        }
+        // 12-Aug: scheduled reduction — sent on save; a number schedules, blank clears.
+        // Guarded like device_limit: never below the seats currently in use.
+        if ($request->has('renewal_device_limit')) {
+            $sched = $data['renewal_device_limit'] ?? null;
+            if ($sched !== null && $sched < $licence->activeDevices()->count()) {
+                return response()->json([
+                    'error' => 'Scheduled reduction is below the devices currently in use — free seats first.',
+                ], 422);
+            }
+            $update['renewal_device_limit'] = $sched;
         }
         if (! empty($data['plan_code'])) {
             $update['plan_id'] = Plan::where('code', $data['plan_code'])->value('id');

@@ -235,8 +235,13 @@ class BillingService
         $tenant = $licence->tenant;
         $plan = $licence->plan;
 
+        // Downgrade-at-renewal (Ejaz, 12-Aug-2026): a scheduled reduction bills
+        // the REDUCED size and applies on provisioning. Mid-period reductions
+        // stay impossible; growth uses the pro-rata upgrade instead.
+        $devices = (int) ($licence->renewal_device_limit ?: $licence->device_limit);
+
         $quote = $this->pricing->subscriptionQuote(
-            $tenant, $plan, $licence->device_limit, $licence->billing, $licence->deployment
+            $tenant, $plan, $devices, $licence->billing, $licence->deployment
         );
 
         // GRANDFATHER (Pricing v2 finalise): a pre-v2 'legacy' licence renews onto the
@@ -273,8 +278,11 @@ class BillingService
             'tenant_id' => $tenant->id,
             'licence_id' => $licence->id,
             'valid_until' => now()->addDays((int) Setting::get('quote_validity_days', 7))->toDateString(),
-            'description' => sprintf('Renewal — %s plan, %d devices (%s)',
-                $plan->name, $licence->device_limit, $licence->billing),
+            'description' => sprintf('Renewal — %s plan, %d devices (%s)%s',
+                $plan->name, $devices, $licence->billing,
+                $devices < $licence->device_limit
+                    ? sprintf(' — scheduled reduction from %d users applies on payment', $licence->device_limit)
+                    : ''),
             'line_items' => $quote['lines'],
             'subtotal' => $quote['subtotal'],
             'tax_amount' => $tax,
@@ -284,8 +292,10 @@ class BillingService
             'status' => 'created',
             'meta' => [
                 'renewal' => true, 'plan_id' => $plan->id, 'grandfather_migrated' => $grandfather,
-                'devices' => $licence->device_limit, 'kind' => $licence->kind,
+                'devices' => $devices, 'kind' => $licence->kind,
                 'billing' => $licence->billing, 'deployment' => $licence->deployment,
+                // Set only when a reduction is scheduled — provisioning applies it.
+                'apply_device_limit' => $devices !== (int) $licence->device_limit ? $devices : null,
             ],
         ]);
     }
@@ -382,6 +392,83 @@ class BillingService
                 'upgrade_new_limit' => $newLimit, 'plan_id' => $plan->id,
                 'devices' => $newLimit, 'kind' => $licence->kind,
                 'billing' => $licence->billing, 'deployment' => $licence->deployment,
+            ],
+        ]);
+    }
+
+    /**
+     * PERPETUAL (lifetime) UPGRADE (Ejaz, 12-Aug-2026): once purchased, seats
+     * only go UP — the client pays the DIFFERENCE between the progressive/
+     * interpolated lifetime price at the new count and at the current count
+     * (calculateLifetimeLicencePrice, 11-Aug engine). No downgrades, no refunds.
+     * AMC re-bases automatically: the next AMC bill is priced from the licence's
+     * user count at that time (amcQuote reads the prevailing count).
+     * After payment the product's .lic must be re-issued — the client can
+     * re-download it from the portal (fingerprint remembered).
+     */
+    public function createPerpetualUpgradeOrder(Licence $licence, int $newLimit): Order
+    {
+        $tenant = $licence->tenant;
+        $plan = $licence->plan;
+
+        if ($licence->kind !== 'perpetual' || $licence->status !== 'active') {
+            throw new \RuntimeException('Only an active Perpetual (lifetime) licence can be upgraded here.');
+        }
+        if ($newLimit <= $licence->device_limit) {
+            throw new \RuntimeException('Enter a user count higher than the current ' . $licence->device_limit
+                . ' — a lifetime licence never reduces once purchased.');
+        }
+
+        $calcNew = $this->pricing->calculateLifetimeLicencePrice($plan, $newLimit);
+        $calcCur = $this->pricing->calculateLifetimeLicencePrice($plan, (int) $licence->device_limit);
+
+        if ($calcNew['custom'] || $calcNew['below_min'] || ! $calcNew['price']) {
+            throw new \RuntimeException('That user count needs a custom quotation — WhatsApp 90000 98877 and we will price it for you.');
+        }
+        // A legacy/odd current count that the bands cannot price → manual territory.
+        if ($calcCur['custom'] || $calcCur['below_min'] || ! $calcCur['price']) {
+            throw new \RuntimeException('This licence predates the current price bands — WhatsApp 90000 98877 and we will raise the upgrade manually.');
+        }
+
+        $amount = round($calcNew['price'] - $calcCur['price'], 2);
+        if ($amount <= 0) {
+            throw new \RuntimeException('Nothing extra to charge for that count — WhatsApp 90000 98877 and we will sort it manually.');
+        }
+
+        $quote = ['lines' => [[
+            'type' => 'upgrade',
+            'description' => sprintf('Lifetime licence upgrade %d → %d users — one-time price difference (₹%s − ₹%s, progressive pricing)',
+                $licence->device_limit, $newLimit,
+                number_format($calcNew['price']), number_format($calcCur['price'])),
+            'qty' => 1,
+            'unit' => $amount,
+            'amount' => $amount,
+        ]], 'subtotal' => $amount];
+
+        $currency = $tenant->currency ?: 'INR';
+        $this->convertCurrency($quote, $currency);
+        $gstRate = $currency === 'INR' ? (float) Setting::get('gst_rate', 18) : 0.0;
+        $tax = round($quote['subtotal'] * $gstRate / 100, 2);
+
+        return Order::create([
+            'number' => $this->nextOrderNumber(),
+            'tenant_id' => $tenant->id,
+            'licence_id' => $licence->id,
+            'valid_until' => now()->addDays((int) Setting::get('quote_validity_days', 7))->toDateString(),
+            'description' => sprintf('Upgrade — %s Perpetual, %d → %d users (lifetime price difference)',
+                $plan->name, $licence->device_limit, $newLimit),
+            'line_items' => $quote['lines'],
+            'subtotal' => $quote['subtotal'],
+            'tax_amount' => $tax,
+            'total' => round($quote['subtotal'] + $tax, 2),
+            'currency' => $currency,
+            'gateway' => 'manual',
+            'status' => 'created',
+            'meta' => [
+                'upgrade_new_limit' => $newLimit, 'plan_id' => $plan->id,
+                'devices' => $newLimit, 'kind' => $licence->kind,
+                'billing' => $licence->billing, 'deployment' => $licence->deployment,
+                'perpetual_upgrade' => true,
             ],
         ]);
     }
@@ -623,6 +710,16 @@ class BillingService
                 $this->licences->renewAmc($licence);
             } else {
                 $this->licences->renew($licence);
+                // Downgrade-at-renewal (12-Aug-2026): the scheduled reduction the
+                // renewal was billed at applies now; the schedule is consumed
+                // either way so a stale value never haunts the NEXT renewal.
+                $apply = (int) ($meta['apply_device_limit'] ?? 0);
+                $fresh = $licence->fresh();
+                if ($apply > 0 && $apply !== (int) $fresh->device_limit) {
+                    $fresh->update(['device_limit' => $apply, 'renewal_device_limit' => null]);
+                } elseif ($fresh->renewal_device_limit !== null) {
+                    $fresh->update(['renewal_device_limit' => null]);
+                }
             }
             if (($meta['grandfather_migrated'] ?? false) && $licence->pricing_model === 'legacy') {
                 $licence->update(['pricing_model' => 'v2', 'legacy_baseline_inr' => null]);
