@@ -208,6 +208,21 @@ Object.defineProperty(window, 'CAN_WRITE', { get: () => permOf(PAGE) === 'manage
 const fmtMoney = (n, c='INR') => (c==='INR'?'₹':'$') + Number(n).toLocaleString('en-IN', {maximumFractionDigits:2});
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const toast = m => { const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none', 3200); };
+// Clipboard that also works on plain http (Laragon: navigator.clipboard only
+// exists in SECURE contexts, so every Copy button silently died on .test URLs).
+function copyText(t, msg){
+  const done = () => toast(msg || 'Copied');
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t).then(done, () => copyTextFallback(t, done)); return; }
+  copyTextFallback(t, done);
+}
+function copyTextFallback(t, done){
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); done(); }
+  catch (e) { toast('Copy failed — select the link text and copy manually.'); }
+  document.body.removeChild(ta);
+}
 
 async function api(path, opts={}) {
   const res = await fetch('/admin/api/' + path, {
@@ -542,7 +557,7 @@ async function schedRunNow(btn) {
 async function schedOptions() {
   let i = {};
   try { i = await api('scheduler/instructions'); } catch (e) { toast('Error: ' + e); return; }
-  const copyBox = (id, val) => '<div style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input id="' + id + '" readonly value="' + esc(val) + '" style="flex:1;font-family:ui-monospace,monospace;font-size:11.5px"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById(\'' + id + '\').value);toast(\'Copied\')">Copy</button></div>';
+  const copyBox = (id, val) => '<div style="display:flex;gap:8px;align-items:center;margin:4px 0 10px"><input id="' + id + '" readonly value="' + esc(val) + '" style="flex:1;font-family:ui-monospace,monospace;font-size:11.5px"><button class="btn btn-l" onclick="copyText(document.getElementById(\'' + id + '\').value)">Copy</button></div>';
   openModal(`<h2>Scheduler setup — all hosting options</h2>
   <div class="sub">The scheduler must run <b>every minute</b> — it powers renewal &amp; trial reminders, grace warnings, abandoned-buy rescue, the quote chaser and your daily money digest. Pick the option matching where SmartEPT Central is hosted (this server: <b>${esc(i.os || '')}</b>).</div>
   <p style="font-weight:700;margin:10px 0 2px">1 · This machine, automatically (recommended)</p>
@@ -589,10 +604,8 @@ async function loadHelpLog() {
 }
 function copyHelpLog() {
   const t = document.getElementById('hc-log').textContent || '';
-  if (navigator.clipboard && t) {
-    navigator.clipboard.writeText(t).then(() => toast('Log copied — paste it to the developer.'),
-      () => toast('Copy failed — select the text and copy manually.'));
-  } else { toast('Nothing to copy yet — load the log first.'); }
+  if (t) { copyText(t, 'Log copied — paste it to the developer.'); }
+  else { toast('Nothing to copy yet — load the log first.'); }
 }
 
 // ============ DOWNLOADS (super-admin installer catalogue) ============
@@ -1548,7 +1561,8 @@ async function doUpgLic(id){
   try{
     const r = await api(`licences/${id}/upgrade-order`, {method:'POST', body:{devices: dev}});
     msg.innerHTML = `✓ Order <b>${esc(r.order.number)}</b> raised — total <b>${esc(r.order.currency)} ${Number(r.order.total).toLocaleString('en-IN')}</b> (incl. GST).<br>
-      <button class="link" onclick="navigator.clipboard.writeText('${esc(r.pay_url)}').then(()=>toast('Pay link copied'))">Copy pay link for the client</button>
+      <button class="link" onclick="copyText('${esc(r.pay_url)}', 'Pay link copied')">Copy pay link for the client</button>
+      · <a class="link" href="${esc(r.pay_url)}" target="_blank" rel="noopener">Open pay page ↗</a>
       · or record their NEFT/UPI payment from <b>Billing</b>. Seats rise the moment the order is paid.`;
     loadLicences();
   }catch(e){ msg.textContent = '✗ ' + (e.message || e); }
@@ -1728,7 +1742,7 @@ function creditRender() {
     <td><b style="color:${c.overdue ? 'var(--danger)' : 'var(--ink)'}">${fmtMoney(c.balance, c.currency)}</b></td>
     <td style="${c.overdue ? 'color:var(--danger);font-weight:800' : ''}">${c.credit_due_date ? new Date(c.credit_due_date).toLocaleDateString() : '—'}${c.overdue ? ' ⚠ OVERDUE' : ''}</td>
     <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick="recordBalance(${c.id}, ${c.balance}, '${esc(c.tenant?.company_name)}')">Record balance</button>` : ''}
-      <button class="link" onclick="navigator.clipboard.writeText('${esc(c.pay_url)}');toast('Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
+      <button class="link" onclick="copyText('${esc(c.pay_url)}', 'Pay-balance link copied — the client\\'s original link stays alive')">Pay link</button></td></tr>`).join('');
   document.getElementById('crlist').innerHTML = `<div class="card"><h3>Provisioned on credit — balance outstanding (${rowsArr.length}${rowsArr.length !== (window.CR_ROWS||[]).length ? ' of ' + (window.CR_ROWS||[]).length : ''})</h3>
   <table><tr><th>Client</th><th>Order</th><th>Total</th><th>Received</th><th>Balance</th><th>Payable by</th><th></th></tr>
   ${rows || '<tr><td colspan="7" class="mini">No matching credit balances.</td></tr>'}</table>
@@ -1889,7 +1903,7 @@ async function createProspectQuote() {
     openModal(`<h2>Quotation created — ${esc(o.quote_number || o.number)}</h2>
     <div class="sub"><b>${esc(o.tenant?.company_name)}</b> · total ${fmtMoney(o.total, o.currency)}${document.getElementById('pq_send')?.checked===false?'':' · emailed to the client'}</div>
     <label>Pay link (send on WhatsApp too)</label>
-    <div style="display:flex;gap:8px;align-items:center"><input id="pq_link" value="${esc(r.pay_url)}" readonly style="flex:1"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById('pq_link').value);toast('Link copied')">Copy</button></div>
+    <div style="display:flex;gap:8px;align-items:center"><input id="pq_link" value="${esc(r.pay_url)}" readonly style="flex:1"><button class="btn btn-l" onclick="copyText(document.getElementById('pq_link').value, 'Link copied')">Copy</button></div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <a class="btn btn-l" target="_blank" href="${esc(r.print_url)}">Open printable quotation</a>
       <a class="btn btn-l" target="_blank" href="https://wa.me/?text=${encodeURIComponent('Your SmartEPT quotation: ' + r.pay_url)}">Send on WhatsApp</a></div>
@@ -1911,7 +1925,7 @@ async function doRaiseSetup(tenantId) {
     openModal(`<h2>Installation invoice created</h2>
     <div class="sub">${esc(o.number)}${o.quote_number?' · '+esc(o.quote_number):''} — total ${fmtMoney(o.total,o.currency)} (incl. GST)</div>
     <label>Send this pay link to the client</label>
-    <div style="display:flex;gap:8px;align-items:center"><input id="su_link" value="${esc(url)}" readonly style="flex:1"><button class="btn btn-l" onclick="navigator.clipboard.writeText(document.getElementById('su_link').value);toast('Link copied')">Copy</button></div>
+    <div style="display:flex;gap:8px;align-items:center"><input id="su_link" value="${esc(url)}" readonly style="flex:1"><button class="btn btn-l" onclick="copyText(document.getElementById('su_link').value, 'Link copied')">Copy</button></div>
     <div style="margin-top:10px"><a class="btn btn-l" target="_blank" href="https://wa.me/?text=${encodeURIComponent('Your SmartEPT installation & onboarding invoice '+o.number+': '+url)}">Send on WhatsApp</a></div>
     <div class="foot"><button class="btn btn-p" onclick="closeModal();go('orders')">Done</button></div>`);
   } catch (e) { toast('Error: ' + e); }

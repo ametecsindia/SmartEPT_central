@@ -458,7 +458,22 @@ function installSoon(art) {
   const msg = 'Hi Ametecs, please send me ' + label + ' for my SmartEPT account.';
   window.open('https://wa.me/919000098877?text=' + encodeURIComponent(msg), '_blank');
 }
-function copyKey(k) { navigator.clipboard?.writeText(k); toast && toast('Licence key copied'); }
+// Clipboard that also works on plain http (navigator.clipboard exists only in
+// SECURE contexts — on http .test URLs every copy silently failed).
+function copyText(t, msg) {
+  const done = () => toast && toast(msg || 'Copied');
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t).then(done, () => copyTextFallback(t, done)); return; }
+  copyTextFallback(t, done);
+}
+function copyTextFallback(t, done) {
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); done(); }
+  catch (e) { toast && toast('Copy failed — select the text and copy manually.'); }
+  document.body.removeChild(ta);
+}
+function copyKey(k) { copyText(k, 'Licence key copied'); }
 
 // ---------- Licence & Devices ----------
 async function pgLicence() {
@@ -640,7 +655,8 @@ async function doBuy(asQuote) {
       <p class="mini" style="margin-bottom:14px">Print it or send the pay link to your management — the moment they pay, your licence activates automatically.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a class="btn btn-p" style="text-decoration:none" href="${esc(out.quote_print_url)}" target="_blank">Print quotation</a>
-        <button class="btn btn-l" onclick="navigator.clipboard.writeText('${esc(out.pay_url)}').then(()=>toast('Pay link copied'))">Copy pay link</button>
+        <a class="btn btn-l" style="text-decoration:none" href="${esc(out.pay_url)}" target="_blank" rel="noopener">Open pay page</a>
+        <button class="btn btn-l" onclick="copyText('${esc(out.pay_url)}', 'Pay link copied')">Copy pay link</button>
         <button class="btn btn-l" onclick="closeModal()">Done</button>
       </div>`);
     } else {
