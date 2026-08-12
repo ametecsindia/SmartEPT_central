@@ -35,13 +35,25 @@ class TenantApiController extends Controller
 
     public function show(Tenant $tenant)
     {
-        return response()->json($tenant->load([
+        $tenant->load([
             'licences.plan:id,code,name',
             'licences.devices',
             'orders' => fn ($q) => $q->latest()->take(20),
             'invoices' => fn ($q) => $q->latest()->take(20),
             'storageUsage' => fn ($q) => $q->latest('date')->take(31),
-        ]));
+        ]);
+
+        // Full payments ledger for this client — every order_payments row (gateway
+        // captures + manual NEFT/UPI/cheque/cash + credit instalments) across ALL
+        // orders, newest first, so credit clients' part-payments are auditable
+        // with date, amount and method (Ejaz, 12-Aug-2026).
+        $tenant->setAttribute('payment_history', \App\Models\OrderPayment::query()
+            ->whereHas('order', fn ($q) => $q->where('tenant_id', $tenant->id))
+            ->with(['order:id,number,currency', 'recorder:id,name'])
+            ->orderByDesc('paid_at')->orderByDesc('id')
+            ->take(200)->get());
+
+        return response()->json($tenant);
     }
 
     public function store(Request $request, BillingService $billing)

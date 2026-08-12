@@ -1293,6 +1293,14 @@ async function showTenant(id) {
   <h4 style="color:var(--deep);margin:12px 0 6px">Recent Orders</h4>
   <table><tr><th>Order</th><th>Total</th><th>Status</th></tr>
   ${(t.orders||[]).slice(0,6).map(o => `<tr><td class="mini">${esc(o.number)} — ${esc(o.description)}</td><td>${fmtMoney(o.total,o.currency)}</td><td>${pill(o.status)}</td></tr>`).join('') || '<tr><td colspan="3" class="mini">None</td></tr>'}</table>
+  <h4 style="color:var(--deep);margin:12px 0 6px">Payment History</h4>
+  <table><tr><th>Date</th><th>Order</th><th>Amount</th><th>Method</th><th>Reference</th><th>Recorded by</th></tr>
+  ${(t.payment_history||[]).map(p => `<tr><td class="mini">${p.paid_at ? p.paid_at.slice(0,10) : '—'}</td>
+  <td class="mini">${esc(p.order?.number||'—')}</td><td>${fmtMoney(p.amount, p.order?.currency||t.currency)}</td>
+  <td class="mini">${esc(p.method || p.gateway || '—')}</td>
+  <td class="mini">${esc(p.reference || p.gateway_payment_id || '—')}${p.note?`<div class="mini" style="opacity:.7">${esc(p.note)}</div>`:''}</td>
+  <td class="mini">${esc(p.recorder?.name || (p.gateway!=='manual' ? 'gateway' : '—'))}</td></tr>`).join('') || '<tr><td colspan="6" class="mini">No payments recorded yet</td></tr>'}
+  ${(t.payment_history||[]).length ? `<tr><td class="mini" style="font-weight:700">Total received</td><td></td><td style="font-weight:700">${fmtMoney((t.payment_history).reduce((s,p)=>s + (+p.amount||0), 0), t.currency)}</td><td colspan="3"></td></tr>` : ''}</table>
   <div class="foot">${CAN_WRITE?`<button class="btn btn-l" onclick='editTenant(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Edit</button>
   <button class="btn btn-l" onclick='raiseSetup(${t.id}, ${JSON.stringify(t.company_name).replace(/'/g,"&#39;")})'>Raise installation invoice</button>`:''}
   <button class="btn btn-p" onclick="closeModal()">Close</button></div>`, true);
