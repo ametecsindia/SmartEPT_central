@@ -57,6 +57,9 @@ class ProductProvisioner
                     // Branded console slug (admin.smartept.com/<slug>). Editable per
                     // tenant; falls back to a clean slug of the company name.
                     'slug'               => $tenant->console_slug ?: Str::slug($tenant->company_name, ''),
+                    // Central announces its own URL so the product's licence validation
+                    // configures itself — no .env edit on the product (Ejaz, 12-Aug-2026).
+                    'central_url'        => rtrim((string) config('app.url'), '/'),
                 ]);
 
             if (! $resp->successful()) {
