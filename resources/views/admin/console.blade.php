@@ -2292,35 +2292,44 @@ async function loadCoupons() {
     <td class="mini">${c.min_devices ? '≥ ' + c.min_devices + ' devices' : '—'}${c.exclusive_email ? '<div style="color:var(--warn);font-weight:700">exclusive: ' + esc(c.exclusive_email) + '</div>' : ''}</td>
     <td class="mini">${c.valid_until ? 'till ' + String(c.valid_until).slice(0, 10) : 'no expiry'}</td>
     <td><span class="pill ${c.active ? 'p-ok' : 'p-mut'}">${c.active ? 'active' : 'off'}</span></td>
-    <td>${CAN_WRITE ? `<button class="link" onclick="toggleCoupon(${c.id}, ${c.active ? 0 : 1})">${c.active ? 'Disable' : 'Enable'}</button>` : ''}</td></tr>`).join('');
+    <td style="white-space:nowrap">${CAN_WRITE ? `<button class="link" onclick='editCoupon(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Edit</button> <span style="opacity:.3;margin:0 5px">|</span><button class="link" onclick="toggleCoupon(${c.id}, ${c.active ? 0 : 1})">${c.active ? 'Disable' : 'Enable'}</button>` : ''}</td></tr>`).join('');
   document.getElementById('cplist').innerHTML = `<div class="card"><h3>Discount coupons</h3>
     <table><tr><th>Code</th><th>Discount</th><th>Usage</th><th>Condition</th><th>Validity</th><th>Status</th><th></th></tr>
     ${rows || '<tr><td colspan="7" class="mini">No coupons yet. Create one and share the code in campaigns — it applies at signup, in the client portal and on admin orders.</td></tr>'}</table></div>`;
 }
-function newCoupon() {
-  openModal(`<h2>New coupon</h2><div class="sub">Applies at signup, in the client portal and on admin orders — usage counts only when the order is PAID.</div>
+function newCoupon(c = null) {
+  // One form for create AND edit (Ejaz, 12-Aug-2026). On edit the code is
+  // locked — it may already be printed in campaigns/quotes; everything else
+  // (value, max uses, min devices, validity, exclusivity, description) is editable.
+  openModal(`<h2>${c ? 'Edit coupon — ' + esc(c.code) : 'New coupon'}</h2><div class="sub">Applies at signup, in the client portal and on admin orders — usage counts only when the order is PAID.${c ? ' Used so far: <b>' + c.used_count + '</b>.' : ''}</div>
   <div class="row">
-  <div><label>Code * (e.g. DIWALI25)</label><input id="cf-code" style="text-transform:uppercase"></div>
-  <div><label>Type *</label><select id="cf-type"><option value="percent">% percent off</option><option value="flat">₹ flat off</option></select></div>
-  <div><label>Value *</label><input id="cf-value" type="number" min="0.01" step="0.01" placeholder="10 = 10% or ₹10"></div>
-  <div><label>Max uses (blank = unlimited)</label><input id="cf-max" type="number" min="1"></div>
-  <div><label>Min devices (blank = any)</label><input id="cf-min" type="number" min="1"></div>
-  <div><label>Valid until (blank = no expiry)</label><input id="cf-until" type="date"></div>
-  <div><label>Exclusive to one email (blank = public)</label><input id="cf-excl" type="email" placeholder="cfo@bigclient.in"></div>
+  <div><label>Code * (e.g. DIWALI25)</label><input id="cf-code" style="text-transform:uppercase" value="${c ? esc(c.code) : ''}" ${c ? 'disabled title="The code itself cannot change once created — disable this coupon and create a new one instead"' : ''}></div>
+  <div><label>Type *</label><select id="cf-type"><option value="percent" ${c && c.type === 'percent' ? 'selected' : ''}>% percent off</option><option value="flat" ${c && c.type === 'flat' ? 'selected' : ''}>₹ flat off</option></select></div>
+  <div><label>Value *</label><input id="cf-value" type="number" min="0.01" step="0.01" placeholder="10 = 10% or ₹10" value="${c ? Number(c.value) : ''}"></div>
+  <div><label>Max uses (blank = unlimited)</label><input id="cf-max" type="number" min="1" value="${c && c.max_uses != null ? c.max_uses : ''}"></div>
+  <div><label>Min devices (blank = any)</label><input id="cf-min" type="number" min="1" value="${c && c.min_devices != null ? c.min_devices : ''}"></div>
+  <div><label>Valid until (blank = no expiry)</label><input id="cf-until" type="date" value="${c && c.valid_until ? String(c.valid_until).slice(0, 10) : ''}"></div>
+  <div><label>Exclusive to one email (blank = public)</label><input id="cf-excl" type="email" placeholder="cfo@bigclient.in" value="${c ? esc(c.exclusive_email || '') : ''}"></div>
   </div>
-  <label>Description</label><input id="cf-desc" placeholder="Diwali festive offer" style="width:100%">
+  <label>Description</label><input id="cf-desc" placeholder="Diwali festive offer" style="width:100%" value="${c ? esc(c.description || '') : ''}">
   <div class="mini" style="margin-top:6px">Exclusive coupons auto-apply the moment that email is typed at signup (the "exclusive-offer catch") and are invisible to everyone else. Note: coupons stack AFTER the advance-period discount — price campaigns knowingly.</div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
-  <button class="btn btn-p" onclick="saveCoupon()">Create coupon</button></div>`, true);
+  <button class="btn btn-p" onclick="saveCoupon(${c ? c.id : ''})">${c ? 'Save changes' : 'Create coupon'}</button></div>`, true);
 }
-async function saveCoupon() {
-  const v = id => document.getElementById(id).value.trim();
+function editCoupon(c) { newCoupon(c); }
+async function saveCoupon(id = null) {
+  const v = k => document.getElementById(k).value.trim();
   try {
-    if (!v('cf-code') || !v('cf-value')) { toast('Code and value are required'); return; }
-    await api('coupons', {method:'POST', body:{code:v('cf-code'), type:v('cf-type'), value:v('cf-value'),
+    if ((!id && !v('cf-code')) || !v('cf-value')) { toast('Code and value are required'); return; }
+    const body = {type:v('cf-type'), value:v('cf-value'),
       max_uses:v('cf-max') || null, min_devices:v('cf-min') || null, valid_until:v('cf-until') || null,
-      exclusive_email:v('cf-excl') || null, description:v('cf-desc') || null, active:true}});
-    closeModal(); toast('Coupon created'); loadCoupons();
+      exclusive_email:v('cf-excl') || null, description:v('cf-desc') || null};
+    if (id) {
+      await api('coupons/' + id, {method:'PUT', body});
+    } else {
+      await api('coupons', {method:'POST', body:{...body, code:v('cf-code'), active:true}});
+    }
+    closeModal(); toast(id ? 'Coupon updated' : 'Coupon created'); loadCoupons();
   } catch (e) { toast('Error: ' + e); }
 }
 async function toggleCoupon(id, active) {
