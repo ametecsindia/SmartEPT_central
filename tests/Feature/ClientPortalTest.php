@@ -66,7 +66,8 @@ class ClientPortalTest extends TestCase
             ->assertStatus(422);
         $this->assertSame(0, Tenant::count());
 
-        // Correct code → tenant + owner login + auto 7-day Professional trial.
+        // Correct code → tenant + owner login + auto 7-day trial on the
+        // 'smartept' plan (the product's own plan, seeded 3-Aug).
         $this->postJson('/client/signup/verify', $payload + ['otp' => $code])
             ->assertOk()->assertJsonPath('redirect', '/client');
 
@@ -77,7 +78,7 @@ class ClientPortalTest extends TestCase
         $licence = $tenant->licences()->first();
         $this->assertSame('trial', $licence->kind);
         $this->assertSame(10, $licence->device_limit);
-        $this->assertSame('professional', $licence->plan->code);
+        $this->assertSame('smartept', $licence->plan->code);
 
         // The session is already signed in.
         $this->getJson('/client/api/overview')->assertOk()
@@ -115,8 +116,8 @@ class ClientPortalTest extends TestCase
             'billing' => 'annual', 'deployment' => 'client_hosted',
         ])->assertStatus(201);
 
-        // 50 × ₹49 × 12 = 29,400 + 7,500 setup + 18% GST = 43,542 (framework example)
-        $this->assertEquals(43542.0, (float) $res->json('order.total'));
+        // 50 × ₹49 × 12 = 29,400 + 7,000 setup (covers 30, +20 × ₹100) + 18% GST = 42,952
+        $this->assertEquals(42952.0, (float) $res->json('order.total'));
         $this->assertStringContainsString('/pay/', $res->json('pay_url'));
     }
 

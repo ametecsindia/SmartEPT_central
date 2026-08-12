@@ -36,7 +36,7 @@ class GstInvoiceTest extends TestCase
         ], $tenantAttrs));
         $pro = Plan::where('code', 'professional')->first();
 
-        // 50 × ₹49 × 12 = 29,400 + setup 7,500 = 36,900 + 18% GST (6,642) = 43,542
+        // 50 × ₹49 × 12 = 29,400 + setup 7,000 (covers 30, +20 × ₹100) = 36,400 + 18% GST (6,552) = 42,952
         $order = $billing->createOrder($tenant, $pro, 50, ['kind' => 'subscription', 'billing' => 'annual']);
         $paid = $billing->markPaid($order, ['gateway' => 'manual', 'manual_method' => 'NEFT']);
 
@@ -51,9 +51,9 @@ class GstInvoiceTest extends TestCase
         ]);
 
         // Same 18% tax as always — split half and half, IGST untouched.
-        $this->assertEquals(6642.0, (float) $invoice->gst_amount);
-        $this->assertEquals(3321.0, (float) $invoice->cgst);
-        $this->assertEquals(3321.0, (float) $invoice->sgst);
+        $this->assertEquals(6552.0, (float) $invoice->gst_amount);
+        $this->assertEquals(3276.0, (float) $invoice->cgst);
+        $this->assertEquals(3276.0, (float) $invoice->sgst);
         $this->assertEquals(0.0, (float) $invoice->igst);
         $this->assertEquals((float) $invoice->gst_amount, (float) $invoice->cgst + (float) $invoice->sgst);
 
@@ -63,7 +63,7 @@ class GstInvoiceTest extends TestCase
         $this->assertSame('997331', $invoice->sac_code);
 
         // The invoice grand total is untouched by the split.
-        $this->assertEquals(43542.0, (float) $invoice->total);
+        $this->assertEquals(42952.0, (float) $invoice->total);
     }
 
     public function test_inter_state_invoice_charges_igst(): void
@@ -72,12 +72,12 @@ class GstInvoiceTest extends TestCase
             'gstin' => '29AAAAA0000A1Z5', 'state_code' => '29',
         ]);
 
-        $this->assertEquals(6642.0, (float) $invoice->igst);
+        $this->assertEquals(6552.0, (float) $invoice->igst);
         $this->assertEquals(0.0, (float) $invoice->cgst);
         $this->assertEquals(0.0, (float) $invoice->sgst);
-        $this->assertEquals(6642.0, (float) $invoice->gst_amount);
+        $this->assertEquals(6552.0, (float) $invoice->gst_amount);
         $this->assertSame('29-Karnataka', $invoice->place_of_supply);
-        $this->assertEquals(43542.0, (float) $invoice->total);
+        $this->assertEquals(42952.0, (float) $invoice->total);
     }
 
     public function test_tenant_without_state_defaults_to_local_supply(): void
@@ -86,8 +86,8 @@ class GstInvoiceTest extends TestCase
         // place of business (Telangana) → intra-state split, never IGST.
         $invoice = $this->paidInvoiceFor([]);
 
-        $this->assertEquals(3321.0, (float) $invoice->cgst);
-        $this->assertEquals(3321.0, (float) $invoice->sgst);
+        $this->assertEquals(3276.0, (float) $invoice->cgst);
+        $this->assertEquals(3276.0, (float) $invoice->sgst);
         $this->assertEquals(0.0, (float) $invoice->igst);
         $this->assertSame('36-Telangana', $invoice->place_of_supply);
         $this->assertNull($invoice->buyer_gstin);

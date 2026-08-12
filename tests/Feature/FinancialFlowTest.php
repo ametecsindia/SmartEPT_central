@@ -50,7 +50,7 @@ class FinancialFlowTest extends TestCase
         ], $attrs));
     }
 
-    /** 50 devices annual = ₹49 tier → 29,400 + setup 7,500 = 36,900 + GST 6,642 = 43,542 */
+    /** 50 devices annual = ₹49 tier → 29,400 + setup 7,000 (covers 30, +20 × ₹100) = 36,400 + GST 6,552 = 42,952 */
     private function order(Tenant $tenant, array $opts = []): Order
     {
         return app(BillingService::class)->createOrder(
@@ -115,7 +115,7 @@ class FinancialFlowTest extends TestCase
         $this->assertSame('created', $order->status);          // not yet settled
         $this->assertSame('active', $t->fresh()->status);
         $this->assertEquals(20000.0, $order->received());
-        $this->assertEquals(23542.0, $order->balance());       // 43,542 − 20,000
+        $this->assertEquals(22952.0, $order->balance());       // 42,952 − 20,000
 
         $invoice = $order->invoice;
         $this->assertSame('issued', $invoice->status);         // displays as DUE
@@ -124,7 +124,7 @@ class FinancialFlowTest extends TestCase
         // Shows up in the Credit clients table, not overdue yet.
         $credit = $this->getJson('/admin/api/credit-clients')->assertOk()->json('data');
         $this->assertCount(1, $credit);
-        $this->assertEquals(23542.0, (float) $credit[0]['balance']);
+        $this->assertEquals(22952.0, (float) $credit[0]['balance']);
         $this->assertFalse($credit[0]['overdue']);
     }
 
@@ -140,7 +140,7 @@ class FinancialFlowTest extends TestCase
         ])->assertOk();
 
         $this->postJson("/admin/api/orders/{$order->id}/record-balance", [
-            'amount' => 23542, 'manual_method' => 'UPI', 'manual_reference' => 'UTR-222',
+            'amount' => 22952, 'manual_method' => 'UPI', 'manual_reference' => 'UTR-222',
         ])->assertOk()->assertJsonPath('settled', true);
 
         $order->refresh();
@@ -212,8 +212,8 @@ class FinancialFlowTest extends TestCase
         $billing = app(BillingService::class);
         $order = $this->order($this->tenant());
 
-        $billing->recordPayment($order, 43542, ['gateway' => 'razorpay', 'payment_id' => 'pay_ABC']);
-        $billing->recordPayment($order->fresh(), 43542, ['gateway' => 'razorpay', 'payment_id' => 'pay_ABC']);
+        $billing->recordPayment($order, 42952, ['gateway' => 'razorpay', 'payment_id' => 'pay_ABC']);
+        $billing->recordPayment($order->fresh(), 42952, ['gateway' => 'razorpay', 'payment_id' => 'pay_ABC']);
 
         $this->assertSame(1, OrderPayment::where('gateway_payment_id', 'pay_ABC')->count());
         $this->assertSame('paid', $order->fresh()->status);
@@ -226,7 +226,7 @@ class FinancialFlowTest extends TestCase
 
         $billing->recordPayment($order, 99999999, ['gateway' => 'manual', 'manual_method' => 'NEFT']);
 
-        $this->assertEquals(43542.0, $order->fresh()->received());
+        $this->assertEquals(42952.0, $order->fresh()->received());
     }
 
     // ---------- Coupons (§7) ----------
@@ -239,16 +239,16 @@ class FinancialFlowTest extends TestCase
 
         $order = $this->order($t, ['as_quote' => true, 'coupon_code' => 'DIWALI25']);
 
-        // 36,900 − 25% (9,225) = 27,675 + 18% GST (4,981.50) = 32,656.50
-        $this->assertEquals(27675.0, (float) $order->subtotal);
-        $this->assertEquals(32656.5, (float) $order->total);
+        // 36,400 − 25% (9,100) = 27,300 + 18% GST (4,914) = 32,214
+        $this->assertEquals(27300.0, (float) $order->subtotal);
+        $this->assertEquals(32214.0, (float) $order->total);
 
         // Code expires meanwhile — the quote's pay link still honours the price
         // because the discount line is frozen in the order.
         Coupon::where('code', 'DIWALI25')->update(['active' => false]);
         $paid = $billing->markPaid($order, ['gateway' => 'manual', 'manual_method' => 'NEFT']);
 
-        $this->assertEquals(32656.5, (float) $paid->total);
+        $this->assertEquals(32214.0, (float) $paid->total);
         $this->assertSame(1, (int) Coupon::where('code', 'DIWALI25')->value('used_count'));
     }
 

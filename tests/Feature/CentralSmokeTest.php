@@ -26,11 +26,14 @@ class CentralSmokeTest extends TestCase
     public function test_setup_fee_math(): void
     {
         $p = app(PricingService::class);
+        // Setup covers 30 devices since the pricing rework (SETUP_FEE_INCLUDED_DEVICES = 30).
         $this->assertSame(5000, $p->setupFee(10));
         $this->assertSame(5000, $p->setupFee(25));
-        $this->assertSame(5100, $p->setupFee(26));
-        $this->assertSame(7500, $p->setupFee(50));
-        $this->assertSame(12500, $p->setupFee(100));
+        $this->assertSame(5000, $p->setupFee(26));
+        $this->assertSame(5000, $p->setupFee(30));
+        $this->assertSame(5100, $p->setupFee(31));
+        $this->assertSame(7000, $p->setupFee(50));
+        $this->assertSame(12000, $p->setupFee(100));
     }
 
     public function test_volume_tiers_and_cloud_multiplier(): void
@@ -42,8 +45,10 @@ class CentralSmokeTest extends TestCase
         $this->assertSame(39.0, $p->deviceRate($pro, 200));
         $this->assertSame(29.0, $p->deviceRate($pro, 400));
         $this->assertSame(24.0, $p->deviceRate($pro, 900));
-        // cloud = ×1.5 rounded — framework table: 59→89 at public tier
-        $this->assertSame(89.0, $p->deviceRate($pro, 10, 'annual', 'cloud'));
+        // Pricing v2: subscription is Cloud-only — the band rate IS the cloud
+        // price. No client-hosted-base ×1.5 multiplier any more.
+        $this->assertSame(59.0, $p->deviceRate($pro, 10, 'annual', 'cloud'));
+        $this->assertSame($p->deviceRate($pro, 10), $p->deviceRate($pro, 10, 'annual', 'cloud'));
     }
 
     public function test_storage_slabs(): void
@@ -63,9 +68,10 @@ class CentralSmokeTest extends TestCase
         $pro = Plan::where('code', 'professional')->first();
 
         $order = $billing->createOrder($tenant, $pro, 50, ['kind' => 'subscription', 'billing' => 'annual']);
-        // 50 × ₹49 × 12 = 29,400 + setup 7,500 = 36,900 + 18% GST = 43,542
-        $this->assertEquals(36900.0, (float) $order->subtotal);
-        $this->assertEquals(43542.0, (float) $order->total);
+        // 50 × ₹49 × 12 = 29,400 + setup 7,000 (5,000 covers 30, +20 × ₹100)
+        // = 36,400 + 18% GST (6,552) = 42,952
+        $this->assertEquals(36400.0, (float) $order->subtotal);
+        $this->assertEquals(42952.0, (float) $order->total);
 
         $paid = $billing->markPaid($order, ['gateway' => 'manual', 'manual_method' => 'NEFT']);
 
@@ -174,11 +180,13 @@ class CentralSmokeTest extends TestCase
 
     public function test_public_plans_endpoint_feeds_the_landing_page(): void
     {
+        // 4 plans since 3-Aug: the 'smartept' plan (the product's own) joined
+        // core/professional/enterprise. Setup covers 30 devices since the rework.
         $this->getJson('/api/v1/public/plans')->assertOk()
-            ->assertJsonCount(3, 'plans')
+            ->assertJsonCount(4, 'plans')
             ->assertJsonPath('cloud_multiplier', 1.5)
             ->assertJsonPath('setup.base', 5000)
-            ->assertJsonPath('setup.included', 25)
+            ->assertJsonPath('setup.included', 30)
             ->assertJsonPath('trial.days', 7);
     }
 }
