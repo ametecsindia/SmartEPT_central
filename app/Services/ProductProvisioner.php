@@ -60,6 +60,11 @@ class ProductProvisioner
                     // Central announces its own URL so the product's licence validation
                     // configures itself — no .env edit on the product (Ejaz, 12-Aug-2026).
                     'central_url'        => rtrim((string) config('app.url'), '/'),
+                    // Per-tenant licensing (12-Aug-2026): hand the tenant's licence key
+                    // over so their row on the shared install activates immediately —
+                    // a cloud client never pastes a key by hand. Re-pushed on every
+                    // provision, so a renewal/upgrade refreshes the product side too.
+                    'licence_key'        => optional($tenant->activeLicence)->key,
                 ]);
 
             if (! $resp->successful()) {
