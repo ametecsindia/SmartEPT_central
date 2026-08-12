@@ -14,7 +14,11 @@ return new class extends Migration
                 $t->string('quote_number')->nullable()->unique()->after('number');
                 $t->string('requested_by')->nullable()->after('quote_number');
             });
-            DB::statement("ALTER TABLE orders MODIFY status ENUM('quote','created','paid','failed','refunded') NOT NULL DEFAULT 'created'");
+            // MySQL only: sqlite (tests) has no MODIFY and stores enums loosely.
+            // The Schema::table above must still run there — guard ONLY this.
+            if (DB::getDriverName() === 'mysql') {
+                DB::statement("ALTER TABLE orders MODIFY status ENUM('quote','created','paid','failed','refunded') NOT NULL DEFAULT 'created'");
+            }
         }
     }
 
@@ -23,6 +27,8 @@ return new class extends Migration
         Schema::table('orders', function (Blueprint $t) {
             $t->dropColumn(['quote_number', 'requested_by']);
         });
-        DB::statement("ALTER TABLE orders MODIFY status ENUM('created','paid','failed','refunded') NOT NULL DEFAULT 'created'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE orders MODIFY status ENUM('created','paid','failed','refunded') NOT NULL DEFAULT 'created'");
+        }
     }
 };

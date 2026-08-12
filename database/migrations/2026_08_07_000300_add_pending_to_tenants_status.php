@@ -15,6 +15,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return; // sqlite (tests) stores enums as TEXT already — raw MODIFY would crash it
+        }
+
         DB::statement("ALTER TABLE `tenants` MODIFY `status` "
             . "ENUM('pending','trial','active','suspended','expired','churned') "
             . "NOT NULL DEFAULT 'trial'");
@@ -22,6 +26,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Revert to the original set. Any rows still in 'pending' would be
         // truncated by MySQL on the way back — acceptable for a rollback.
         DB::statement("ALTER TABLE `tenants` MODIFY `status` "

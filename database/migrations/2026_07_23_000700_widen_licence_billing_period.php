@@ -22,12 +22,20 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return; // sqlite (tests) stores enums as TEXT already — raw MODIFY would crash it
+        }
+
         // A raw MODIFY is required to change an ENUM (Laravel/DBAL cannot alter it).
         DB::statement("ALTER TABLE `licences` MODIFY `billing` VARCHAR(20) NOT NULL DEFAULT 'annual'");
     }
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Fold the newly-allowed values back into the original two so the
         // narrower enum can be restored without a data-truncation error.
         DB::table('licences')->whereIn('billing', ['half_yearly', 'quarterly'])->update(['billing' => 'annual']);
