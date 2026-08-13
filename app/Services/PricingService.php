@@ -407,6 +407,45 @@ class PricingService
     }
 
     /**
+     * CUSTOM (admin-entered) price quote (Ejaz, 13-Aug-2026): the operator's
+     * figure REPLACES the band/tier calculation entirely — any user count is
+     * allowed (including above the last priced milestone). ₹0 is impossible
+     * (validated at the controller, guarded here too). Setup fee, coupon and
+     * GST behave exactly as on a calculated order. Used by admin New Order/
+     * Quote, Prospect Quote and the request-queue conversion — never public.
+     */
+    public function customPriceQuote(Tenant $tenant, Plan $plan, int $users, string $kind,
+                                     string $billing, int $price, bool $includeSetup = true): array
+    {
+        $users = max(1, $users);
+        $price = max(1, $price);
+
+        $lines = [[
+            'type' => $kind === 'perpetual' ? 'perpetual_licence' : 'licence',
+            'description' => $kind === 'perpetual'
+                ? sprintf('SmartEPT Perpetual — lifetime licence (%d users, all features) · special price', $users)
+                : sprintf('SmartEPT Cloud — %d users (%s) · special price', $users, str_replace('_', '-', $billing)),
+            'qty' => 1,
+            'unit' => (float) $price,
+            'amount' => (float) $price,
+        ]];
+
+        if ($includeSetup && ! $tenant->setup_fee_paid) {
+            $fee = $this->setupFee($users);
+            $lines[] = [
+                'type' => 'setup_fee',
+                'description' => 'One-time Setup & Onboarding (' . $this->setupCoverLabel($users) . ')',
+                'qty' => 1,
+                'unit' => $fee,
+                'amount' => (float) $fee,
+            ];
+        }
+
+        return ['lines' => $lines, 'subtotal' => round(array_sum(array_column($lines, 'amount')), 2),
+            'custom_price' => $price];
+    }
+
+    /**
      * Optional Annual Maintenance & Support for a perpetual client — pricing v2.
      * Priced at pricing_amc_pct (default 18%, the mid of the 15–20% band) of the
      * PREVAILING price — since 11-Aug-2026 the progressive/interpolated price

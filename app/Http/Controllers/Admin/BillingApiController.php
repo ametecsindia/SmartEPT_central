@@ -35,25 +35,36 @@ class BillingApiController extends Controller
             'billing' => ['nullable', 'in:annual,half_yearly,quarterly,monthly'],
             'deployment' => ['nullable', 'in:client_hosted,cloud'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
+            // 13-Aug-2026: operator-entered custom price — overrides the band/
+            // tier calculation for ANY user count (billing-manage roles only,
+            // which POST /quote already enforces via the permissions matrix).
+            'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
+            'include_setup' => ['nullable', 'boolean'],
         ]);
 
         $tenant = Tenant::findOrFail($data['tenant_id']);
         $plan = Plan::where('code', $data['plan_code'] ?? 'smartept')->firstOrFail();
 
-        $quote = $data['kind'] === 'perpetual'
-            ? $this->pricing->perpetualQuote($tenant, $plan, $data['devices'])
-            : $this->pricing->subscriptionQuote($tenant, $plan, $data['devices'], $data['billing'] ?? 'annual', null);
+        $customPrice = (int) ($data['custom_price'] ?? 0);
+        $includeSetup = (bool) ($data['include_setup'] ?? true);
+        $quote = $customPrice > 0
+            ? $this->pricing->customPriceQuote($tenant, $plan, (int) $data['devices'], $data['kind'],
+                $data['billing'] ?? 'annual', $customPrice, $includeSetup)
+            : ($data['kind'] === 'perpetual'
+                ? $this->pricing->perpetualQuote($tenant, $plan, $data['devices'])
+                : $this->pricing->subscriptionQuote($tenant, $plan, $data['devices'], $data['billing'] ?? 'annual', null, $includeSetup));
 
         // Progressive lifetime pricing: below the configured minimum = validation.
-        if (! empty($quote['below_min'])) {
+        // (A custom price bypasses both guards — the operator's figure decides.)
+        if ($customPrice <= 0 && ! empty($quote['below_min'])) {
             return response()->json(['message' => sprintf('Minimum On-Premise licence capacity is %d users.',
                 (int) ($quote['min_users'] ?? 1))], 422);
         }
 
         // Above the last priced milestone → custom quotation (never ₹0).
-        if (! empty($quote['custom'])) {
+        if ($customPrice <= 0 && ! empty($quote['custom'])) {
             return response()->json(['custom' => true,
-                'message' => 'For more than ' . number_format((int) ($quote['max_priced_users'] ?? 0)) . ' users, please request a custom quotation.'], 200);
+                'message' => 'For more than ' . number_format((int) ($quote['max_priced_users'] ?? 0)) . ' users, enter a Custom price below (or request one).'], 200);
         }
 
         // Coupon preview — same maths as the order (negative line before GST).
@@ -169,17 +180,21 @@ class BillingApiController extends Controller
             'requested_by' => ['nullable', 'string', 'max:190'],
             'po_number' => ['nullable', 'string', 'max:60'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
+            // 13-Aug-2026: custom price — overrides the band calculation for any
+            // user count. Whoever may create orders may enter it (Ejaz's call).
+            'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
         ]);
 
         $plan = Plan::where('code', $data['plan_code'] ?? 'smartept')->firstOrFail();
-        if ($data['kind'] === 'perpetual') {
+        $customPrice = (int) ($data['custom_price'] ?? 0);
+        if ($data['kind'] === 'perpetual' && $customPrice <= 0) {
             $calc = $this->pricing->calculateLifetimeLicencePrice($plan, (int) $data['devices']);
             if ($calc['below_min']) {
                 return response()->json(['message' => sprintf('Minimum On-Premise licence capacity is %d users.', (int) $calc['min_users'])], 422);
             }
             if ($calc['custom']) {
                 return response()->json(['custom' => true,
-                    'message' => 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users, please request a custom quotation.'], 422);
+                    'message' => 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users, enter a Custom price — or use the request queue.'], 422);
             }
         }
         $data['plan_code'] = $plan->code;
@@ -191,7 +206,8 @@ class BillingApiController extends Controller
             $data
         );
 
-        AuditLog::write($order->status === 'quote' ? 'quote.created' : 'order.created', $order, ['total' => $order->total]);
+        AuditLog::write($order->status === 'quote' ? 'quote.created' : 'order.created', $order,
+            ['total' => $order->total] + ($customPrice > 0 ? ['custom_price' => $customPrice] : []));
 
         return response()->json($order->load('tenant:id,company_name'), 201);
     }
@@ -221,6 +237,8 @@ class BillingApiController extends Controller
             'coupon_code' => ['nullable', 'string', 'max:40'],
             'include_setup' => ['nullable', 'boolean'],
             'send_email' => ['nullable', 'boolean'],
+            // 13-Aug-2026: custom price for a brand-new prospect too.
+            'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
         ]);
 
         if (\App\Models\Tenant::where('email', $data['email'])->exists()
@@ -229,13 +247,14 @@ class BillingApiController extends Controller
         }
 
         $plan = Plan::where('code', 'smartept')->firstOrFail();
-        if ($data['kind'] === 'perpetual') {
+        $customPrice = (int) ($data['custom_price'] ?? 0);
+        if ($data['kind'] === 'perpetual' && $customPrice <= 0) {
             $calc = $this->pricing->calculateLifetimeLicencePrice($plan, (int) $data['devices']);
             if ($calc['below_min']) {
                 return response()->json(['error' => sprintf('Minimum On-Premise licence capacity is %d users.', (int) $calc['min_users'])], 422);
             }
             if ($calc['custom']) {
-                return response()->json(['error' => 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users prepare a custom quotation.'], 422);
+                return response()->json(['error' => 'For more than ' . number_format((int) $calc['max_priced_users']) . ' users enter a Custom price, or capture it as a request.'], 422);
             }
         }
 
@@ -259,11 +278,12 @@ class BillingApiController extends Controller
             'coupon_code' => $data['coupon_code'] ?? null,
             'coupon_email' => $data['email'],
             'requested_by' => auth('admin')->user()->name,
+            'custom_price' => $customPrice > 0 ? $customPrice : null,
         ]);
 
         AuditLog::write('quote.prospect_created', $order, [
             'company' => $data['company_name'], 'total' => $order->total,
-        ]);
+        ] + ($customPrice > 0 ? ['custom_price' => $customPrice] : []));
 
         $payUrl = url('/pay/' . $order->number . '/' . CheckoutController::token($order));
         $printUrl = url('/pay/' . $order->number . '/' . CheckoutController::token($order) . '/quote');
@@ -321,6 +341,164 @@ class BillingApiController extends Controller
             'order' => $order->load('tenant:id,company_name,email'),
             'pay_url' => url('/pay/' . $order->number . '/' . CheckoutController::token($order)),
         ], 201);
+    }
+
+    // ---------- Custom-quotation REQUEST queue (Ejaz, 13-Aug-2026) ----------
+
+    /**
+     * One order/quote/request with the client's full profile — the console's
+     * request modal (and any detail view) reads this instead of round-tripping
+     * the list payload.
+     */
+    public function showOrder(Order $order)
+    {
+        $order->load(['tenant', 'invoice:id,order_id,number', 'licence:id,key,status,kind']);
+        $order->setAttribute('received', $order->received());
+        $order->setAttribute('balance', $order->balance());
+
+        return response()->json($order);
+    }
+
+    /**
+     * Edit a pending REQUEST's details (users, billing contact, notes — and the
+     * client profile too when the tenant is still a 'pending' prospect born of
+     * this request; an established client's profile is edited on the Clients
+     * screen only). Requests carry no number and no money, so they are freely
+     * editable; once converted to a numbered quotation the 11-Aug rule applies
+     * again — no edit, delete + re-create.
+     */
+    public function updateRequest(Request $request, Order $order)
+    {
+        if ($order->status !== 'request') {
+            return response()->json(['error' => 'Only a pending request can be edited — this row is already a ' . $order->status . '. (Numbered quotations are never edited: delete + re-create.)'], 422);
+        }
+
+        $data = $request->validate([
+            'devices' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'kind' => ['nullable', 'in:subscription,perpetual'],
+            'billing' => ['nullable', 'in:annual,half_yearly,quarterly'],
+            'billing_contact' => ['nullable', 'string', 'max:190'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            // Client profile — applied only while the tenant is a pending prospect.
+            'company_name' => ['nullable', 'string', 'max:190'],
+            'contact_name' => ['nullable', 'string', 'max:190'],
+            'email' => ['nullable', 'email', 'max:190'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'state_code' => ['nullable', 'string', 'size:2',
+                'in:' . implode(',', array_keys(\App\Support\IndianStates::MAP))],
+            'gstin' => ['nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[0-9A-Z]{13}$/i'],
+        ]);
+
+        if (! empty($data['gstin']) && ! empty($data['state_code'])
+            && substr(strtoupper($data['gstin']), 0, 2) !== $data['state_code']) {
+            return response()->json(['error' => 'The GSTIN starts with "' . substr(strtoupper($data['gstin']), 0, 2)
+                . '" but the state is ' . $data['state_code'] . ' — the first two digits of a GSTIN are always the state code.'], 422);
+        }
+
+        $tenant = $order->tenant;
+        if ($tenant && $tenant->status === 'pending') {
+            $profile = array_filter([
+                'company_name' => $data['company_name'] ?? null,
+                'contact_name' => $data['contact_name'] ?? null,
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'state_code' => $data['state_code'] ?? null,
+                'gstin' => isset($data['gstin']) ? strtoupper($data['gstin']) : null,
+            ], fn ($v) => $v !== null && $v !== '');
+            if ($profile) {
+                $tenant->update($profile);
+            }
+        }
+
+        $meta = $order->meta ?? [];
+        foreach (['kind', 'billing', 'billing_contact', 'notes'] as $k) {
+            if (array_key_exists($k, $data) && $data[$k] !== null) {
+                $meta[$k] = $data[$k];
+            }
+        }
+        if (! empty($data['devices'])) {
+            $meta['devices'] = (int) $data['devices'];
+        }
+
+        $order->update([
+            'meta' => $meta,
+            'requested_by' => $data['contact_name'] ?? $order->requested_by,
+            'description' => sprintf('Custom quotation request — %d users (%s)',
+                (int) ($meta['devices'] ?? 1),
+                ($meta['kind'] ?? 'perpetual') === 'perpetual' ? 'On-Premise lifetime' : 'Cloud'),
+        ]);
+
+        AuditLog::write('request.updated', $order, ['devices' => $meta['devices'] ?? null]);
+
+        return response()->json($order->fresh()->load('tenant'));
+    }
+
+    /**
+     * REQUEST → numbered quotation (or directly a payable order), in place:
+     * the operator enters the price (custom, or leave blank to use the band
+     * calculation where it exists), the row keeps its order number and its
+     * "By client / By admin" source badge, and the standard quotation email
+     * with print + pay links goes out. Everything after this is the existing
+     * golden path untouched.
+     */
+    public function convertRequest(Request $request, Order $order)
+    {
+        $data = $request->validate([
+            'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
+            'devices' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'as_quote' => ['nullable', 'boolean'],
+            'include_setup' => ['nullable', 'boolean'],
+            'send_email' => ['nullable', 'boolean'],
+            'coupon_code' => ['nullable', 'string', 'max:40'],
+        ]);
+
+        $plan = Plan::where('code', 'smartept')->firstOrFail();
+
+        try {
+            $order = $this->billing->convertRequest($order, $plan, [
+                'custom_price' => (int) ($data['custom_price'] ?? 0) > 0 ? (int) $data['custom_price'] : null,
+                'devices' => $data['devices'] ?? null,
+                'as_quote' => (bool) ($data['as_quote'] ?? true),
+                'include_setup' => (bool) ($data['include_setup'] ?? true),
+                'coupon_code' => $data['coupon_code'] ?? null,
+                'coupon_email' => $order->tenant?->email,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        AuditLog::write('request.converted', $order, [
+            'total' => $order->total,
+            'custom_price' => $order->meta['custom_price'] ?? null,
+            'quote_number' => $order->quote_number,
+        ]);
+
+        $payUrl = url('/pay/' . $order->number . '/' . CheckoutController::token($order));
+        $printUrl = $payUrl . '/quote';
+        $tenant = $order->tenant;
+
+        if (($data['send_email'] ?? true) && $tenant?->email) {
+            $symbol = $order->currency === 'INR' ? 'Rs. ' : '$';
+            app(\App\Services\MailService::class)->send(
+                $tenant->email,
+                'SmartEPT — ' . ($order->quote_number ? 'Quotation ' . $order->quote_number : 'Order ' . $order->number) . ' for ' . $tenant->company_name,
+                'Hello ' . ($tenant->contact_name ?: $tenant->company_name) . ",\n\n"
+                . "Thank you for your custom-pricing request. Your "
+                . ($order->quote_number ? 'quotation' : 'order') . " is ready:\n\n"
+                . ($order->quote_number ? "Quotation no. : {$order->quote_number}\n" : "Order no.     : {$order->number}\n")
+                . "{$order->description}\n"
+                . 'Total payable : ' . $symbol . number_format((float) $order->total, 2) . "\n\n"
+                . "View / print:\n{$printUrl}\n\n"
+                . "Approve and pay securely here — activation is instant:\n{$payUrl}"
+                . \App\Services\MailService::signature()
+            );
+        }
+
+        return response()->json([
+            'order' => $order->load('tenant:id,company_name,email'),
+            'pay_url' => $payUrl,
+            'print_url' => $printUrl,
+        ]);
     }
 
     /**

@@ -40,8 +40,9 @@ background:linear-gradient(160deg,#04252C 0%,#083A44 60%,#0B4A56 100%);padding:2
 h1.buyh{font-size:19px;color:#15171C;margin-bottom:2px}
 p.sub{font-size:13px;color:#565A66;margin:0 0 12px}
 label{display:block;font-size:12px;font-weight:700;color:#565A66;margin:9px 0 4px}
-input,select{width:100%;padding:10px 12px;border:1.5px solid #DCDFE7;border-radius:9px;font-size:14px;font-family:inherit;background:#fff}
-input:focus,select:focus{outline:none;border-color:#0E7C8F}
+input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid #DCDFE7;border-radius:9px;font-size:14px;font-family:inherit;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#0E7C8F}
+textarea{resize:vertical;min-height:64px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 button.go{width:100%;margin-top:14px;padding:13px;border:none;border-radius:9px;font-weight:700;font-size:14.5px;color:#fff;background:linear-gradient(135deg,#0E7C8F,#1899AE);cursor:pointer;font-family:inherit}
 button.go:disabled{opacity:.55;cursor:not-allowed}
@@ -123,13 +124,20 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
       <div><label>Mobile</label><input name="phone" maxlength="20" placeholder="98480 12345"></div>
     </div>
     <label>Work email (this becomes your sign-in)</label><input type="email" name="email" required maxlength="190">
-    <label>Choose a password (min 8 characters)</label><input type="password" name="password" required minlength="8" autocomplete="new-password">
+    <div id="pwWrap"><label>Choose a password (min 8 characters)</label><input type="password" name="password" required minlength="8" autocomplete="new-password"></div>
+    {{-- 13-Aug: extra fields for the beyond-band custom-quotation request (shown only in request mode) --}}
+    <div id="customExtra" style="display:none">
+      <label>Billing contact person <span style="font-weight:400;color:#878C99">(who should receive the quotation/invoice)</span></label>
+      <input name="billing_contact" maxlength="190" placeholder="e.g. Accounts head — name">
+      <label>Your requirement <span style="font-weight:400;color:#878C99">(optional — sites, timeline, anything we should know)</span></label>
+      <textarea name="notes" maxlength="2000" rows="3" placeholder="e.g. 450 users across 3 branches, going live next quarter…"></textarea>
+    </div>
     <div class="row">
       <div><label>State <span style="color:#D02748">*</span></label><select name="state_code" id="stateSel" required><option value="">Select…</option></select></div>
       <div><label>GSTIN <span style="font-weight:400;color:#878C99">(optional)</span></label><input name="gstin" id="gstinInp" maxlength="15" placeholder="36AAHCT0971F1ZB" style="text-transform:uppercase"></div>
     </div>
     <div class="hint">Your state decides how GST appears on your invoice — CGST+SGST for Telangana, IGST for other states. GSTIN lets you claim input credit.</div>
-    <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#565A66;font-weight:600;margin-top:10px;cursor:pointer">
+    <label id="termsWrap" style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#565A66;font-weight:600;margin-top:10px;cursor:pointer">
       <input type="checkbox" name="terms_accepted" required style="width:auto;margin-top:2px;accent-color:#0E7C8F">
       <span>I agree to the <a href="/terms" target="_blank" style="color:#0B6373;font-weight:700">Terms</a> and <a href="/refunds" target="_blank" style="color:#0B6373;font-weight:700">Refund policy</a></span>
     </label>
@@ -152,6 +160,22 @@ let PLANS=[], GST=18, SETUP={base:5000,included:30,per:100}, ANN_DISC=0.25, HALF
 // Per-user/month cloud rate — mirrors backend PricingService::deviceRate exactly (config-driven, rounded).
 function cloudRate(annual,cyc){ const base=annual/Math.max(0.1,1-ANN_DISC); if(cyc==='y') return annual; if(cyc==='h') return Math.round(base*(1-HALF_DISC)*100)/100; return Math.round(base*100)/100; }
 let KIND='subscription', CYC='y', COUPON=null;
+// 13-Aug: beyond the last priced milestone the page flips into REQUEST mode —
+// same form, no payment: details (incl. billing contact + notes) go to the
+// admin request queue, and the team emails the personalised quotation.
+let CUSTOM_MODE=false;
+function setCustomMode(on){
+  if(CUSTOM_MODE===on)return; CUSTOM_MODE=on;
+  const pw=document.getElementById('pwWrap'), ex=document.getElementById('customExtra'),
+        tw=document.getElementById('termsWrap'), q=document.getElementById('quoteCta');
+  const pwInp=document.querySelector('#f-buy [name=password]'), tInp=document.querySelector('#f-buy [name=terms_accepted]');
+  if(pw)pw.style.display=on?'none':'';
+  if(pwInp)pwInp.required=!on;
+  if(tw)tw.style.display=on?'none':'';
+  if(tInp)tInp.required=!on;
+  if(ex)ex.style.display=on?'':'none';
+  if(q)q.style.display=on?'none':'';
+}
 // Progressive lifetime pricing (11-Aug-2026) — mirrors backend PricingService::
 // calculateLifetimeLicencePrice(). Each milestone = price AT that user count;
 // in between = straight-line interpolation; first band = flat minimum package.
@@ -195,6 +219,7 @@ function render(){
     dr.style.display='none';
     const pc=perpPriceFor(dev);
     if(pc.belowMin){
+      setCustomMode(false);
       document.getElementById('ivSubLbl').textContent='Perpetual licence';
       document.getElementById('ivSub').textContent='—';
       cr.style.display='none';
@@ -206,16 +231,18 @@ function render(){
       return;
     }
     if(pc.custom){
+      setCustomMode(true);
       document.getElementById('ivSubLbl').textContent='Perpetual · '+(pc.top?pc.top.toLocaleString('en-IN')+'+ users':'custom');
       document.getElementById('ivSub').textContent='Custom';
       cr.style.display='none';
       document.getElementById('ivGst').textContent='—';
       document.getElementById('ivTotLbl').textContent='Custom quotation';
-      document.getElementById('ivTot').textContent='—';
-      document.getElementById('ivEff').textContent='For '+(pc.top?pc.top.toLocaleString('en-IN')+'+':'this many')+' users we prepare a custom quote — WhatsApp 90000 98877.';
-      btn.disabled=true;btn.textContent='Contact us for a custom quote';
+      document.getElementById('ivTot').textContent='Personalised';
+      document.getElementById('ivEff').textContent='Beyond '+(pc.top?pc.top.toLocaleString('en-IN'):'the standard')+' users pricing is personalised — fill your details, submit, and our team emails your formal quotation with a pay link.';
+      btn.disabled=false;btn.textContent='Request a custom quotation →';
       return;
     }
+    setCustomMode(false);
     btn.disabled=false;btn.textContent='Pay securely & activate →';
     let taxable=pc.price+setup, coupDisc=0;
     if(COUPON){coupDisc=COUPON.type==='percent'?taxable*COUPON.value/100:Math.min(COUPON.value,taxable);
@@ -233,6 +260,7 @@ function render(){
     return;
   }
 
+  setCustomMode(false);
   btn.disabled=false;btn.textContent='Pay securely & activate →';
   const qRate=Math.round(aRate/Math.max(0.1,1-ANN_DISC)*100)/100; // quarterly base (undiscounted)
   const rate=cloudRate(aRate,CYC);                                 // actual per-user/month (matches backend)
@@ -261,6 +289,21 @@ function render(){
 async function doBuy(e){
   e.preventDefault();
   const f=e.target, data=Object.fromEntries(new FormData(f).entries()), btn=document.getElementById('buyBtn');
+  // 13-Aug: request mode — submit the details (no price, no payment) to the admin queue.
+  if(CUSTOM_MODE){
+    btn.disabled=true; const oldTxt=btn.textContent; btn.textContent='Sending your request…'; show('','');
+    try{
+      const body={company_name:data.company_name,contact_name:data.contact_name,
+        billing_contact:data.billing_contact||null,email:data.email,phone:data.phone||null,
+        state_code:data.state_code,gstin:(data.gstin||'').toUpperCase()||null,
+        kind:'perpetual',users:Math.max(1,parseInt(document.getElementById('devCount').value||'1',10)),
+        notes:data.notes||null,currency:CUR,website_hp:data.website_hp||''};
+      const out=await post('/buy/custom-quote',body);
+      show('ok','✓ '+out.message);
+      btn.textContent='Request sent ✓';
+    }catch(err){show('err',err.message);btn.disabled=false;btn.textContent=oldTxt;}
+    return false;
+  }
   btn.disabled=true; const old=btn.textContent; btn.textContent='Preparing your secure payment…'; show('','');
   try{
     data.kind = KIND==='perpetual' ? 'perpetual' : 'cloud';

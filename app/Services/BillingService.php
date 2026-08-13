@@ -116,18 +116,44 @@ class BillingService
      */
     public function createOrder(Tenant $tenant, Plan $plan, int $devices, array $opts = []): Order
     {
-        $kind = $opts['kind'] ?? 'subscription';
-        $billing = $opts['billing'] ?? 'annual';
         $asQuote = (bool) ($opts['as_quote'] ?? false);
 
-        $quote = $kind === 'perpetual'
-            ? $this->pricing->perpetualQuote($tenant, $plan, $devices)
-            : $this->pricing->subscriptionQuote($tenant, $plan, $devices, $billing, $opts['deployment'] ?? null, $opts['include_setup'] ?? true);
+        return Order::create([
+            'number' => $this->nextOrderNumber(),
+            'quote_number' => $asQuote ? $this->nextQuoteNumber() : null,
+            'tenant_id' => $tenant->id,
+            'status' => $asQuote ? 'quote' : 'created',
+            'source' => $opts['source'] ?? 'admin',
+        ] + $this->buildOrderAttributes($tenant, $plan, $devices, $opts));
+    }
+
+    /**
+     * The shared order maths (13-Aug-2026 refactor — behaviour unchanged):
+     * everything except number / quote number / status / tenant / source, so
+     * createOrder() and convertRequest() price identically.
+     */
+    private function buildOrderAttributes(Tenant $tenant, Plan $plan, int $devices, array $opts = []): array
+    {
+        $kind = $opts['kind'] ?? 'subscription';
+        $billing = $opts['billing'] ?? 'annual';
+
+        // CUSTOM PRICE (Ejaz, 13-Aug-2026): an operator-entered figure replaces
+        // the band/tier calculation — any user count allowed, ₹0 impossible.
+        $customPrice = (isset($opts['custom_price']) && (int) $opts['custom_price'] > 0)
+            ? (int) $opts['custom_price'] : null;
+
+        $quote = $customPrice
+            ? $this->pricing->customPriceQuote($tenant, $plan, $devices, $kind, $billing, $customPrice, $opts['include_setup'] ?? true)
+            : ($kind === 'perpetual'
+                ? $this->pricing->perpetualQuote($tenant, $plan, $devices)
+                : $this->pricing->subscriptionQuote($tenant, $plan, $devices, $billing, $opts['deployment'] ?? null, $opts['include_setup'] ?? true));
 
         // HARD GUARD (11-Aug-2026): a perpetual count that resolves to Custom
         // Quote or below the configured minimum must NEVER become a ₹0/free
         // lifetime licence — controllers validate first, this is the last door.
-        if ($kind === 'perpetual' && (! empty($quote['custom']) || ! empty($quote['below_min']) || empty($quote['lines']))) {
+        // (A custom price satisfies it by definition — its lines carry the price.)
+        if ($kind === 'perpetual' && ! $customPrice
+            && (! empty($quote['custom']) || ! empty($quote['below_min']) || empty($quote['lines']))) {
             throw new \RuntimeException(! empty($quote['below_min'])
                 ? sprintf('Minimum On-Premise licence capacity is %d users.', (int) ($quote['min_users'] ?? 1))
                 : 'This user count needs a custom quotation — an automatic lifetime price is not available for it.');
@@ -164,30 +190,69 @@ class BillingService
         $gstRate = $currency === 'INR' ? (float) Setting::get('gst_rate', 18) : 0.0;
         $tax = round($quote['subtotal'] * $gstRate / 100, 2);
 
-        return Order::create([
-            'number' => $this->nextOrderNumber(),
-            'quote_number' => $asQuote ? $this->nextQuoteNumber() : null,
+        return [
             'requested_by' => $opts['requested_by'] ?? null,
             'po_number' => $opts['po_number'] ?? null,
             'valid_until' => now()->addDays((int) Setting::get('quote_validity_days', 7))->toDateString(),
-            'tenant_id' => $tenant->id,
-            'description' => $kind === 'perpetual'
+            'description' => ($kind === 'perpetual'
                 ? sprintf('%s Perpetual — %d users (lifetime)', $plan->name, $devices)
-                : sprintf('%s Cloud — %d users (%s)', $plan->name, $devices, $billing),
+                : sprintf('%s Cloud — %d users (%s)', $plan->name, $devices, $billing))
+                . ($customPrice ? ' · special price' : ''),
             'line_items' => $quote['lines'],
             'subtotal' => $quote['subtotal'],
             'tax_amount' => $tax,
             'total' => round($quote['subtotal'] + $tax, 2),
             'currency' => $currency,
             'gateway' => 'manual',
-            'status' => $asQuote ? 'quote' : 'created',
             'meta' => array_merge([
                 'plan_id' => $plan->id, 'devices' => $devices,
                 'kind' => $kind, 'billing' => $billing,
                 // v2: deployment is implied by kind — subscription = Cloud, perpetual = client-hosted.
                 'deployment' => $kind === 'perpetual' ? 'client_hosted' : 'cloud',
-            ], $couponMeta),
+            ], $customPrice ? ['custom_price' => $customPrice] : [], $couponMeta),
+        ];
+    }
+
+    /**
+     * Convert a pending custom-quotation REQUEST (status 'request' — captured
+     * on public /buy or by staff) into a proper numbered quotation / payable
+     * order, IN PLACE: same row, same order number, source badge preserved,
+     * the request's details kept in meta for the paper trail. From here the
+     * lifecycle is 100% the existing golden path (approve → pay → provision →
+     * invoice → licence).
+     */
+    public function convertRequest(Order $order, Plan $plan, array $opts = []): Order
+    {
+        if ($order->status !== 'request') {
+            throw new \RuntimeException('Only a pending request can be converted — this row is already a '
+                . $order->status . '.');
+        }
+
+        $tenant = $order->tenant;
+        $meta = $order->meta ?? [];
+        $devices = (int) ($opts['devices'] ?? $meta['devices'] ?? 1);
+        $asQuote = (bool) ($opts['as_quote'] ?? true);
+
+        $opts += [
+            'kind' => $meta['kind'] ?? 'perpetual',
+            'billing' => $meta['billing'] ?? 'annual',
+            'requested_by' => $order->requested_by,
+        ];
+
+        $attrs = $this->buildOrderAttributes($tenant, $plan, $devices, $opts);
+        // Keep the request's own details (billing contact, notes, request flag)
+        // underneath the freshly-priced meta.
+        $attrs['meta'] = array_merge($meta, $attrs['meta'], [
+            'request' => true,
+            'request_converted_at' => now()->toDateTimeString(),
         ]);
+
+        $order->update($attrs + [
+            'quote_number' => $order->quote_number ?: ($asQuote ? $this->nextQuoteNumber() : null),
+            'status' => $asQuote ? 'quote' : 'created',
+        ]);
+
+        return $order->fresh();
     }
 
     /**

@@ -276,7 +276,7 @@ const P = document.getElementById('page');
 const ACTIONS = document.getElementById('pageActions');
 const statusPill = s => ({quote:'p-info',active:'p-ok',trial:'p-info',paid:'p-ok',created:'p-warn',suspended:'p-warn',
   expired:'p-dang',revoked:'p-dang',failed:'p-dang',refunded:'p-mut',churned:'p-mut',issued:'p-info',
-  cancelled:'p-mut',draft:'p-mut'}[s] || 'p-mut');
+  cancelled:'p-mut',draft:'p-mut',request:'p-warn'}[s] || 'p-mut');
 const pill = s => `<span class="pill ${statusPill(s)}">${esc(s)}</span>`;
 
 let AUDIT_ACTION = '';
@@ -1111,7 +1111,7 @@ async orders() {
   if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="newOrder()">+ New Order / Quote</button> <button class="btn btn-l" onclick="newProspectQuote()">+ Quote for NEW client</button>';
   P.innerHTML = `<div class="filters">
     <input id="oq" placeholder="Search order / quote no. / client…" onkeydown="if(event.key==='Enter')loadOrders()">
-    <select id="ost" onchange="loadOrders()"><option value="">All statuses</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
+    <select id="ost" onchange="loadOrders()"><option value="">All statuses</option><option value="request">request — awaiting price</option><option>quote</option><option>created</option><option>paid</option><option>failed</option><option>refunded</option></select>
     <select id="ogw" onchange="loadOrders()"><option value="">All gateways</option><option>razorpay</option><option>stripe</option><option>manual</option></select>
     <select id="osort" onchange="loadOrders()"><option value="">Newest first</option><option value="oldest">Oldest first</option><option value="total_desc">Total — high to low</option><option value="total_asc">Total — low to high</option></select>
     <button class="btn btn-l" onclick="loadOrders()">Search</button></div><div id="olist"></div>`;
@@ -1262,7 +1262,7 @@ async audit() {
     if (typeof m !== 'object') return esc(String(m));
     return esc(Object.entries(m).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : (v && typeof v === 'object' ? JSON.stringify(v) : v))).join('  ·  ')).slice(0, 140) || '—';
   };
-  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'licence.verified', 'licence.validation_rejected', 'licence.machine_bound', 'licence.machine_shifted', 'licence.release_binding', 'licence.file_issued', 'licence.device_deactivated', 'licence.edited', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'quote.prospect_created', 'buy.order_created', 'buy.quote_requested', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
+  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'licence.verified', 'licence.validation_rejected', 'licence.machine_bound', 'licence.machine_shifted', 'licence.release_binding', 'licence.file_issued', 'licence.device_deactivated', 'licence.edited', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'quote.prospect_created', 'buy.order_created', 'buy.quote_requested', 'request.created', 'request.updated', 'request.converted', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
   const opts = ACTS.map((a) => '<option value="' + a + '"' + (a === cur ? ' selected' : '') + '>' + (a || 'All actions') + '</option>').join('');
   P.innerHTML = `<div class="card">
   <div class="row" style="margin-bottom:12px;align-items:flex-end">
@@ -1666,13 +1666,14 @@ async function loadOrders() {
   const d = await api(`orders?status=${ost.value}&gateway=${ogw.value}&q=${encodeURIComponent(oq?oq.value.trim():'')}&sort=${osort?osort.value:''}`);
   document.getElementById('olist').innerHTML = `<div class="card"><table>
   <tr><th>Order</th><th>Client</th><th>Licence</th><th>Description</th><th>Total</th><th>Gateway</th><th>Status</th><th></th></tr>
-  ${d.data.map(o => `<tr><td><b>${esc(o.quote_number || o.number)}</b><div class="mini">${o.quote_number ? esc(o.number) + ' · ' : ''}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}</div></td>
-  <td>${esc(o.tenant?.company_name)}</td><td class="mini">${o.licence ? '<b>'+esc(o.licence.key)+'</b>'+(o.licence.status&&o.licence.status!=='active'?' <span style="color:var(--muted)">('+esc(o.licence.status)+')</span>':'') : '<span style="color:var(--muted)">—</span>'}</td><td class="mini">${esc(o.description)}</td>
-  <td><b>${fmtMoney(o.total, o.currency)}</b><div class="mini">incl. tax ${fmtMoney(o.tax_amount, o.currency)}</div>
+  ${d.data.map(o => `<tr><td><b>${o.status==='request' ? 'REQUEST' : esc(o.quote_number || o.number)}</b><div class="mini">${o.status==='request' ? esc(o.number) + ' · ' : (o.quote_number ? esc(o.number) + ' · ' : '')}${new Date(o.created_at).toLocaleDateString()}${o.requested_by ? '<br>req: ' + esc(o.requested_by) : ''}${o.source ? '<br><span style="font-weight:800;color:' + (o.source==='client' ? 'var(--warn)' : 'var(--ink3)') + '">by ' + (o.source==='client' ? 'CLIENT' : 'admin') + '</span>' : ''}</div></td>
+  <td>${esc(o.tenant?.company_name)}</td><td class="mini">${o.licence ? '<b>'+esc(o.licence.key)+'</b>'+(o.licence.status&&o.licence.status!=='active'?' <span style="color:var(--muted)">('+esc(o.licence.status)+')</span>':'') : '<span style="color:var(--muted)">—</span>'}</td><td class="mini">${esc(o.description)}${o.status==='request' && o.meta?.notes ? '<br><span style="color:var(--ink3)">“'+esc(String(o.meta.notes).slice(0,120))+'”</span>':''}</td>
+  <td>${o.status==='request' ? '<b style="color:var(--warn)">awaiting price</b>' : `<b>${fmtMoney(o.total, o.currency)}</b><div class="mini">incl. tax ${fmtMoney(o.tax_amount, o.currency)}</div>`}
   ${o.provisioned_at && o.status!=='paid' && o.balance>0 ? `<div class="mini" style="color:var(--danger);font-weight:700">balance ${fmtMoney(o.balance, o.currency)}${o.credit_due_date?' by '+o.credit_due_date.slice(0,10):''}</div>`:''}</td>
   <td class="mini">${esc(o.gateway)}${o.manual_method?` (${esc(o.manual_method)})`:''}</td>
   <td>${pill(o.status)}${o.provisioned_at && o.status!=='paid' ? '<div class="mini" style="color:var(--warn);font-weight:700">on credit ✓ live</div>':''}</td>
-  <td>${o.status==='quote' && CAN_WRITE ? `<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Print Quote</a>
+  <td>${o.status==='request' ? `${CAN_WRITE ? `<button class="link" onclick="openRequest(${o.id})"><b>Open · price · convert</b></button>` : ''}` :
+  o.status==='quote' && CAN_WRITE ? `<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Print Quote</a>
   <button class="link" onclick="approveQuote(${o.id})">Approve</button>
   <button class="link" onclick="markPaid(${o.id},'${esc(o.quote_number||o.number)}',${o.balance ?? o.total})">Record Payment</button>` :
   o.status==='created' && CAN_WRITE ? `${o.provisioned_at && o.balance>0
@@ -1826,7 +1827,9 @@ async function newOrder() {
   <div><label>Create as</label><select id="no_asquote"><option value="0">Order — payable now</option><option value="1">Quotation — management pays later</option></select></div>
   <div><label>Requested by (manager/employee)</label><input id="no_reqby" placeholder="e.g. Rajesh Kumar, Ops Manager"></div>
   <div><label>Client PO number (optional)</label><input id="no_po" placeholder="e.g. PO-2026-0042"></div>
-  <div><label>Coupon code (optional)</label><input id="no_coupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" onchange="refreshQuote()"></div></div>
+  <div><label>Coupon code (optional)</label><input id="no_coupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" onchange="refreshQuote()"></div>
+  <div><label>Custom price ₹ (optional — your figure replaces the calculated price)</label><input id="no_custom" type="number" min="1" placeholder="blank = standard band price" oninput="refreshQuote()"></div></div>
+  <div class="mini" style="margin-top:4px;color:var(--warn)">Custom price: works for ANY user count (even beyond the priced bands) — licence line = your figure, setup/coupon/GST apply as usual, audit-logged. ₹0 impossible.</div>
   <div class="quote-box" id="quoteBox">…</div>
   <div class="mini" id="couponNote" style="margin-top:6px"></div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
@@ -1836,9 +1839,11 @@ async function newOrder() {
 async function refreshQuote() {
   try {
     const coupon = (document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null;
+    const customP = parseInt(document.getElementById('no_custom')?.value || '0', 10) || null;
     const q = await api('quote', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
       devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
-      coupon_code:coupon}});
+      coupon_code:coupon, custom_price:customP}});
+    if (q.custom) { document.getElementById('quoteBox').innerHTML = '<div class="ln" style="color:var(--warn);font-weight:700">' + esc(q.message || 'Above the priced bands — enter a Custom price to quote this count.') + '</div>'; return; }
     document.getElementById('quoteBox').innerHTML = q.lines.map(l =>
       `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('') +
       `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>
@@ -1854,7 +1859,8 @@ async function createOrder() {
     const o = await api('orders', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
       devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
       as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null, po_number:(document.getElementById('no_po')?.value||null),
-      coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null}});
+      coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null,
+      custom_price:(parseInt(document.getElementById('no_custom')?.value || '0', 10) || null)}});
     closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
   } catch (e) { toast('Error: ' + e); }
 }
@@ -1875,7 +1881,8 @@ async function newProspectQuote() {
   <div><label>Billing period</label><select id="pq_billing"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Currency</label><select id="pq_currency"><option value="INR">₹ INR (GST invoice)</option><option value="USD">$ USD (export invoice, Stripe)</option></select></div>
   <div><label>Coupon code (optional)</label><input id="pq_coupon" style="text-transform:uppercase"></div>
-  <div><label>Include one-time Setup &amp; Onboarding</label><select id="pq_setup"><option value="1">Yes (first order)</option><option value="0">No</option></select></div></div>
+  <div><label>Include one-time Setup &amp; Onboarding</label><select id="pq_setup"><option value="1">Yes (first order)</option><option value="0">No</option></select></div>
+  <div><label>Custom price ₹ (optional — overrides calculated price, any user count)</label><input id="pq_custom" type="number" min="1" placeholder="blank = standard band price"></div></div>
   <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="pq_send" checked style="width:auto"> Email the quotation + pay link to the client now</label>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="createProspectQuote()">Create quotation</button></div>`, true);
@@ -1898,12 +1905,96 @@ async function createProspectQuote() {
       phone:pq_phone.value.trim()||null, state_code:pq_state.value.trim(), gstin:pq_gstin.value.trim().toUpperCase()||null,
       currency:pq_currency.value, kind:pq_kind.value, devices:+pq_devices.value, billing:pq_billing.value,
       as_quote:true, include_setup:pq_setup.value==='1', send_email:document.getElementById('pq_send').checked,
-      coupon_code:(pq_coupon.value||'').trim().toUpperCase()||null}});
+      coupon_code:(pq_coupon.value||'').trim().toUpperCase()||null,
+      custom_price:(parseInt(document.getElementById('pq_custom')?.value||'0',10)||null)}});
     const o = r.order;
     openModal(`<h2>Quotation created — ${esc(o.quote_number || o.number)}</h2>
     <div class="sub"><b>${esc(o.tenant?.company_name)}</b> · total ${fmtMoney(o.total, o.currency)}${document.getElementById('pq_send')?.checked===false?'':' · emailed to the client'}</div>
     <label>Pay link (send on WhatsApp too)</label>
     <div style="display:flex;gap:8px;align-items:center"><input id="pq_link" value="${esc(r.pay_url)}" readonly style="flex:1"><button class="btn btn-l" onclick="copyText(document.getElementById('pq_link').value, 'Link copied')">Copy</button></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-l" target="_blank" href="${esc(r.print_url)}">Open printable quotation</a>
+      <a class="btn btn-l" target="_blank" href="https://wa.me/?text=${encodeURIComponent('Your SmartEPT quotation: ' + r.pay_url)}">Send on WhatsApp</a></div>
+    <div class="foot"><button class="btn btn-p" onclick="closeModal();go('orders')">Done</button></div>`);
+  } catch (e) { toast('Error: ' + e); }
+}
+// ---- Custom-quotation REQUEST queue (Ejaz, 13-Aug-2026) ----
+// A 'request' row = full client details captured (on /buy beyond the priced
+// bands, badge "by CLIENT") but NO price yet. Staff open it, edit anything,
+// enter the price and convert — same row becomes a numbered quotation.
+async function openRequest(id) {
+  try {
+    const o = await api('orders/' + id);
+    const t = o.tenant || {}, m = o.meta || {};
+    const pending = (t.status === 'pending');
+    window.RQ_KIND = m.kind || 'perpetual'; window.RQ_BILLING = m.billing || 'annual'; window.RQ_TENANT = t.id;
+    openModal(`<h2>Custom-pricing request — ${esc(o.number)}</h2>
+    <div class="sub">Received ${new Date(o.created_at).toLocaleString()} · <b>${o.source==='client'?'submitted by the CLIENT on /buy':'captured by admin'}</b> · ${RQ_KIND==='perpetual'?'On-Premise lifetime':'Cloud'}. Edit the details, enter your price, convert — the client receives the standard quotation email with print + pay links.${pending?'':' <b>Profile fields are locked (established client — edit on the Clients screen).</b>'}</div>
+    <div class="row">
+    <div><label>Company name</label><input id="rq_company" value="${esc(t.company_name||'')}" ${pending?'':'disabled'}></div>
+    <div><label>Contact person</label><input id="rq_name" value="${esc(t.contact_name||'')}" ${pending?'':'disabled'}></div>
+    <div><label>Email</label><input id="rq_email" value="${esc(t.email||'')}" ${pending?'':'disabled'}></div>
+    <div><label>Mobile</label><input id="rq_phone" value="${esc(t.phone||'')}" ${pending?'':'disabled'}></div>
+    <div><label>State code (GST)</label><input id="rq_state" maxlength="2" value="${esc(t.state_code||'')}" ${pending?'':'disabled'}></div>
+    <div><label>GSTIN</label><input id="rq_gstin" maxlength="15" style="text-transform:uppercase" value="${esc(t.gstin||'')}" ${pending?'':'disabled'}></div>
+    <div><label>Billing contact person</label><input id="rq_bill" value="${esc(m.billing_contact||'')}"></div>
+    <div><label>Users</label><input id="rq_devices" type="number" min="1" value="${+(m.devices||1)}" oninput="rqPreview()"></div>
+    <div><label><b>Custom price ₹</b> (your figure — blank = band price if it exists)</label><input id="rq_price" type="number" min="1" oninput="rqPreview()"></div>
+    <div><label>Include one-time Setup &amp; Onboarding</label><select id="rq_setup" onchange="rqPreview()"><option value="1">Yes (first order)</option><option value="0">No</option></select></div>
+    <div><label>Create as</label><select id="rq_asquote"><option value="1">Quotation — client approves &amp; pays</option><option value="0">Order — payable now</option></select></div>
+    <div><label>Coupon code (optional)</label><input id="rq_coupon" style="text-transform:uppercase" onchange="rqPreview()"></div></div>
+    <label>Requirement notes</label><textarea id="rq_notes" rows="2" style="width:100%;padding:9px 11px;border:1px solid var(--hair);border-radius:8px;font-family:inherit;font-size:13px">${esc(m.notes||'')}</textarea>
+    <div class="quote-box" id="rqBox">Enter your price to preview the quotation…</div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="rq_send" checked style="width:auto"> Email the quotation + pay link to the client on convert</label>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-l" onclick="saveRequest(${o.id})">Save details only</button>
+    <button class="btn btn-p" onclick="convertRequestUi(${o.id})">Convert → Quotation</button></div>`, true);
+    rqPreview();
+  } catch (e) { toast('Error: ' + e); }
+}
+async function rqPreview() {
+  const box = document.getElementById('rqBox'); if (!box) return;
+  const price = parseInt(document.getElementById('rq_price')?.value || '0', 10) || null;
+  try {
+    const q = await api('quote', {method:'POST', body:{tenant_id:RQ_TENANT, plan_code:'smartept',
+      devices:+(document.getElementById('rq_devices')?.value || 1), kind:RQ_KIND, billing:RQ_BILLING,
+      coupon_code:(document.getElementById('rq_coupon')?.value || '').trim().toUpperCase() || null,
+      include_setup:document.getElementById('rq_setup')?.value === '1',
+      custom_price:price}});
+    if (q.custom) { box.innerHTML = '<div class="ln" style="color:var(--warn);font-weight:700">Above the priced bands — enter your Custom price to quote this count.</div>'; return; }
+    box.innerHTML = q.lines.map(l => `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('') +
+      `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>
+      <div class="ln tt"><span>Total</span><span>${fmtMoney(q.total, q.currency)}</span></div>`;
+  } catch (e) { box.textContent = 'Preview: ' + e; }
+}
+async function saveRequest(id, silent) {
+  const g = k => (document.getElementById(k)?.value || '').trim() || null;
+  const body = {devices:+(document.getElementById('rq_devices')?.value||1)||null,
+    billing_contact:g('rq_bill'), notes:g('rq_notes'),
+    company_name:g('rq_company'), contact_name:g('rq_name'), email:g('rq_email'),
+    phone:g('rq_phone'), state_code:g('rq_state'),
+    gstin:(g('rq_gstin')||'').toUpperCase()||null};
+  try { await api('orders/'+id+'/request', {method:'PUT', body});
+    if (!silent) { toast('Request updated'); loadOrders(); } }
+  catch (e) { if (silent) throw e; toast('Error: ' + e); }
+}
+async function convertRequestUi(id) {
+  const price = parseInt(document.getElementById('rq_price')?.value || '0', 10) || null;
+  if (!price && !confirm('No custom price entered — convert at the STANDARD band price?\n\n(Only possible when the user count is inside the priced bands; above them a custom price is required.)')) return;
+  const emailed = !!document.getElementById('rq_send')?.checked;
+  try {
+    await saveRequest(id, true);          // details first, then the money
+    const r = await api('orders/'+id+'/convert-request', {method:'POST', body:{
+      custom_price:price, devices:+(document.getElementById('rq_devices')?.value||1)||null,
+      as_quote:document.getElementById('rq_asquote')?.value!=='0',
+      include_setup:document.getElementById('rq_setup')?.value==='1',
+      send_email:emailed,
+      coupon_code:(document.getElementById('rq_coupon')?.value||'').trim().toUpperCase()||null}});
+    const o = r.order;
+    openModal(`<h2>${o.quote_number?'Quotation created — '+esc(o.quote_number):'Order created — '+esc(o.number)}</h2>
+    <div class="sub"><b>${esc(o.tenant?.company_name)}</b> · total ${fmtMoney(o.total, o.currency)}${emailed?' · emailed to the client':''}</div>
+    <label>Pay link (send on WhatsApp too)</label>
+    <div style="display:flex;gap:8px;align-items:center"><input id="rq_link" value="${esc(r.pay_url)}" readonly style="flex:1"><button class="btn btn-l" onclick="copyText(document.getElementById('rq_link').value, 'Link copied')">Copy</button></div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <a class="btn btn-l" target="_blank" href="${esc(r.print_url)}">Open printable quotation</a>
       <a class="btn btn-l" target="_blank" href="https://wa.me/?text=${encodeURIComponent('Your SmartEPT quotation: ' + r.pay_url)}">Send on WhatsApp</a></div>

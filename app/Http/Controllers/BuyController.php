@@ -133,6 +133,7 @@ class BuyController extends Controller
                 'include_setup' => (bool) ($data['include_setup'] ?? false),
                 'coupon_code' => $data['coupon_code'] ?? null,
                 'coupon_email' => $data['email'],
+                'source' => 'client', // 13-Aug: "By client" badge in the admin queue
             ]);
 
             // Mark the order as born on the public buy page so the checkout
@@ -247,6 +248,7 @@ class BuyController extends Controller
                 'coupon_email' => $data['email'],
                 'as_quote' => true,
                 'requested_by' => $data['contact_name'],
+                'source' => 'client', // 13-Aug: "By client" badge in the admin queue
             ]);
 
             $order->update(['meta' => array_merge($order->meta ?? [], ['buy_flow' => true])]);
@@ -308,6 +310,150 @@ class BuyController extends Controller
             'pay_url' => $payUrl,
             'print_url' => $printUrl,
             'message' => 'Quotation ' . $order->quote_number . ' has been emailed to ' . $data['email'] . ' with the payment link.',
+        ], 201);
+    }
+
+    /**
+     * CUSTOM-PRICING REQUEST (Ejaz, 13-Aug-2026): shown on /buy when the chosen
+     * user count is beyond the last priced milestone (the "Custom quotation"
+     * territory). The visitor fills their full details — company, contact,
+     * billing contact person, GST, state, user count, notes — but NO price.
+     * The submission lands in the admin Orders queue as a 'request' row with a
+     * "By client" badge; staff open it, edit if needed, enter the price and
+     * convert it into a numbered quotation with the standard pay link.
+     * Nothing is priced, numbered or payable here.
+     */
+    public function customQuote(Request $request)
+    {
+        // Honeypot — see order() above.
+        if ($request->filled('website_hp')) {
+            return response()->json(['ok' => true,
+                'message' => 'Request received — our team will email your custom quotation shortly.'], 201);
+        }
+
+        $data = $request->validate([
+            'company_name' => ['required', 'string', 'max:190'],
+            'contact_name' => ['required', 'string', 'max:190'],
+            'billing_contact' => ['nullable', 'string', 'max:190'],
+            'email' => ['required', 'email', 'max:190'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'state_code' => ['required', 'string', 'size:2',
+                'in:' . implode(',', array_keys(\App\Support\IndianStates::MAP))],
+            'gstin' => ['nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[0-9A-Z]{13}$/i'],
+            'kind' => ['nullable', 'in:cloud,perpetual'],
+            'users' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'currency' => ['nullable', 'in:INR,USD'],
+        ], [
+            'state_code.required' => 'Please pick your state — your quotation shows GST exactly as your invoice will.',
+            'gstin.regex' => 'That GSTIN does not look right — it is 15 characters, starting with your 2-digit state code.',
+        ]);
+
+        if (! empty($data['gstin']) && substr(strtoupper($data['gstin']), 0, 2) !== $data['state_code']) {
+            return response()->json(['error' => 'Your GSTIN starts with "' . substr(strtoupper($data['gstin']), 0, 2)
+                . '" but you picked state ' . $data['state_code'] . ' — the first two digits of a GSTIN are always the state code.'], 422);
+        }
+
+        $kind = ($data['kind'] ?? 'perpetual') === 'cloud' ? 'subscription' : 'perpetual';
+
+        // An existing client's request attaches to their account; a new visitor
+        // becomes a 'pending' prospect (activated only if/when they later pay).
+        // No portal login is created here — provisioning auto-creates the owner.
+        $tenant = Tenant::where('email', $data['email'])->first()
+            ?? Tenant::whereIn('id', TenantUser::where('email', $data['email'])->pluck('tenant_id'))->first();
+
+        [$tenant, $order] = DB::transaction(function () use ($data, $tenant, $kind) {
+            $tenant = $tenant ?: Tenant::create([
+                'company_name' => $data['company_name'],
+                'contact_name' => $data['contact_name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'deployment' => $kind === 'perpetual' ? 'client_hosted' : 'cloud',
+                'status' => 'pending',
+                'currency' => $data['currency'] ?? 'INR',
+                'state_code' => $data['state_code'],
+                'gstin' => ! empty($data['gstin']) ? strtoupper($data['gstin']) : null,
+            ]);
+
+            $order = \App\Models\Order::create([
+                'number' => app(BillingService::class)->nextOrderNumber(),
+                'tenant_id' => $tenant->id,
+                'requested_by' => $data['contact_name'],
+                'description' => sprintf('Custom quotation request — %d users (%s)',
+                    (int) $data['users'], $kind === 'perpetual' ? 'On-Premise lifetime' : 'Cloud'),
+                'line_items' => [],
+                'subtotal' => 0,
+                'tax_amount' => 0,
+                'total' => 0,
+                'currency' => $data['currency'] ?? ($tenant->currency ?: 'INR'),
+                'gateway' => 'manual',
+                'status' => 'request',
+                'source' => 'client',
+                'meta' => [
+                    'request' => true,
+                    'kind' => $kind,
+                    'devices' => (int) $data['users'],
+                    'billing' => 'annual',
+                    'billing_contact' => $data['billing_contact'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                ],
+            ]);
+
+            return [$tenant, $order];
+        });
+
+        AuditLog::write('request.created', $order, [
+            'company' => $data['company_name'], 'email' => $data['email'],
+            'users' => (int) $data['users'], 'source' => 'client',
+        ]);
+
+        // Confirmation to the client + sales alert — both fail-soft.
+        try {
+            app(\App\Services\MailService::class)->send(
+                $data['email'],
+                'SmartEPT — custom quotation request received (' . $data['company_name'] . ')',
+                "Hello {$data['contact_name']},\n\n"
+                . "Thank you — we have received your request for a custom SmartEPT quotation:\n\n"
+                . 'Users requested : ' . number_format((int) $data['users']) . "\n"
+                . 'Deployment      : ' . ($kind === 'perpetual' ? 'On-Premise (lifetime licence)' : 'SmartEPT Cloud') . "\n\n"
+                . "Our team is preparing your personalised pricing and will email the formal quotation shortly.\n"
+                . 'Anything urgent? WhatsApp 90000 98877.'
+                . \App\Services\MailService::signature()
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Custom-quote confirmation mail failed: ' . $e->getMessage());
+        }
+
+        try {
+            \App\Models\Lead::create([
+                'name' => $data['contact_name'], 'company' => $data['company_name'],
+                'email' => $data['email'], 'phone' => $data['phone'] ?? null,
+                'devices_interested' => (int) $data['users'], 'source' => 'custom_quote',
+                'status' => 'NEW', 'tenant_id' => $tenant->id,
+                'message' => 'Custom-pricing request ' . $order->number . ' — ' . number_format((int) $data['users'])
+                    . ' users' . (! empty($data['notes']) ? ' — ' . mb_substr($data['notes'], 0, 300) : ''),
+            ]);
+            app(\App\Services\MailService::class)->send(
+                \App\Models\Setting::get('sales_email', 'sales@ametecsindia.com'),
+                'SmartEPT CUSTOM-PRICING request: ' . $data['company_name'] . ' — ' . number_format((int) $data['users']) . ' users',
+                'A visitor beyond the priced bands just requested a custom quotation on /buy.' . "\n\n"
+                . 'Company : ' . $data['company_name'] . "\nContact : " . $data['contact_name']
+                . "\nBilling contact : " . ($data['billing_contact'] ?? '—')
+                . "\nEmail   : " . $data['email'] . "\nPhone   : " . ($data['phone'] ?? '—')
+                . "\nUsers   : " . number_format((int) $data['users'])
+                . "\nNotes   : " . ($data['notes'] ?? '—')
+                . "\n\nOpen the admin console → Orders & Payments → the new REQUEST row (By client), "
+                . 'enter your price and convert it into the quotation.'
+                . \App\Services\MailService::signature()
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Custom-quote lead/alert failed: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Request received! Our team is preparing your personalised quotation for '
+                . number_format((int) $data['users']) . ' users — it will be emailed to ' . $data['email'] . ' shortly.',
         ], 201);
     }
 }

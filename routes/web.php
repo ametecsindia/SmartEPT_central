@@ -68,6 +68,7 @@ Route::middleware(['client.auth', \App\Http\Middleware\NoIndex::class])->prefix(
 Route::get('/buy', [\App\Http\Controllers\BuyController::class, 'show'])->middleware(\App\Http\Middleware\NoIndex::class);
 Route::post('/buy/order', [\App\Http\Controllers\BuyController::class, 'order'])->middleware('throttle:10,1');
 Route::post('/buy/quote', [\App\Http\Controllers\BuyController::class, 'quote'])->middleware('throttle:6,1'); // Phase 3: self-serve quotation
+Route::post('/buy/custom-quote', [\App\Http\Controllers\BuyController::class, 'customQuote'])->middleware('throttle:6,1'); // 13-Aug: beyond-band custom-pricing request → admin queue (no price captured)
 
 // ---------- Public: checkout ----------
 Route::get('/pay/{number}/{token}', [CheckoutController::class, 'show'])->middleware(\App\Http\Middleware\NoIndex::class);
@@ -106,6 +107,7 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
         Route::get('licences/{licence}/devices', [Admin\LicenceApiController::class, 'devices']); // 6-Aug: device seats (free a formatted/replaced PC)
         Route::get('licences/{licence}/history', [Admin\LicenceApiController::class, 'history']); // 6-Aug: full licence timeline
         Route::get('orders', [Admin\BillingApiController::class, 'orders']);
+        Route::get('orders/{order}', [Admin\BillingApiController::class, 'showOrder']); // 13-Aug: request-queue modal detail
         Route::get('credit-clients', [Admin\BillingApiController::class, 'creditClients']); // §10 credit table
         Route::get('invoices', [Admin\BillingApiController::class, 'invoices']);
         Route::get('trials', [Admin\BillingApiController::class, 'trials']);
@@ -140,6 +142,9 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::post('orders', [Admin\BillingApiController::class, 'createOrder']);
             Route::post('prospect-quote', [Admin\BillingApiController::class, 'prospectQuote']); // Phase 3: one-screen quote for a NEW prospect
             Route::post('setup-invoice', [Admin\BillingApiController::class, 'raiseSetupInvoice']);
+            // 13-Aug: custom-quotation request queue — edit details, then price + convert
+            Route::put('orders/{order}/request', [Admin\BillingApiController::class, 'updateRequest']);
+            Route::post('orders/{order}/convert-request', [Admin\BillingApiController::class, 'convertRequest']);
             Route::post('orders/{order}/mark-paid', [Admin\BillingApiController::class, 'markPaid']);
             Route::post('orders/{order}/record-balance', [Admin\BillingApiController::class, 'recordBalance']); // §10 instalments
             Route::post('orders/{order}/approve-quote', [Admin\BillingApiController::class, 'approveQuote']);
