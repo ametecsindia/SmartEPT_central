@@ -65,6 +65,12 @@ class ProductProvisioner
                     // a cloud client never pastes a key by hand. Re-pushed on every
                     // provision, so a renewal/upgrade refreshes the product side too.
                     'licence_key'        => optional($tenant->activeLicence)->key,
+                    // CONSOLE MAIL AUTOPILOT (Ejaz, 13-Aug-2026): a fresh console
+                    // has no SMTP, so its OTP/credential emails silently died in
+                    // the log mailer. Central owns the relay (Settings → Email) —
+                    // hand it over here; the console adopts it as its global SMTP
+                    // only when none is configured there yet.
+                    'mail'               => $this->mailConfig(),
                 ]);
 
             if (! $resp->successful()) {
@@ -119,6 +125,25 @@ class ProductProvisioner
         $gb = $tenant->storageQuotaGb();
 
         return $gb > 0 ? (int) round($gb * 1024) : null; // GB -> MB
+    }
+
+    /** Central's admin-configured SMTP, for the console to inherit; null when unset. */
+    private function mailConfig(): ?array
+    {
+        $host = trim((string) Setting::get('mail_host'));
+        if ($host === '') {
+            return null;
+        }
+
+        return [
+            'host'         => $host,
+            'port'         => (int) (Setting::get('mail_port') ?: 587),
+            'username'     => (string) Setting::get('mail_username'),
+            'password'     => (string) Setting::get('mail_password'),
+            'encryption'   => (string) (Setting::get('mail_encryption') ?: 'tls'),
+            'from_address' => (string) Setting::get('mail_from_address'),
+            'from_name'    => (string) (Setting::get('mail_from_name') ?: 'SmartEPT'),
+        ];
     }
 
     /** Push a suspend/enable to the tenant's hosted console (cloud tenants only). */
