@@ -1,5 +1,16 @@
 <?php
 
+// CROSS-APP DB POISONING FIX (Ejaz, 13-Aug-2026): Central and the product
+// console share one Apache/PHP-FPM worker pool (Laragon local AND the live
+// VPS). Laravel's env loader uses putenv(), which PERSISTS in a worker across
+// requests — so a worker that just served the OTHER app keeps its DB_DATABASE
+// and, because dotenv loading is immutable, this app then silently runs on the
+// WRONG DATABASE (proven 13-Aug: Central's /api/validate queried `smartept`
+// and 500'd "licences doesn't exist"; same mechanism as the July agent/
+// screenshot wrong-DB incident). Disabling putenv makes every request read
+// .env fresh — full isolation between the two apps. Same line in both repos.
+\Illuminate\Support\Env::disablePutenv();
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
