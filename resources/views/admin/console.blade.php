@@ -1816,8 +1816,18 @@ async function copyPayLink(number) {
 }
 async function newOrder() {
   const tenants = await api('tenants?status=');
-  openModal(`<h2>New Order / Quote</h2><div class="sub">Live quote updates as you type — includes the one-time Setup &amp; Onboarding fee automatically on a client's first paid order.</div>
-  <label>Client</label><select id="no_tenant" onchange="refreshQuote()">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  window.NO_TENANTS = tenants.data || [];
+  openModal(`<h2>New Order / Quote</h2><div class="sub">Live quote updates as you type — includes the one-time Setup &amp; Onboarding fee automatically on a client's first paid order. Pick a client — their details load below for checking/correcting — or choose <b>➕ NEW client</b> and enter the details right here (13-Aug).</div>
+  <label>Client</label><select id="no_tenant" onchange="noClientUi();refreshQuote()"><option value="new">➕ NEW client — enter details below</option>${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
+  <div class="row" style="margin-top:6px">
+  <div><label>Company name</label><input id="no_c_company"></div>
+  <div><label>Contact person</label><input id="no_c_name"></div>
+  <div><label>Email</label><input id="no_c_email" type="email"></div>
+  <div><label>Mobile</label><input id="no_c_phone" maxlength="20"></div>
+  <div><label>State code (GST — e.g. 36 Telangana)</label><input id="no_c_state" maxlength="2" oninput="refreshQuote()"></div>
+  <div><label>GSTIN (optional)</label><input id="no_c_gstin" maxlength="15" style="text-transform:uppercase"></div>
+  <div><label>Currency</label><select id="no_c_currency"><option value="INR">₹ INR (GST invoice)</option><option value="USD">$ USD (export invoice)</option></select></div></div>
+  <div class="mini" id="no_c_note" style="margin-bottom:4px"></div>
   <div class="row">
   <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="smartept" selected>SmartEPT — all features</option></select></div>
   <div><label>Kind</label><select id="no_kind" onchange="kindBillingUi('no_kind','no_billing');refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
@@ -1836,10 +1846,38 @@ async function newOrder() {
   <div class="mini" id="couponNote" style="margin-top:6px"></div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="createOrder()">Create Order</button></div>`, true);
+  // Default to the first existing client (old behaviour); ➕ NEW stays one click away.
+  if (window.NO_TENANTS.length) document.getElementById('no_tenant').value = String(window.NO_TENANTS[0].id);
+  noClientUi();
   refreshQuote();
+}
+// 13-Aug: client details INSIDE the order modal — loaded from the record for an
+// existing client (edits are saved back to the record on Create), or typed fresh
+// for a ➕ NEW client (record + portal login are created together with the order).
+function noClientUi() {
+  const sel = document.getElementById('no_tenant'); if (!sel) return;
+  const isNew = sel.value === 'new';
+  const t = isNew ? null : (window.NO_TENANTS || []).find(x => String(x.id) === String(sel.value));
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  set('no_c_company', t ? t.company_name : '');
+  set('no_c_name', t ? t.contact_name : '');
+  set('no_c_email', t ? t.email : '');
+  set('no_c_phone', t ? t.phone : '');
+  set('no_c_state', t ? t.state_code : '');
+  set('no_c_gstin', t ? t.gstin : '');
+  const cur = document.getElementById('no_c_currency'); if (cur) cur.value = t ? (t.currency || 'INR') : 'INR';
+  const note = document.getElementById('no_c_note');
+  if (note) note.innerHTML = isNew
+    ? '<span style="color:var(--warn);font-weight:700">NEW client — company name + email required. The client record and portal login are created together with the order/quote (welcome email goes out).</span>'
+    : 'Loaded from the client record — anything you correct here is saved back to the record on Create.';
 }
 async function refreshQuote() {
   try {
+    // NEW client has no record yet — the server-side preview needs a tenant.
+    if (document.getElementById('no_tenant')?.value === 'new') {
+      document.getElementById('quoteBox').innerHTML = '<div class="ln">➕ NEW client — totals calculate on <b>Create</b> (GST follows the state code entered above; custom price/setup/AMC boxes all apply).</div>';
+      return;
+    }
     const coupon = (document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null;
     const customP = parseInt(document.getElementById('no_custom')?.value || '0', 10) || null;
     const q = await api('quote', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
@@ -1860,7 +1898,25 @@ async function refreshQuote() {
 }
 async function createOrder() {
   try {
-    const o = await api('orders', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
+    // 13-Aug: client details live in the modal — create the NEW client, or save
+    // corrections back to the existing record, BEFORE the order is priced.
+    const g = id => (document.getElementById(id)?.value || '').trim();
+    let tenantId = document.getElementById('no_tenant').value;
+    const profile = {company_name:g('no_c_company'), contact_name:g('no_c_name')||null, email:g('no_c_email'),
+      phone:g('no_c_phone')||null, state_code:g('no_c_state')||null, gstin:g('no_c_gstin').toUpperCase()||null,
+      currency:document.getElementById('no_c_currency')?.value||'INR'};
+    if (tenantId === 'new') {
+      if (!profile.company_name || !profile.email) { toast('NEW client needs at least the company name and email'); return; }
+      const t = await api('tenants', {method:'POST', body:{...profile,
+        deployment:no_kind.value==='perpetual'?'client_hosted':'cloud'}});
+      tenantId = t.id;
+    } else {
+      const t0 = (window.NO_TENANTS || []).find(x => String(x.id) === String(tenantId)) || {};
+      const diff = {};
+      Object.keys(profile).forEach(k => { if ((profile[k]||null) !== (t0[k]||null)) diff[k] = profile[k]; });
+      if (Object.keys(diff).length) await api('tenants/' + tenantId, {method:'PUT', body:diff});
+    }
+    const o = await api('orders', {method:'POST', body:{tenant_id:+tenantId, plan_code:no_plan.value,
       devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
       as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null, po_number:(document.getElementById('no_po')?.value||null),
       coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null,
@@ -2109,7 +2165,7 @@ async function extendTrial(id) {
   catch (e) { toast('Error: ' + e); }
 }
 function convertTrial(id, name) {
-  go('orders'); setTimeout(() => { newOrder().then(() => { no_tenant.value = id; refreshQuote(); }); }, 300);
+  go('orders'); setTimeout(() => { newOrder().then(() => { no_tenant.value = id; noClientUi(); refreshQuote(); }); }, 300);
 }
 
 // ---------- storage helpers ----------
