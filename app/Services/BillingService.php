@@ -159,6 +159,17 @@ class BillingService
                 : 'This user count needs a custom quotation — an automatic lifetime price is not available for it.');
         }
 
+        // Honour an explicit "no setup" on the band-priced perpetual path too —
+        // perpetualQuote() auto-adds the fee on a first order, silently ignoring
+        // include_setup=false (admin "Include setup: No" and the /buy checkbox
+        // both hit this). The operator/buyer choice must win; the custom setup
+        // box below still force-adds when filled.
+        if (array_key_exists('include_setup', $opts) && $opts['include_setup'] === false) {
+            $quote['lines'] = array_values(array_filter($quote['lines'],
+                fn ($l) => ($l['type'] ?? '') !== 'setup_fee'));
+            $quote['subtotal'] = round(array_sum(array_column($quote['lines'], 'amount')), 2);
+        }
+
         // CUSTOM SETUP CHARGE (13-Aug-2026): entered ⇒ replaces the calculated
         // setup fee and forces the line in (even if setup was already paid);
         // blank ⇒ the automatic behaviour above stands. Cloud + Perpetual alike.
