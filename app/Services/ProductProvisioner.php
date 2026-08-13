@@ -77,6 +77,31 @@ class ProductProvisioner
                 $tenant->forceFill(['console_url' => $consoleUrl])->save();
                 Log::info('Cloud console provisioned', ['tenant' => $tenant->id, 'console_url' => $consoleUrl]);
             }
+
+            // ROOT-CAUSE FIX (Ejaz, 13-Aug-2026): on FIRST provision the console
+            // creates the COMPANY_ADMIN with a temp password and returns it here —
+            // and Central used to throw it away. Nobody ever told the client, so
+            // every cloud client's slug login failed with "credentials do not
+            // match" (their portal password belongs to a DIFFERENT system). Email
+            // it via Central's working SMTP; the console forces a password change
+            // on first sign-in (must_change_password), so the temp is single-use.
+            // temp_password is null on re-provision — this mails exactly once.
+            $temp = (string) $resp->json('temp_password', '');
+            if ($temp !== '') {
+                app(MailService::class)->send(
+                    $tenant->email,
+                    'Your SmartEPT console sign-in — ' . $tenant->company_name,
+                    "Hello {$tenant->contact_name},\n\n"
+                    . "Your company's SmartEPT console is ready.\n\n"
+                    . 'Console: ' . ($consoleUrl ?: $this->productBase()) . "\n"
+                    . "Sign-in email: {$tenant->email}\n"
+                    . "Temporary password: {$temp}\n\n"
+                    . "You will be asked to set your own password on first sign-in.\n"
+                    . "Tip: you can also open the console without any password from your client portal (single sign-on).\n\n"
+                    . '— SmartEPT' . MailService::signature()
+                );
+                Log::info('Console credentials emailed to tenant owner', ['tenant' => $tenant->id]);
+            }
         } catch (\Throwable $e) {
             // Never let a provisioning hiccup roll back a real payment.
             Log::error('Cloud console provisioning threw', ['tenant' => $tenant->id, 'error' => $e->getMessage()]);
