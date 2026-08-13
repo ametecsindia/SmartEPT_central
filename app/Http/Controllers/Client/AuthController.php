@@ -52,11 +52,13 @@ class AuthController extends Controller
 
         $code = $this->otp->issue($data['email'], 'signup', $data['phone'] ?? null);
 
+        // SECURITY (Ejaz, 13-Aug-2026): the OTP must NEVER leave the server in
+        // the API response — live ran with APP_DEBUG=true and the old
+        // debug-only "demo_otp" convenience leaked real codes on screen.
+        // Local testing: read the code from the otps table or the mail log.
         return response()->json([
             'ok' => true,
             'message' => 'We emailed a 6-digit code to ' . $data['email'] . '. Enter it below to start your trial.',
-            // TEST MODE convenience only (APP_DEBUG=true on Laragon). Never shown in production.
-            'demo_otp' => config('app.debug') ? $code : null,
         ]);
     }
 
@@ -235,16 +237,14 @@ class AuthController extends Controller
 
         // Send only when the account exists, but answer the same either way
         // so the endpoint cannot be used to probe which emails are customers.
-        $demo = null;
+        // The code itself never appears in the response (13-Aug-2026 fix).
         if (TenantUser::where('email', $data['email'])->exists()) {
-            $code = $this->otp->issue($data['email'], 'reset');
-            $demo = config('app.debug') ? $code : null;
+            $this->otp->issue($data['email'], 'reset');
         }
 
         return response()->json([
             'ok' => true,
             'message' => 'If that email has a SmartEPT account, a reset code is on its way.',
-            'demo_otp' => $demo,
         ]);
     }
 
