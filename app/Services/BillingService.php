@@ -159,6 +159,23 @@ class BillingService
                 : 'This user count needs a custom quotation — an automatic lifetime price is not available for it.');
         }
 
+        // CUSTOM SETUP CHARGE (13-Aug-2026): entered ⇒ replaces the calculated
+        // setup fee and forces the line in (even if setup was already paid);
+        // blank ⇒ the automatic behaviour above stands. Cloud + Perpetual alike.
+        $customSetup = (isset($opts['custom_setup']) && (int) $opts['custom_setup'] > 0)
+            ? (int) $opts['custom_setup'] : null;
+        if ($customSetup) {
+            $quote = $this->pricing->applyCustomSetup($quote, $customSetup);
+        }
+
+        // CUSTOM AMC CHARGE (13-Aug-2026): entered ⇒ an AMC line is added at
+        // exactly that figure; blank ⇒ no AMC line (billed separately as today).
+        $customAmc = (isset($opts['custom_amc']) && (int) $opts['custom_amc'] > 0)
+            ? (int) $opts['custom_amc'] : null;
+        if ($customAmc) {
+            $quote = $this->pricing->applyCustomAmc($quote, $customAmc);
+        }
+
         // R3-7 + master prompt §7: coupon — a visible negative line item BEFORE
         // GST, applied AFTER the advance-period discount (they stack knowingly).
         // Captured on a quotation it is LOCKED into that quote: the discount line
@@ -209,7 +226,9 @@ class BillingService
                 'kind' => $kind, 'billing' => $billing,
                 // v2: deployment is implied by kind — subscription = Cloud, perpetual = client-hosted.
                 'deployment' => $kind === 'perpetual' ? 'client_hosted' : 'cloud',
-            ], $customPrice ? ['custom_price' => $customPrice] : [], $couponMeta),
+            ], $customPrice ? ['custom_price' => $customPrice] : [],
+               $customSetup ? ['custom_setup' => $customSetup] : [],
+               $customAmc ? ['custom_amc' => $customAmc] : [], $couponMeta),
         ];
     }
 

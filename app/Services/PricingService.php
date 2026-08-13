@@ -446,6 +446,59 @@ class PricingService
     }
 
     /**
+     * CUSTOM SETUP CHARGE (Ejaz, 13-Aug-2026): the operator's figure replaces
+     * the calculated Setup & Onboarding fee — and FORCES the line in, even when
+     * the client already paid setup once or setup was not auto-included. The
+     * box being filled means "charge exactly this for setup on this order".
+     * Works for Cloud and Perpetual alike; blank box = automatic behaviour.
+     */
+    public function applyCustomSetup(array $quote, int $fee): array
+    {
+        $fee = max(1, $fee);
+
+        $lines = array_values(array_filter($quote['lines'] ?? [],
+            fn ($l) => ($l['type'] ?? '') !== 'setup_fee'));
+        $lines[] = [
+            'type' => 'setup_fee',
+            'description' => 'One-time Setup & Onboarding · special price',
+            'qty' => 1,
+            'unit' => (float) $fee,
+            'amount' => (float) $fee,
+        ];
+
+        $quote['lines'] = $lines;
+        $quote['subtotal'] = round(array_sum(array_column($lines, 'amount')), 2);
+
+        return $quote;
+    }
+
+    /**
+     * CUSTOM AMC CHARGE (Ejaz, 13-Aug-2026): the operator's figure ADDS an
+     * Annual Maintenance & Support line to the order/quote at exactly that
+     * amount (replacing any AMC line already present). Blank box = no AMC line
+     * (today's behaviour — AMC is otherwise billed separately from Year 2).
+     */
+    public function applyCustomAmc(array $quote, int $fee): array
+    {
+        $fee = max(1, $fee);
+
+        $lines = array_values(array_filter($quote['lines'] ?? [],
+            fn ($l) => ($l['type'] ?? '') !== 'amc'));
+        $lines[] = [
+            'type' => 'amc',
+            'description' => 'Annual Maintenance & Support · special price',
+            'qty' => 1,
+            'unit' => (float) $fee,
+            'amount' => (float) $fee,
+        ];
+
+        $quote['lines'] = $lines;
+        $quote['subtotal'] = round(array_sum(array_column($lines, 'amount')), 2);
+
+        return $quote;
+    }
+
+    /**
      * Optional Annual Maintenance & Support for a perpetual client — pricing v2.
      * Priced at pricing_amc_pct (default 18%, the mid of the 15–20% band) of the
      * PREVAILING price — since 11-Aug-2026 the progressive/interpolated price

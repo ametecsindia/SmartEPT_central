@@ -39,6 +39,8 @@ class BillingApiController extends Controller
             // tier calculation for ANY user count (billing-manage roles only,
             // which POST /quote already enforces via the permissions matrix).
             'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
+            'custom_setup' => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            'custom_amc' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'include_setup' => ['nullable', 'boolean'],
         ]);
 
@@ -65,6 +67,14 @@ class BillingApiController extends Controller
         if ($customPrice <= 0 && ! empty($quote['custom'])) {
             return response()->json(['custom' => true,
                 'message' => 'For more than ' . number_format((int) ($quote['max_priced_users'] ?? 0)) . ' users, enter a Custom price below (or request one).'], 200);
+        }
+
+        // Custom setup / AMC charges (13-Aug-2026) — preview matches the order maths.
+        if ((int) ($data['custom_setup'] ?? 0) > 0) {
+            $quote = $this->pricing->applyCustomSetup($quote, (int) $data['custom_setup']);
+        }
+        if ((int) ($data['custom_amc'] ?? 0) > 0) {
+            $quote = $this->pricing->applyCustomAmc($quote, (int) $data['custom_amc']);
         }
 
         // Coupon preview — same maths as the order (negative line before GST).
@@ -183,6 +193,8 @@ class BillingApiController extends Controller
             // 13-Aug-2026: custom price — overrides the band calculation for any
             // user count. Whoever may create orders may enter it (Ejaz's call).
             'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
+            'custom_setup' => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            'custom_amc' => ['nullable', 'integer', 'min:1', 'max:100000000'],
         ]);
 
         $plan = Plan::where('code', $data['plan_code'] ?? 'smartept')->firstOrFail();
@@ -237,8 +249,10 @@ class BillingApiController extends Controller
             'coupon_code' => ['nullable', 'string', 'max:40'],
             'include_setup' => ['nullable', 'boolean'],
             'send_email' => ['nullable', 'boolean'],
-            // 13-Aug-2026: custom price for a brand-new prospect too.
+            // 13-Aug-2026: custom price / setup / AMC for a brand-new prospect too.
             'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
+            'custom_setup' => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            'custom_amc' => ['nullable', 'integer', 'min:1', 'max:100000000'],
         ]);
 
         if (\App\Models\Tenant::where('email', $data['email'])->exists()
@@ -279,6 +293,8 @@ class BillingApiController extends Controller
             'coupon_email' => $data['email'],
             'requested_by' => auth('admin')->user()->name,
             'custom_price' => $customPrice > 0 ? $customPrice : null,
+            'custom_setup' => (int) ($data['custom_setup'] ?? 0) > 0 ? (int) $data['custom_setup'] : null,
+            'custom_amc' => (int) ($data['custom_amc'] ?? 0) > 0 ? (int) $data['custom_amc'] : null,
         ]);
 
         AuditLog::write('quote.prospect_created', $order, [
@@ -445,6 +461,8 @@ class BillingApiController extends Controller
     {
         $data = $request->validate([
             'custom_price' => ['nullable', 'integer', 'min:1', 'max:1000000000'],
+            'custom_setup' => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            'custom_amc' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'devices' => ['nullable', 'integer', 'min:1', 'max:1000000'],
             'as_quote' => ['nullable', 'boolean'],
             'include_setup' => ['nullable', 'boolean'],
@@ -457,6 +475,8 @@ class BillingApiController extends Controller
         try {
             $order = $this->billing->convertRequest($order, $plan, [
                 'custom_price' => (int) ($data['custom_price'] ?? 0) > 0 ? (int) $data['custom_price'] : null,
+                'custom_setup' => (int) ($data['custom_setup'] ?? 0) > 0 ? (int) $data['custom_setup'] : null,
+                'custom_amc' => (int) ($data['custom_amc'] ?? 0) > 0 ? (int) $data['custom_amc'] : null,
                 'devices' => $data['devices'] ?? null,
                 'as_quote' => (bool) ($data['as_quote'] ?? true),
                 'include_setup' => (bool) ($data['include_setup'] ?? true),

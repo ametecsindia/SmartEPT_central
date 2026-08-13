@@ -1828,8 +1828,10 @@ async function newOrder() {
   <div><label>Requested by (manager/employee)</label><input id="no_reqby" placeholder="e.g. Rajesh Kumar, Ops Manager"></div>
   <div><label>Client PO number (optional)</label><input id="no_po" placeholder="e.g. PO-2026-0042"></div>
   <div><label>Coupon code (optional)</label><input id="no_coupon" placeholder="e.g. DIWALI25" style="text-transform:uppercase" onchange="refreshQuote()"></div>
-  <div><label>Custom price ₹ (optional — your figure replaces the calculated price)</label><input id="no_custom" type="number" min="1" placeholder="blank = standard band price" oninput="refreshQuote()"></div></div>
-  <div class="mini" style="margin-top:4px;color:var(--warn)">Custom price: works for ANY user count (even beyond the priced bands) — licence line = your figure, setup/coupon/GST apply as usual, audit-logged. ₹0 impossible.</div>
+  <div><label>Custom price ₹ (optional — your figure replaces the calculated price)</label><input id="no_custom" type="number" min="1" placeholder="blank = standard band price" oninput="refreshQuote()"></div>
+  <div><label>Custom setup charge ₹ (optional — replaces the calculated setup fee)</label><input id="no_setupfee" type="number" min="1" placeholder="blank = automatic setup fee" oninput="refreshQuote()"></div>
+  <div><label>Custom AMC ₹/year (optional — adds an AMC line at your figure)</label><input id="no_amc" type="number" min="1" placeholder="blank = no AMC line" oninput="refreshQuote()"></div></div>
+  <div class="mini" style="margin-top:4px;color:var(--warn)">Custom boxes (Cloud &amp; Perpetual): price = licence line at your figure, ANY user count; setup = replaces the calculated fee and is charged even if setup was paid before; AMC = adds the AMC line. Coupon &amp; GST apply as usual, all audit-logged, ₹0 impossible.</div>
   <div class="quote-box" id="quoteBox">…</div>
   <div class="mini" id="couponNote" style="margin-top:6px"></div>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
@@ -1842,7 +1844,9 @@ async function refreshQuote() {
     const customP = parseInt(document.getElementById('no_custom')?.value || '0', 10) || null;
     const q = await api('quote', {method:'POST', body:{tenant_id:+no_tenant.value, plan_code:no_plan.value,
       devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
-      coupon_code:coupon, custom_price:customP}});
+      coupon_code:coupon, custom_price:customP,
+      custom_setup:(parseInt(document.getElementById('no_setupfee')?.value||'0',10)||null),
+      custom_amc:(parseInt(document.getElementById('no_amc')?.value||'0',10)||null)}});
     if (q.custom) { document.getElementById('quoteBox').innerHTML = '<div class="ln" style="color:var(--warn);font-weight:700">' + esc(q.message || 'Above the priced bands — enter a Custom price to quote this count.') + '</div>'; return; }
     document.getElementById('quoteBox').innerHTML = q.lines.map(l =>
       `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('') +
@@ -1860,7 +1864,9 @@ async function createOrder() {
       devices:+no_devices.value, kind:no_kind.value, billing:no_billing.value, deployment:no_deploy.value,
       as_quote:no_asquote.value==='1', requested_by:no_reqby.value||null, po_number:(document.getElementById('no_po')?.value||null),
       coupon_code:(document.getElementById('no_coupon')?.value || '').trim().toUpperCase() || null,
-      custom_price:(parseInt(document.getElementById('no_custom')?.value || '0', 10) || null)}});
+      custom_price:(parseInt(document.getElementById('no_custom')?.value || '0', 10) || null),
+      custom_setup:(parseInt(document.getElementById('no_setupfee')?.value||'0',10)||null),
+      custom_amc:(parseInt(document.getElementById('no_amc')?.value||'0',10)||null)}});
     closeModal(); toast((o.quote_number?'Quotation created: '+o.quote_number:'Order created: '+o.number)); go('orders');
   } catch (e) { toast('Error: ' + e); }
 }
@@ -1882,7 +1888,9 @@ async function newProspectQuote() {
   <div><label>Currency</label><select id="pq_currency"><option value="INR">₹ INR (GST invoice)</option><option value="USD">$ USD (export invoice, Stripe)</option></select></div>
   <div><label>Coupon code (optional)</label><input id="pq_coupon" style="text-transform:uppercase"></div>
   <div><label>Include one-time Setup &amp; Onboarding</label><select id="pq_setup"><option value="1">Yes (first order)</option><option value="0">No</option></select></div>
-  <div><label>Custom price ₹ (optional — overrides calculated price, any user count)</label><input id="pq_custom" type="number" min="1" placeholder="blank = standard band price"></div></div>
+  <div><label>Custom price ₹ (optional — overrides calculated price, any user count)</label><input id="pq_custom" type="number" min="1" placeholder="blank = standard band price"></div>
+  <div><label>Custom setup charge ₹ (optional — replaces calculated setup fee)</label><input id="pq_setupfee" type="number" min="1" placeholder="blank = automatic"></div>
+  <div><label>Custom AMC ₹/year (optional — adds an AMC line)</label><input id="pq_amc" type="number" min="1" placeholder="blank = no AMC line"></div></div>
   <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="pq_send" checked style="width:auto"> Email the quotation + pay link to the client now</label>
   <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
   <button class="btn btn-p" onclick="createProspectQuote()">Create quotation</button></div>`, true);
@@ -1906,7 +1914,9 @@ async function createProspectQuote() {
       currency:pq_currency.value, kind:pq_kind.value, devices:+pq_devices.value, billing:pq_billing.value,
       as_quote:true, include_setup:pq_setup.value==='1', send_email:document.getElementById('pq_send').checked,
       coupon_code:(pq_coupon.value||'').trim().toUpperCase()||null,
-      custom_price:(parseInt(document.getElementById('pq_custom')?.value||'0',10)||null)}});
+      custom_price:(parseInt(document.getElementById('pq_custom')?.value||'0',10)||null),
+      custom_setup:(parseInt(document.getElementById('pq_setupfee')?.value||'0',10)||null),
+      custom_amc:(parseInt(document.getElementById('pq_amc')?.value||'0',10)||null)}});
     const o = r.order;
     openModal(`<h2>Quotation created — ${esc(o.quote_number || o.number)}</h2>
     <div class="sub"><b>${esc(o.tenant?.company_name)}</b> · total ${fmtMoney(o.total, o.currency)}${document.getElementById('pq_send')?.checked===false?'':' · emailed to the client'}</div>
@@ -1940,6 +1950,8 @@ async function openRequest(id) {
     <div><label>Billing contact person</label><input id="rq_bill" value="${esc(m.billing_contact||'')}"></div>
     <div><label>Users</label><input id="rq_devices" type="number" min="1" value="${+(m.devices||1)}" oninput="rqPreview()"></div>
     <div><label><b>Custom price ₹</b> (your figure — blank = band price if it exists)</label><input id="rq_price" type="number" min="1" oninput="rqPreview()"></div>
+    <div><label>Custom setup charge ₹ (blank = automatic)</label><input id="rq_setupfee" type="number" min="1" oninput="rqPreview()"></div>
+    <div><label>Custom AMC ₹/year (blank = no AMC line)</label><input id="rq_amc" type="number" min="1" oninput="rqPreview()"></div>
     <div><label>Include one-time Setup &amp; Onboarding</label><select id="rq_setup" onchange="rqPreview()"><option value="1">Yes (first order)</option><option value="0">No</option></select></div>
     <div><label>Create as</label><select id="rq_asquote"><option value="1">Quotation — client approves &amp; pays</option><option value="0">Order — payable now</option></select></div>
     <div><label>Coupon code (optional)</label><input id="rq_coupon" style="text-transform:uppercase" onchange="rqPreview()"></div></div>
@@ -1960,7 +1972,9 @@ async function rqPreview() {
       devices:+(document.getElementById('rq_devices')?.value || 1), kind:RQ_KIND, billing:RQ_BILLING,
       coupon_code:(document.getElementById('rq_coupon')?.value || '').trim().toUpperCase() || null,
       include_setup:document.getElementById('rq_setup')?.value === '1',
-      custom_price:price}});
+      custom_price:price,
+      custom_setup:(parseInt(document.getElementById('rq_setupfee')?.value||'0',10)||null),
+      custom_amc:(parseInt(document.getElementById('rq_amc')?.value||'0',10)||null)}});
     if (q.custom) { box.innerHTML = '<div class="ln" style="color:var(--warn);font-weight:700">Above the priced bands — enter your Custom price to quote this count.</div>'; return; }
     box.innerHTML = q.lines.map(l => `<div class="ln"><span>${esc(l.description)}</span><b>${fmtMoney(l.amount, q.currency)}</b></div>`).join('') +
       `<div class="ln"><span>GST ${q.gst_rate}%</span><b>${fmtMoney(q.tax, q.currency)}</b></div>
@@ -1985,7 +1999,10 @@ async function convertRequestUi(id) {
   try {
     await saveRequest(id, true);          // details first, then the money
     const r = await api('orders/'+id+'/convert-request', {method:'POST', body:{
-      custom_price:price, devices:+(document.getElementById('rq_devices')?.value||1)||null,
+      custom_price:price,
+      custom_setup:(parseInt(document.getElementById('rq_setupfee')?.value||'0',10)||null),
+      custom_amc:(parseInt(document.getElementById('rq_amc')?.value||'0',10)||null),
+      devices:+(document.getElementById('rq_devices')?.value||1)||null,
       as_quote:document.getElementById('rq_asquote')?.value!=='0',
       include_setup:document.getElementById('rq_setup')?.value==='1',
       send_email:emailed,

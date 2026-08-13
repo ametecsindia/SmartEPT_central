@@ -112,6 +112,48 @@ class CustomPricingRequestTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    //  Custom setup / AMC charges (13-Aug-2026, same session)
+    // ------------------------------------------------------------------
+
+    public function test_custom_setup_charge_forces_and_replaces_setup_fee(): void
+    {
+        $plan = $this->plan();
+        // Tenant already PAID setup once — the filled box still charges it, at the operator's figure.
+        $order = app(BillingService::class)->createOrder($this->tenant(), $plan, 100, [
+            'kind' => 'perpetual', 'custom_setup' => 3000,
+        ]);
+
+        $this->assertEqualsWithDelta(63000.0, (float) $order->subtotal, 0.01); // 60,000 band + 3,000 custom setup
+        $this->assertSame(3000, $order->meta['custom_setup']);
+        $this->assertTrue(collect($order->line_items)->contains(fn ($l) => ($l['type'] ?? '') === 'setup_fee'));
+    }
+
+    public function test_custom_amc_adds_amc_line(): void
+    {
+        $plan = $this->plan();
+        $order = app(BillingService::class)->createOrder($this->tenant(), $plan, 100, [
+            'kind' => 'perpetual', 'custom_amc' => 9000,
+        ]);
+
+        $this->assertEqualsWithDelta(69000.0, (float) $order->subtotal, 0.01); // 60,000 band + 9,000 AMC
+        $this->assertSame(9000, $order->meta['custom_amc']);
+        $this->assertTrue(collect($order->line_items)->contains(fn ($l) => ($l['type'] ?? '') === 'amc'));
+    }
+
+    public function test_all_three_custom_boxes_together_cloud(): void
+    {
+        $plan = $this->plan();
+        $t = $this->tenant(['email' => 'cloud@test.in', 'deployment' => 'cloud', 'setup_fee_paid' => false]);
+        $order = app(BillingService::class)->createOrder($t, $plan, 300, [
+            'kind' => 'subscription', 'billing' => 'annual',
+            'custom_price' => 240000, 'custom_setup' => 12000, 'custom_amc' => 15000,
+        ]);
+
+        $this->assertEqualsWithDelta(267000.0, (float) $order->subtotal, 0.01); // 240k + 12k + 15k
+        $this->assertEqualsWithDelta(267000 * 1.18, (float) $order->total, 0.5);
+    }
+
+    // ------------------------------------------------------------------
     //  Public /buy request queue
     // ------------------------------------------------------------------
 
