@@ -20,7 +20,19 @@ class ClientPortalTest extends TestCase
         parent::setUp();
         $this->seed(PlanSeeder::class);
         $this->seed(SettingSeeder::class);
-        config(['app.debug' => true]); // expose demo_otp in responses, like Laragon test mode
+    }
+
+    /**
+     * 13-Aug-2026: demo_otp was REMOVED from API responses (the live OTP-leak
+     * security fix — codes must never leave the server). Codes are stored
+     * hashed, so tests now read the plain code from the mail log, exactly like
+     * a developer on Laragon would.
+     */
+    private function latestOtpFor(string $email): ?string
+    {
+        $log = \App\Models\MailLog::where('to_email', $email)->latest('id')->first();
+
+        return ($log && preg_match('/code is: (\d{6})/', (string) $log->body, $m)) ? $m[1] : null;
     }
 
     private function makeClient(array $tenantAttrs = []): TenantUser
@@ -57,8 +69,9 @@ class ClientPortalTest extends TestCase
             'state_code' => '37', 'terms_accepted' => true,
         ];
 
-        $res = $this->postJson('/client/signup/request-otp', $payload)->assertOk();
-        $code = $res->json('demo_otp');
+        $this->postJson('/client/signup/request-otp', $payload)->assertOk();
+        $code = $this->latestOtpFor($payload['email']);
+        $this->assertNotNull($code, 'signup OTP should be issued via email (mail log)');
         $this->assertMatchesRegularExpression('/^\\d{6}$/', $code);
 
         // Wrong code is refused and does not create anything.
@@ -187,13 +200,14 @@ class ClientPortalTest extends TestCase
     {
         $user = $this->makeClient();
 
-        $res = $this->postJson('/client/forgot/request-otp', ['email' => $user->email])->assertOk();
-        $code = $res->json('demo_otp');
+        $this->postJson('/client/forgot/request-otp', ['email' => $user->email])->assertOk();
+        $code = $this->latestOtpFor($user->email);
+        $this->assertNotNull($code, 'reset OTP should be issued via email (mail log)');
         $this->assertMatchesRegularExpression('/^\\d{6}$/', $code);
 
-        // Unknown email answers identically but sends nothing.
-        $this->postJson('/client/forgot/request-otp', ['email' => 'nobody@nowhere.in'])
-            ->assertOk()->assertJsonPath('demo_otp', null);
+        // Unknown email answers identically but sends nothing (no OTP mail logged).
+        $this->postJson('/client/forgot/request-otp', ['email' => 'nobody@nowhere.in'])->assertOk();
+        $this->assertNull($this->latestOtpFor('nobody@nowhere.in'));
 
         $this->postJson('/client/forgot/reset', [
             'email' => $user->email, 'otp' => $code, 'password' => 'brand-new-pass',

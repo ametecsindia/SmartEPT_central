@@ -21,6 +21,18 @@ return new class extends Migration
     {
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE `orders` MODIFY `status` VARCHAR(20) NOT NULL DEFAULT 'created'");
+        } else {
+            // sqlite (tests): the legacy enum CHECK constraints are ENFORCED here —
+            // the earlier "MySQL-only MODIFY" migrations left them in place, so
+            // inserting orders.status='request' or tenants.status='pending'/'purged'
+            // fails ONLY in tests. change() rebuilds the column as plain VARCHAR,
+            // dropping the stale CHECK — same end state as live MySQL.
+            Schema::table('orders', function (Blueprint $t) {
+                $t->string('status', 20)->default('created')->change();
+            });
+            Schema::table('tenants', function (Blueprint $t) {
+                $t->string('status', 20)->default('trial')->change();
+            });
         }
 
         if (! Schema::hasColumn('orders', 'source')) {
