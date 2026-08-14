@@ -59,7 +59,7 @@ class LicenceService
             default => $starts->copy()->addMonths(self::billingMonths($billing)),
         };
 
-        return Licence::create([
+        $licence = Licence::create([
             'key' => $this->generateKey(),
             'tenant_id' => $tenant->id,
             'plan_id' => $plan->id,
@@ -78,6 +78,49 @@ class LicenceService
             'grace_days' => $kind === 'trial' ? 0 : ($opts['grace_days'] ?? 7),
             'amc_expires_at' => $kind === 'perpetual' ? $starts->copy()->addYear() : null,
         ]);
+
+        // Ejaz, 14-Aug-2026 (finding 1.1): the moment a PAID licence exists for a
+        // client, any trial licence still sitting on 'active' must stop being a
+        // second usable licence. Two active licences on one client was letting a
+        // trial key keep validating after the subscription was bought.
+        if ($kind !== 'trial') {
+            $this->supersedeTrials($tenant, $licence);
+        }
+
+        return $licence;
+    }
+
+    /**
+     * Deactivate every OTHER still-active trial licence of this tenant because a
+     * paid (subscription/perpetual) licence has just taken over.
+     *
+     * Status 'superseded' — deliberately its own word, not 'expired': the trial
+     * did not run out of time, it was replaced. Product servers treat it exactly
+     * like any non-active status (validate() answers licence_superseded, the
+     * console blocks). Returns how many were closed.
+     */
+    public function supersedeTrials(Tenant $tenant, ?Licence $keep = null): int
+    {
+        $trials = Licence::where('tenant_id', $tenant->id)
+            ->where('kind', 'trial')
+            ->where('status', 'active')
+            ->when($keep, fn ($q) => $q->where('id', '!=', $keep->id))
+            ->get();
+
+        foreach ($trials as $trial) {
+            $trial->update(['status' => 'superseded']);
+            try {
+                \App\Models\AuditLog::write('licence.superseded', $trial, [
+                    'key' => $trial->key,
+                    'reason' => 'A paid licence was activated for this client — the trial licence is closed automatically.',
+                    'replaced_by' => $keep?->key,
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Trial supersede log failed: ' . $e->getMessage());
+            }
+        }
+
+        return $trials->count();
     }
 
     public function renew(Licence $licence): Licence

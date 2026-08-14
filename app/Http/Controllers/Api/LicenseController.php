@@ -24,9 +24,19 @@ class LicenseController extends Controller
             'key' => ['required', 'string'],
             'fingerprint' => ['nullable', 'string', 'max:190'],
             'storage_gb' => ['nullable', 'numeric', 'min:0'],
+            // Seat telemetry (Ejaz, 14-Aug-2026 — finding 1.3): the client console
+            // reports what it actually has, so Central stops showing "0/25" for a
+            // client that is running 14 people. Optional: older builds omit them.
+            'users' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'employees' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'devices' => ['nullable', 'integer', 'min:0', 'max:1000000'],
         ]);
 
         $result = $this->licences->validate($data['key'], $data['fingerprint'] ?? null);
+
+        // Seat counts are recorded on EVERY answer, including a rejected one — a
+        // blocked client is exactly the one we want an accurate headcount for.
+        $this->recordReportedUsage($data);
 
         // EPT-27: record reported storage + govern the quota (email at 90%, pause at 100%).
         if ($result['ok'] ?? false) {
@@ -46,6 +56,33 @@ class LicenseController extends Controller
         }
 
         return response()->json($result, ($result['ok'] ?? false) ? 200 : 403);
+    }
+
+    /**
+     * Finding 1.3 — store the seat counts the client console reported. Never
+     * allowed to break the phone-home; a build that sends nothing leaves the
+     * previous numbers (and reported_at) untouched.
+     */
+    private function recordReportedUsage(array $data): void
+    {
+        try {
+            if (! isset($data['users']) && ! isset($data['employees']) && ! isset($data['devices'])) {
+                return;
+            }
+
+            $licence = Licence::where('key', $data['key'])->first();
+            if (! $licence) {
+                return;
+            }
+
+            $licence->forceFill(array_filter([
+                'reported_users' => isset($data['users']) ? (int) $data['users'] : null,
+                'reported_employees' => isset($data['employees']) ? (int) $data['employees'] : null,
+                'reported_devices' => isset($data['devices']) ? (int) $data['devices'] : null,
+            ], fn ($v) => $v !== null) + ['reported_at' => now()])->save();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Licence usage report failed: ' . $e->getMessage());
+        }
     }
 
     /** Compute the tenant's storage state, email once per escalation, return the wire block. */

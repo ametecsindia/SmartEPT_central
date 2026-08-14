@@ -276,7 +276,7 @@ const P = document.getElementById('page');
 const ACTIONS = document.getElementById('pageActions');
 const statusPill = s => ({quote:'p-info',active:'p-ok',trial:'p-info',paid:'p-ok',created:'p-warn',suspended:'p-warn',
   expired:'p-dang',revoked:'p-dang',failed:'p-dang',refunded:'p-mut',churned:'p-mut',issued:'p-info',
-  cancelled:'p-mut',draft:'p-mut',request:'p-warn'}[s] || 'p-mut');
+  cancelled:'p-mut',draft:'p-mut',request:'p-warn',superseded:'p-mut'}[s] || 'p-mut');
 const pill = s => `<span class="pill ${statusPill(s)}">${esc(s)}</span>`;
 
 let AUDIT_ACTION = '';
@@ -1055,7 +1055,7 @@ async licences() {
   if (CAN_WRITE) ACTIONS.innerHTML = '<button class="btn btn-p" onclick="issueLicence()">+ Issue Licence</button>';
   P.innerHTML = `<div class="filters">
     <input id="lq" placeholder="Search key / company…">
-    <select id="lst"><option value="">All statuses</option><option>active</option><option>suspended</option><option>revoked</option><option>expired</option></select>
+    <select id="lst"><option value="">All statuses</option><option>active</option><option>suspended</option><option>revoked</option><option>expired</option><option>superseded</option></select>
     <select id="lkind"><option value="">All kinds</option><option>trial</option><option>subscription</option><option>perpetual</option></select>
     <button class="btn btn-l" onclick="loadLicences()">Search</button></div><div id="llist"></div>`;
   loadLicences();
@@ -1299,10 +1299,15 @@ async function showTenant(id) {
   <div class="sub">${esc(t.contact_name||'')} · ${esc(t.email)} · ${esc(t.phone||'')} · GSTIN: ${esc(t.gstin||'—')}<br>
   ${t.deployment==='cloud'?'SmartEPT-Managed Cloud':'Client-Hosted'} · ${esc(t.currency)} · Setup fee: ${t.setup_fee_paid?'<span class="gain">paid ✓</span>':'not yet charged'}${t.deployment==='cloud'?'<br>Console: '+(t.console_url?`<a class="link" target="_blank" href="${esc(t.console_url)}">${esc(t.console_url)}</a>`:'<span style="color:#C77">not provisioned — set it via Edit</span>'):''}</div>
   <h4 style="color:var(--deep);margin:10px 0 6px">Licences</h4>
-  <table><tr><th>Key</th><th>Plan</th><th>Kind</th><th>Devices</th><th>Expires</th><th>Status</th></tr>
+  <table><tr><th>Key</th><th>Plan</th><th>Kind</th><th>Users</th><th>Devices</th><th>Expires</th><th>Status</th><th>Action</th></tr>
   ${t.licences.map(l => `<tr><td class="mini">${esc(l.key)}</td><td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}</td>
+  <td>${licUsersCell(l)}</td>
   <td>${(l.devices||[]).filter(d=>d.status==='active').length}/${l.device_limit}</td>
-  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : 'perpetual'}</td><td>${pill(l.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="mini">No licences</td></tr>'}</table>
+  <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : 'perpetual'}</td><td>${pill(l.status)}</td>
+  <td>${CAN_WRITE ? `${l.status==='active'
+      ? `<button class="link" onclick="tenantLicAction(${t.id},${l.id},'suspend')">Suspend</button>`
+      : `<button class="link" onclick="tenantLicAction(${t.id},${l.id},'resume')">Reactivate</button>`}
+    ${l.status!=='revoked' ? `<button class="link" style="color:var(--danger,#D02748)" onclick="tenantLicAction(${t.id},${l.id},'revoke')">Revoke</button>` : ''}` : '<span class="mini">—</span>'}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table>
   <h4 style="color:var(--deep);margin:12px 0 6px">Recent Orders</h4>
   <table><tr><th>Order</th><th>Total</th><th>Status</th></tr>
   ${(t.orders||[]).slice(0,6).map(o => `<tr><td class="mini">${esc(o.number)} — ${esc(o.description)}</td><td>${fmtMoney(o.total,o.currency)}</td><td>${pill(o.status)}</td></tr>`).join('') || '<tr><td colspan="3" class="mini">None</td></tr>'}</table>
@@ -1392,19 +1397,38 @@ async function loadLicences() {
   const d = await api(`licences?q=${encodeURIComponent(lq.value)}&status=${lst.value}&kind=${lkind.value}`);
   LIC_ROWS = d.data;
   document.getElementById('llist').innerHTML = `<div class="card"><table>
-  <tr><th>Key</th><th>Client</th><th>Plan</th><th>Kind</th><th>Devices</th><th>Expires</th><th>Status</th><th></th></tr>
+  <tr><th>Key</th><th>Client</th><th>Plan</th><th>Kind</th><th>Users</th><th>Devices</th><th>Expires</th><th>Status</th><th></th></tr>
   ${d.data.map(l => `<tr><td class="mini"><b>${esc(l.key)}</b></td><td>${esc(l.tenant?.company_name)}</td>
   <td>${esc(l.plan?.name)}</td><td>${esc(l.kind)}${l.kind==='perpetual'?`<div class="mini">AMC: ${l.amc_expires_at?l.amc_expires_at.slice(0,10):'lapsed'}</div>`:''}</td>
-  <td>${l.active_devices_count}/${l.device_limit}${l.renewal_device_limit?`<div class="mini" style="color:#B7791F;font-weight:700">↓ ${l.renewal_device_limit} at renewal</div>`:''}</td>
+  <td>${licUsersCell(l)}</td>
+  <td>${l.active_devices_count}/${l.device_limit}${l.reported_devices!=null&&l.reported_devices!==l.active_devices_count?`<div class="mini" style="opacity:.75">client reports ${l.reported_devices}</div>`:''}${l.renewal_device_limit?`<div class="mini" style="color:#B7791F;font-weight:700">↓ ${l.renewal_device_limit} at renewal</div>`:''}</td>
   <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : '—'}${(()=>{const lv=l.last_validated_at?l.last_validated_at.slice(0,10):null;const days=lv?Math.round((Date.now()-new Date(lv))/86400000):null;return `<div class="mini" style="${days!==null&&days>7?'color:var(--danger,#D02748);font-weight:700':''}">check-in: ${lv?lv+(days>0?' ('+days+'d ago)':' (today)'):'never'}</div>`})()}</td><td>${pill(l.status)}</td>
   <td>${CAN_WRITE ? `<button class="link" onclick="renewLic(${l.id})">Renew</button>
   ${(l.kind==='subscription'||l.kind==='perpetual')&&l.status==='active'?`<button class="link" onclick="upgLic(${l.id})">Upgrade…</button>`:''}
   <button class="link" onclick="editLic(${l.id})">Edit</button>
-  ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Resume</button>`}
+  ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Reactivate</button>`}
+  ${l.status!=='revoked'?`<button class="link" style="color:var(--danger,#D02748)" onclick="licAction(${l.id},'revoke')">Revoke</button>`:''}
   ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>
   <button class="link" onclick="licDevices(${l.id},'${esc(l.key)}')">Devices</button>
   <button class="link" onclick="licHistory(${l.id},'${esc(l.key)}')">History</button>
-  ${l.deployment==='client_hosted'||l.server_fingerprint?`<button class="link" onclick="shiftMachine(${l.id},'${esc(l.key)}')">Shift machine</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table></div>`;
+  ${l.deployment==='client_hosted'||l.server_fingerprint?`<button class="link" onclick="shiftMachine(${l.id},'${esc(l.key)}')">Shift machine</button>`:''}` : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="mini">No licences</td></tr>'}</table></div>`;
+}
+
+/**
+ * USERS cell (Ejaz, 14-Aug-2026 — finding 1.3). The client console reports its
+ * real headcount on every daily check-in; before this it was invisible here and
+ * a 14-person client read as "0/25". "—" = that console has not yet checked in
+ * with a build new enough to report.
+ */
+function licUsersCell(l) {
+  if (l.reported_users == null && l.reported_employees == null) return '<span class="mini">—</span>';
+  const used = l.reported_users != null ? l.reported_users : l.reported_employees;
+  const over = l.device_limit && used > l.device_limit;
+  const when = l.reported_at ? l.reported_at.slice(0,10) : null;
+  return `<b style="${over?'color:var(--danger,#D02748)':''}">${used}</b>/${l.device_limit}`
+    + (l.reported_employees != null ? `<div class="mini" style="opacity:.75">${l.reported_employees} employees</div>` : '')
+    + (over ? '<div class="mini" style="color:var(--danger,#D02748);font-weight:700">OVER LIMIT</div>' : '')
+    + (when ? `<div class="mini" style="opacity:.6">as of ${when}</div>` : '');
 }
 // Ejaz, 6-Aug: the installed PC was damaged/formatted/replaced — shift the
 // licence to the new machine ID (or just release the binding). History keeps
@@ -1508,6 +1532,23 @@ async function freeSeat(id, uid) {
   if (!confirm('Free this seat?\n\nDo this when that PC was formatted, damaged or replaced. Monitoring from the old PC stops; the new PC takes the free seat when its agent connects.')) return;
   try { await api(`licences/${id}/deactivate-device`, {method:'POST', body:{device_uid: uid}}); toast('Seat freed'); await loadLicDevices(id); loadLicences(); }
   catch (e) { toast('Error: ' + e); }
+}
+/**
+ * Finding 1.2 — Suspend / Reactivate / Revoke straight from the client's card,
+ * beside the Status pill (Status itself stays). Reopens the card so the pill
+ * updates in place.
+ */
+async function tenantLicAction(tenantId, licenceId, action) {
+  const words = {suspend:'Suspend this licence?\n\nThe client console stops working until it is reactivated.',
+                 resume:'Reactivate this licence?',
+                 revoke:'Revoke this licence PERMANENTLY?\n\nThis cannot be undone from here.'};
+  if (!confirm(words[action] || 'Proceed?')) return;
+  try {
+    await api(`licences/${licenceId}/action`, {method:'POST', body:{action}});
+    toast('Licence ' + action + ' done');
+    closeModal();
+    await showTenant(tenantId);
+  } catch (e) { toast('Error: ' + e); }
 }
 async function licAction(id, action) {
   if (action === 'revoke' && !confirm('Revoke this licence permanently?')) return;

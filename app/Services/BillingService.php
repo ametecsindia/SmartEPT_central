@@ -829,6 +829,13 @@ class BillingService
             $order->update(['licence_id' => $licence->id]);
         }
 
+        // 1b. Ejaz, 14-Aug-2026 (finding 1.1): a paid licence just came alive on
+        // this client — close any trial licence still sitting on 'active'. This
+        // covers renewals and upgrades too, not only brand-new issues.
+        if (isset($licence) && $licence && $licence->kind !== 'trial') {
+            $this->licences->supersedeTrials($tenant, $licence);
+        }
+
         // 2. Tenant becomes active; setup fee marked consumed if it was on this order.
         $hasSetupLine = collect($order->line_items)->contains(fn ($l) => ($l['type'] ?? '') === 'setup_fee');
         $tenant->update([
