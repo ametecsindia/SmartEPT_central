@@ -23,6 +23,14 @@ return new class extends Migration
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE `licences` MODIFY `status` VARCHAR(20) NOT NULL DEFAULT 'active'");
             DB::statement("ALTER TABLE `licences` MODIFY `kind` VARCHAR(20) NOT NULL DEFAULT 'subscription'");
+        } else {
+            // sqlite (tests): enum CHECK constraints are actually ENFORCED here, so a
+            // MySQL-only MODIFY would leave 'superseded' failing in tests alone.
+            // change() rebuilds the columns as plain VARCHAR — same end state as live.
+            Schema::table('licences', function (Blueprint $t) {
+                $t->string('status', 20)->default('active')->change();
+                $t->string('kind', 20)->default('subscription')->change();
+            });
         }
 
         Schema::table('licences', function (Blueprint $t) {
