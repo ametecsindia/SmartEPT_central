@@ -414,7 +414,7 @@ class RunDunning extends Command
             ->get();
 
         foreach ($due as $tenant) {
-            $tenant->licences()->whereIn('status', ['active', 'expired', 'suspended'])
+            $tenant->licences()->whereIn('status', ['active', 'expired', 'suspended', 'superseded'])
                 ->update(['status' => 'revoked']);
             $tenant->update(['status' => 'purged']);
 

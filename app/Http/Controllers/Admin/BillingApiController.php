@@ -688,10 +688,16 @@ class BillingApiController extends Controller
             'trial_ends_at' => ($tenant->trial_ends_at ?? now())->addDays($days),
             'purge_after' => ($tenant->trial_ends_at ?? now())->addDays($days + 7),
         ]);
-        $tenant->licences()->where('kind', 'trial')->update([
-            'expires_at' => $tenant->fresh()->trial_ends_at->toDateString(),
-            'status' => 'active',
-        ]);
+        // 14-Aug-2026: only a trial that is running or has simply run out may be
+        // extended. A trial closed BECAUSE the client bought a subscription
+        // ('superseded'), or one revoked on purpose, must stay closed — extending
+        // it would hand the client a second live licence again.
+        $tenant->licences()->where('kind', 'trial')
+            ->whereIn('status', ['active', 'expired'])
+            ->update([
+                'expires_at' => $tenant->fresh()->trial_ends_at->toDateString(),
+                'status' => 'active',
+            ]);
 
         AuditLog::write('trial.extended', $tenant, ['days' => $days]);
 

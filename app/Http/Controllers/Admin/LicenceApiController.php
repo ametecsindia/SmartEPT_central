@@ -61,6 +61,20 @@ class LicenceApiController extends Controller
     {
         $action = $request->validate(['action' => ['required', 'in:renew,renew_amc,suspend,resume,revoke,release_binding']])['action'];
 
+        // 14-Aug-2026: 'superseded' means this trial was closed because the client
+        // bought a paid licence. Reactivating it while that paid licence is live
+        // would put the client back on two working keys — the exact bug we fixed.
+        if ($action === 'resume' && $licence->status === 'superseded'
+            && Licence::where('tenant_id', $licence->tenant_id)
+                ->where('id', '!=', $licence->id)
+                ->where('kind', '!=', 'trial')
+                ->where('status', 'active')->exists()) {
+            return response()->json([
+                'error' => 'This trial was closed because a paid licence is active for this client. '
+                    . 'Reactivating it would give them two live licences — issue or edit the paid licence instead.',
+            ], 422);
+        }
+
         // History must tell the full machine story (Ejaz, 6-Aug-2026): when a
         // binding is released, record WHICH machine it was released from.
         $extra = $action === 'release_binding'

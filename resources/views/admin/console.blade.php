@@ -1306,7 +1306,9 @@ async function showTenant(id) {
   <td class="mini">${l.expires_at ? l.expires_at.slice(0,10) : 'perpetual'}</td><td>${pill(l.status)}</td>
   <td>${CAN_WRITE ? `${l.status==='active'
       ? `<button class="link" onclick="tenantLicAction(${t.id},${l.id},'suspend')">Suspend</button>`
-      : `<button class="link" onclick="tenantLicAction(${t.id},${l.id},'resume')">Reactivate</button>`}
+      : (l.status==='superseded'
+        ? '<span class="mini" title="Closed because a paid licence took over">closed by paid licence</span>'
+        : `<button class="link" onclick="tenantLicAction(${t.id},${l.id},'resume')">Reactivate</button>`)}
     ${l.status!=='revoked' ? `<button class="link" style="color:var(--danger,#D02748)" onclick="tenantLicAction(${t.id},${l.id},'revoke')">Revoke</button>` : ''}` : '<span class="mini">—</span>'}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No licences</td></tr>'}</table>
   <h4 style="color:var(--deep);margin:12px 0 6px">Recent Orders</h4>
   <table><tr><th>Order</th><th>Total</th><th>Status</th></tr>
@@ -1406,7 +1408,7 @@ async function loadLicences() {
   <td>${CAN_WRITE ? `<button class="link" onclick="renewLic(${l.id})">Renew</button>
   ${(l.kind==='subscription'||l.kind==='perpetual')&&l.status==='active'?`<button class="link" onclick="upgLic(${l.id})">Upgrade…</button>`:''}
   <button class="link" onclick="editLic(${l.id})">Edit</button>
-  ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:`<button class="link" onclick="licAction(${l.id},'resume')">Reactivate</button>`}
+  ${l.status==='active'?`<button class="link" onclick="licAction(${l.id},'suspend')">Suspend</button>`:(l.status==='superseded'?'<span class="mini" title="Closed because a paid licence took over">closed by paid licence</span>':`<button class="link" onclick="licAction(${l.id},'resume')">Reactivate</button>`)}
   ${l.status!=='revoked'?`<button class="link" style="color:var(--danger,#D02748)" onclick="licAction(${l.id},'revoke')">Revoke</button>`:''}
   ${l.kind==='perpetual'?`<button class="link" onclick="licAction(${l.id},'renew_amc')">Renew AMC</button>`:''}<button class="link" onclick="licFile(${l.id},'${esc(l.key)}')">Licence file</button>
   <button class="link" onclick="licDevices(${l.id},'${esc(l.key)}')">Devices</button>
