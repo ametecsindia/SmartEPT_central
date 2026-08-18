@@ -133,6 +133,17 @@ class AuthController extends Controller
             ]);
         });
 
+        // ROOT-CAUSE FIX (Ejaz, 17-Aug-2026): a self-service trial never reached the
+        // product app, so the client had NO branded console at /<slug> until an admin
+        // opened the tenant and pressed Save. ensureFor() was wired only to
+        // TenantApiController (admin create/save) and BillingService::recordPayment()
+        // — and a free trial records no payment. Stand the console up here instead.
+        // Post-commit on purpose: provisioning is an 8s HTTP round trip and must not
+        // be held open inside the signup transaction. Idempotent and fail-soft
+        // (ensureFor swallows + logs), so a product outage still leaves a working
+        // trial and the admin Save stays available as the recovery path.
+        app(\App\Services\ProductProvisioner::class)->ensureFor($user->tenant()->first());
+
         Auth::guard('client')->login($user, true);
         $request->session()->regenerate();
         $user->update(['last_login_at' => now()]);
