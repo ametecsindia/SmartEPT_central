@@ -201,6 +201,79 @@ class TenantApiController extends Controller
         return response()->json($tenant->fresh());
     }
 
+    /**
+     * POST /admin/api/tenants/{tenant}/reset-password — Super Admin resets the client's
+     * PORTAL password directly (Ejaz, 19-Aug-2026).
+     *
+     * Until now the only route back in was the client requesting an email OTP themselves,
+     * which is useless when they have lost access to the mailbox or are on the phone with
+     * support. Super Admin only: `sales` already holds `tenants: manage` in the permission
+     * matrix, so the role check is made explicitly here rather than left to the route group
+     * (the matrix is consulted first and would let sales through).
+     *
+     * Pass a `password` to set one; omit it and a strong one is generated and returned once.
+     * `must_set_password` is set so the client is walked through choosing their own on the
+     * next sign-in — the value we hand over is a one-time key, not their permanent password.
+     */
+    public function resetPassword(Request $request, Tenant $tenant)
+    {
+        abort_unless(auth('admin')->user()?->isSuper(), 403, 'Only a Super Admin can reset a client password.');
+
+        $data = $request->validate([
+            'password' => ['nullable', 'string', 'min:8', 'max:72'],
+            'notify' => ['nullable', 'boolean'],
+        ]);
+
+        // The owner login is matched on the tenant's own email, the same way store() creates it.
+        $user = \App\Models\TenantUser::where('tenant_id', $tenant->id)->where('email', $tenant->email)->first()
+            ?: \App\Models\TenantUser::where('tenant_id', $tenant->id)->orderBy('id')->first()
+            ?: \App\Models\TenantUser::where('email', $tenant->email)->first();
+
+        abort_unless($user, 404, 'This client has no portal login yet. Open the client and save it once to create one.');
+
+        $password = $data['password'] ?: \Illuminate\Support\Str::password(12);
+
+        // 'password' => 'hashed' cast on TenantUser does the bcrypt — never Hash::make here.
+        $user->update([
+            'password' => $password,
+            'must_set_password' => true,
+            'active' => 1,
+        ]);
+
+        // Any outstanding reset OTP is now stale — burn it so an old code cannot be replayed.
+        \App\Models\ClientOtp::where('email', $user->email)->where('purpose', 'reset')
+            ->whereNull('consumed_at')->update(['consumed_at' => now()]);
+
+        if ($data['notify'] ?? true) {
+            app(\App\Services\MailService::class)->send(
+                $user->email,
+                'SmartEPT — your client portal password was reset',
+                "Hello {$tenant->company_name},\n\n"
+                . "Your SmartEPT client portal password has been reset by our support team.\n\n"
+                . "Sign in at: " . rtrim(config('app.url'), '/') . "/client/login\n"
+                . "Email: {$user->email}\n"
+                . "Temporary password: {$password}\n\n"
+                . "You will be asked to choose your own password as soon as you sign in.\n"
+                . "If you did not request this, contact us immediately.\n"
+                . \App\Services\MailService::signature()
+            );
+        }
+
+        // The password itself is deliberately NOT written to the audit meta.
+        AuditLog::write('tenant.password_reset', $tenant, [
+            'email' => $user->email,
+            'generated' => empty($data['password']),
+            'notified' => (bool) ($data['notify'] ?? true),
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'email' => $user->email,
+            // Shown once in the console so support can read it out over the phone.
+            'password' => $password,
+        ]);
+    }
+
     /** A clean, unique console slug from the company name (admin.smartept.com/<slug>). */
     private function autoSlug(string $name): string
     {

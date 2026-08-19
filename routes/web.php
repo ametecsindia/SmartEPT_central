@@ -131,6 +131,11 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
 
             Route::post('tenants', [Admin\TenantApiController::class, 'store']);
             Route::put('tenants/{tenant}', [Admin\TenantApiController::class, 'update']);
+            // 19-Aug-2026 (Ejaz): Super Admin can reset a client's portal password directly,
+            // instead of the client being the only one who can start an email-OTP reset.
+            // The controller re-checks isSuper() — the permission matrix grants `sales`
+            // tenants:manage and is consulted before this group's role list.
+            Route::post('tenants/{tenant}/reset-password', [Admin\TenantApiController::class, 'resetPassword']);
             Route::post('licences', [Admin\LicenceApiController::class, 'store']);
             Route::post('licences/{licence}/action', [Admin\LicenceApiController::class, 'action']);
             Route::post('licences/{licence}/license-file', [Admin\LicenceApiController::class, 'licenseFile']);

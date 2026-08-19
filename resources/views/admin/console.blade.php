@@ -1262,7 +1262,7 @@ async audit() {
     if (typeof m !== 'object') return esc(String(m));
     return esc(Object.entries(m).map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : (v && typeof v === 'object' ? JSON.stringify(v) : v))).join('  ·  ')).slice(0, 140) || '—';
   };
-  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'licence.verified', 'licence.validation_rejected', 'licence.machine_bound', 'licence.machine_shifted', 'licence.release_binding', 'licence.file_issued', 'licence.device_deactivated', 'licence.edited', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'quote.prospect_created', 'buy.order_created', 'buy.quote_requested', 'request.created', 'request.updated', 'request.converted', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup'];
+  const ACTS = ['', 'admin.login', 'admin.logout', 'plan.updated', 'settings.updated', 'tenant.created', 'tenant.updated', 'licence.issued', 'licence.limit_changed', 'licence.verified', 'licence.validation_rejected', 'licence.machine_bound', 'licence.machine_shifted', 'licence.release_binding', 'licence.file_issued', 'licence.device_deactivated', 'licence.edited', 'order.paid', 'order.payment_recorded', 'order.provisioned', 'order.refunded', 'quote.approved', 'quote.prospect_created', 'buy.order_created', 'buy.quote_requested', 'request.created', 'request.updated', 'request.converted', 'setup.invoice.raised', 'trial.extended', 'coupon.created', 'coupon.updated', 'lead.created', 'client.signup', 'client.password_reset', 'tenant.password_reset'];
   const opts = ACTS.map((a) => '<option value="' + a + '"' + (a === cur ? ' selected' : '') + '>' + (a || 'All actions') + '</option>').join('');
   P.innerHTML = `<div class="card">
   <div class="row" style="margin-bottom:12px;align-items:flex-end">
@@ -1290,7 +1290,7 @@ async function loadTenants() {
   <td>${t.deployment === 'cloud' ? '<span class="pill p-info">SmartEPT Cloud</span>' : '<span class="pill p-mut">Client-hosted</span>'}${t.ecosystem_customer?' <span class="pill p-warn">Ecosystem</span>':''}</td>
   <td class="mini">${esc(t.active_licence?.plan?.name || '—')}</td><td>${pill(t.status)}</td>
   <td class="mini">${t.deployment==='cloud' && t.storage ? (t.storage.quota_gb>0 ? `${t.storage.used_gb} / ${t.storage.quota_gb} GB <span title="${t.storage.state}" style="color:${t.storage.state==='OVER'?'var(--danger)':t.storage.state==='WARN'?'#C77B18':'var(--ok)'}">●</span>${t.storage.auto?' <span style="opacity:.5">auto</span>':''}` : '<span style="opacity:.5">no seats yet</span>') : '<span style="opacity:.5">—</span>'}</td>
-  <td style="white-space:nowrap"><button class="link" onclick="showTenant(${t.id})">Open</button>${CAN_WRITE ? ` <span style="opacity:.3;margin:0 5px">|</span><button class="link" onclick="editTenantById(${t.id})">Edit</button> <span style="opacity:.3;margin:0 5px">|</span>${t.status==='suspended' ? `<button class="link" style="color:var(--ok);font-weight:700" onclick="setTenantStatus(${t.id},'active')">Enable</button>` : `<button class="link" style="color:var(--danger);font-weight:700" onclick="setTenantStatus(${t.id},'suspended')">Suspend</button>`}` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mini">No clients found</td></tr>'}</table></div>`;
+  <td style="white-space:nowrap"><button class="link" onclick="showTenant(${t.id})">Open</button>${CAN_WRITE ? ` <span style="opacity:.3;margin:0 5px">|</span><button class="link" onclick="editTenantById(${t.id})">Edit</button> <span style="opacity:.3;margin:0 5px">|</span>${t.status==='suspended' ? `<button class="link" style="color:var(--ok);font-weight:700" onclick="setTenantStatus(${t.id},'active')">Enable</button>` : `<button class="link" style="color:var(--danger);font-weight:700" onclick="setTenantStatus(${t.id},'suspended')">Suspend</button>`}${ROLE==='super' ? ` <span style="opacity:.3;margin:0 5px">|</span><button class="link" onclick="resetTenantPassword(${t.id},'${esc(t.company_name).replace(/'/g,"\\'")}')">Reset password</button>` : ''}` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mini">No clients found</td></tr>'}</table></div>`;
 }
 
 async function showTenant(id) {
@@ -1391,6 +1391,25 @@ async function setTenantStatus(id, status) {
   if (status === 'suspended' && !confirm('Suspend this client? You can re-enable them anytime.')) return;
   try { await api('tenants/' + id, {method:'PUT', body:{status}}); toast('Client ' + (status === 'suspended' ? 'suspended' : 'enabled')); loadTenants(); }
   catch (e) { toast('Error: ' + e); }
+}
+// 19-Aug-2026 (Ejaz): Super Admin resets a client's portal password without the client
+// having to request an email OTP. Blank = we generate one. The result is shown once, in a
+// modal rather than a toast, so support can read it out before it disappears.
+async function resetTenantPassword(id, name) {
+  const p = prompt('Reset the client portal password for ' + name
+    + '.\n\nType a new password (min 8 characters), or leave blank and press OK to generate one:');
+  if (p === null) return;                       // Cancel
+  if (p && p.trim().length < 8) { toast('Password must be at least 8 characters'); return; }
+  try {
+    const r = await api('tenants/' + id + '/reset-password', { method: 'POST', body: { password: p.trim() || null, notify: true } });
+    openModal(`<h2>Password reset</h2>
+      <div class="sub">${esc(name)} — the client has been emailed these details, and will be asked to
+      choose their own password at next sign-in.</div>
+      <p style="margin:14px 0"><b>Email:</b> ${esc(r.email)}<br>
+      <b>Temporary password:</b> <code style="font-size:16px;user-select:all">${esc(r.password)}</code></p>
+      <div class="mini">This is the only time it is shown — copy it now if you are reading it out.</div>
+      <div class="foot"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`);
+  } catch (e) { toast('Error: ' + e); }
 }
 
 // ---------- licences helpers ----------
