@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\LandingSection;
 use App\Models\LandingVersion;
 use App\Support\LandingRenderer;
+use App\Support\LandingSync;
 use Illuminate\Console\Command;
 
 class LandingPublish extends Command
@@ -15,6 +16,13 @@ class LandingPublish extends Command
     public function handle(): int
     {
         $file = public_path('landing.html');
+
+        // 31-Aug-2026: never publish an out-of-date snapshot over newer code.
+        if ($reason = LandingSync::guard()) {
+            $this->error('Refusing to publish: '.$reason);
+            return self::FAILURE;
+        }
+
         $html = LandingRenderer::html();
 
         if (trim($html) === '') {
@@ -25,6 +33,7 @@ class LandingPublish extends Command
             @copy($file, $file.'.bak-'.date('Ymd-His').'-prepublish');
         }
         file_put_contents($file, $html);
+        LandingSync::stamp($file); // the DB and the file are in step again
 
         LandingVersion::create([
             'snapshot'     => LandingSection::orderBy('sort')->get(['key', 'title', 'type', 'html', 'sort', 'is_visible', 'is_layout'])->toJson(),

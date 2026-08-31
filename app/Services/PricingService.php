@@ -115,8 +115,13 @@ class PricingService
         $annual = (float) $plan->inr_annual;
 
         foreach ($plan->volumeTiers as $tier) {
-            $inTier = $devices >= $tier->min_devices
-                && ($tier->max_devices === null || $devices <= $tier->max_devices);
+            // An open-ended (max NULL) or zero-rate tier is the Cloud CUSTOM QUOTE
+            // band — the same convention the perpetual bands use — not a ₹0 price.
+            // Letting it match is what made 600 users cost nothing (31-Aug-2026).
+            if ($tier->max_devices === null || (float) $tier->rate_inr_annual <= 0) {
+                continue;
+            }
+            $inTier = $devices >= $tier->min_devices && $devices <= $tier->max_devices;
             if ($inTier) {
                 $annual = (float) $tier->rate_inr_annual;
                 break;
@@ -210,6 +215,14 @@ class PricingService
                                       string $billing = 'annual', ?string $deployment = null, bool $includeSetup = true): array
     {
         $deployment = 'cloud'; // v2: subscription = SmartEPT Cloud only
+
+        // Above the last priced tier there is no automatic rate — same answer
+        // shape as perpetualQuote() so every caller's custom handling applies.
+        if ($this->cloudIsCustom($plan, $devices)) {
+            return ['lines' => [], 'subtotal' => 0.0, 'custom' => true,
+                'max_priced_devices' => $this->maxPricedDevices($plan)];
+        }
+
         $rate = $this->deviceRate($plan, $devices, $billing, $deployment, (bool) $tenant->ecosystem_customer);
         $months = LicenceService::billingMonths($billing);
 
@@ -237,6 +250,28 @@ class PricingService
         $subtotal = round(array_sum(array_column($lines, 'amount')), 2);
 
         return ['lines' => $lines, 'subtotal' => $subtotal];
+    }
+
+    /**
+     * Last automatically priced CLOUD user count — the mirror of
+     * $result['max_priced_users'] on the perpetual side. Null when no tier is
+     * priced at all (flat inr_annual pricing, nothing to exceed).
+     */
+    public function maxPricedDevices(Plan $plan): ?int
+    {
+        $priced = $plan->volumeTiers
+            ->filter(fn ($t) => $t->max_devices !== null && (float) $t->rate_inr_annual > 0)
+            ->sortBy('max_devices');
+
+        return $priced->isEmpty() ? null : (int) $priced->last()->max_devices;
+    }
+
+    /** True when a Cloud user count is above the last priced tier → custom quotation, never ₹0. */
+    public function cloudIsCustom(Plan $plan, int $devices): bool
+    {
+        $top = $this->maxPricedDevices($plan);
+
+        return $top !== null && $devices > $top;
     }
 
     /** The perpetual band a given user count falls into, or null when above the top band (custom quote). */

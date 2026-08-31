@@ -283,7 +283,14 @@ function render(){
   const buyParam=(params.get('buy')||'').toLowerCase();
   // Phase 1 (6-Aug-2026): buyers belong on the /buy page — this page is for the
   // free trial and sign-in. Old ?buy= links land on the real cart instead.
-  if(buyParam){location.replace('/buy?kind='+(buyParam==='perpetual'?'perpetual':'cloud'));return;}
+  // 31-Aug-2026: carry the user count through the hop as well — it used to be
+  // dropped here, so anyone arriving via an old ?buy= link (or a bookmark) landed
+  // on /buy with the hard-coded default of 25 instead of the size they picked.
+  if(buyParam){
+    const u=parseInt(params.get('users')||params.get('devices')||'0',10);
+    location.replace('/buy?kind='+(buyParam==='perpetual'?'perpetual':'cloud')+(u>0?'&users='+u:''));
+    return;
+  }
   KIND = 'subscription';
   if(plan)mode('signup',document.querySelector('.tabs button[data-mode=signup]'));
   // controls

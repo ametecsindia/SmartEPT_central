@@ -28,8 +28,14 @@ class LandingImport extends Command
         }
 
         if (LandingSection::query()->exists() && ! $this->option('force')) {
-            $this->warn('landing_sections already has rows. Use --force to wipe & re-import. Nothing changed.');
-            return self::SUCCESS;
+            // 31-Aug-2026: this used to warn and return SUCCESS, so `landing:import`
+            // looked like it had synced the CMS when it had done nothing at all —
+            // that is how a 5-Aug snapshot survived four code changes and then
+            // overwrote them on the next publish. Fail loudly instead.
+            $this->error('NOTHING WAS IMPORTED — landing_sections already has rows.');
+            $this->line('  Re-run as:  php artisan landing:import --force');
+
+            return self::FAILURE;
         }
         if ($this->option('force')) {
             LandingSection::query()->delete();
@@ -77,6 +83,11 @@ class LandingImport extends Command
                 'html' => $s['html'], 'sort' => $sort++, 'is_visible' => true, 'is_layout' => false,
             ]);
         }
+
+        // Remember exactly which landing.html this snapshot came from, so a later
+        // deployment that changes the file is detected before anything is published
+        // from the now-stale rows (App\Support\LandingSync).
+        \App\Support\LandingSync::stamp($file);
 
         // Proof of "never disturb": rows in order must equal the original file exactly.
         $rebuilt = LandingSection::orderBy('sort')->pluck('html')->implode('');

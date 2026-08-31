@@ -84,6 +84,13 @@ class BuyController extends Controller
         }
 
         $kind = $data['kind'] === 'perpetual' ? 'perpetual' : 'subscription';
+        if ($kind !== 'perpetual' && $pricing->cloudIsCustom($plan, (int) $data['users'])) {
+            // 31-Aug-2026: Cloud above the top volume tier is a custom quotation,
+            // exactly like Perpetual above its top band — never an automatic ₹0 sale.
+            return response()->json(['error' => 'For more than '
+                . number_format((int) $pricing->maxPricedDevices($plan))
+                . ' users we prepare a custom Cloud quotation — WhatsApp 90000 98877 and we will have it ready the same day.'], 422);
+        }
         if ($kind === 'perpetual') {
             $calc = $pricing->calculateLifetimeLicencePrice($plan, (int) $data['users']);
             if ($calc['below_min']) {
@@ -203,6 +210,13 @@ class BuyController extends Controller
         }
 
         $kind = $data['kind'] === 'perpetual' ? 'perpetual' : 'subscription';
+        if ($kind !== 'perpetual' && $pricing->cloudIsCustom($plan, (int) $data['users'])) {
+            // 31-Aug-2026: Cloud above the top volume tier is a custom quotation,
+            // exactly like Perpetual above its top band — never an automatic ₹0 sale.
+            return response()->json(['error' => 'For more than '
+                . number_format((int) $pricing->maxPricedDevices($plan))
+                . ' users we prepare a custom Cloud quotation — WhatsApp 90000 98877 and we will have it ready the same day.'], 422);
+        }
         if ($kind === 'perpetual') {
             $calc = $pricing->calculateLifetimeLicencePrice($plan, (int) $data['users']);
             if ($calc['below_min']) {

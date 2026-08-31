@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\LandingSection;
 use App\Models\LandingVersion;
 use App\Support\LandingRenderer;
+use App\Support\LandingSync;
 use Illuminate\Http\Request;
 
 /**
@@ -59,13 +60,14 @@ class LandingAdminController extends Controller
 
     public function publish(Request $r)
     {
-        // Self-heal (12-Aug-2026): on a fresh deployment landing_sections is empty
-        // (landing:import not yet run), so "Publish -> make live" rendered EMPTY and
-        // silently changed nothing — root cause of saved GA4/tracking settings never
-        // reaching the live page. Import the current landing.html verbatim first,
-        // exactly what `php artisan landing:import` does.
-        if (\App\Models\LandingSection::count() === 0) {
-            \Illuminate\Support\Facades\Artisan::call('landing:import');
+        // Self-heal (12-Aug-2026, extended 31-Aug-2026): on a fresh deployment
+        // landing_sections is empty and "Publish -> make live" rendered EMPTY; worse,
+        // once the rows existed they were never refreshed, so a publish re-rendered
+        // the page from a month-old snapshot and silently reverted shipped code.
+        // LandingSync re-imports after a deployment, and refuses when re-importing
+        // would discard CMS edits instead of quietly picking a winner.
+        if ($reason = LandingSync::guard()) {
+            return response()->json(['ok' => false, 'error' => $reason], 409);
         }
 
         $html = LandingRenderer::html();
@@ -77,6 +79,7 @@ class LandingAdminController extends Controller
             @copy($file, $file.'.bak-'.date('Ymd-His').'-prepublish');
         }
         file_put_contents($file, $html);
+        LandingSync::stamp($file); // the DB and the file are in step again
 
         LandingVersion::create([
             'snapshot'     => LandingSection::orderBy('sort')

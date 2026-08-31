@@ -202,11 +202,19 @@ let CUR='INR', USD_RATE=88;
 function money(n){return CUR==='USD' ? '$'+(Math.round(n/USD_RATE*100)/100).toLocaleString('en-US',{maximumFractionDigits:2}) : '₹'+Math.round(n).toLocaleString('en-IN');}
 async function post(url,data){const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},body:JSON.stringify(data)});let body={};try{body=await res.json();}catch(e){}if(!res.ok)throw new Error(body.error||(body.errors?Object.values(body.errors).flat().join(' '):body.message)||(res.status===419?'Your session expired — please refresh the page and try again.':res.status===429?'Too many tries — please wait a minute.':'Something went wrong.'));return body;}
 const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
-function annualRate(dev){const p=PLANS[0]||null;if(!p)return{r:0,p:null};let r=p.inr_annual;(p.volume_tiers||[]).forEach(t=>{if(dev>=t.min&&(t.max===null||dev<=t.max))r=t.rate;});return{r,p};}
+// Mirrors PricingService::deviceRate() + cloudIsCustom(): an open-ended (max null)
+// or zero-rate tier is the CUSTOM QUOTE band, not a ₹0 price. 31-Aug-2026.
+function annualRate(dev){const p=PLANS[0]||null;if(!p)return{r:0,p:null};
+  let r=p.inr_annual, top=null;
+  (p.volume_tiers||[]).forEach(t=>{
+    if(t.max===null||!(Number(t.rate)>0))return;               // custom-quote band — never a price
+    if(top===null||t.max>top)top=t.max;
+    if(dev>=t.min&&dev<=t.max)r=t.rate;});
+  return {r,p,custom:top!==null&&dev>top,top};}
 
 function render(){
   const dev=Math.max(1,parseInt(document.getElementById('devCount').value||'1',10));
-  const {r:aRate,p}=annualRate(dev); if(!p)return;
+  const {r:aRate,p,custom:cloudCustom,top:cloudTop}=annualRate(dev); if(!p)return;
   const wantSetup=document.getElementById('setupChk').checked;
   const setup=wantSetup?(SETUP.base+Math.max(0,dev-SETUP.included)*SETUP.per):0;
   const cr=document.getElementById('ivCoupRow');
@@ -260,6 +268,22 @@ function render(){
     return;
   }
 
+  // Cloud above the top volume tier — same treatment as Perpetual above its top
+  // band: a custom quotation request, never a ₹0 order. 31-Aug-2026.
+  if(cloudCustom){
+    setCustomMode(true);
+    dr.style.display='none';
+    document.getElementById('ivSubLbl').textContent='Cloud · '+cloudTop.toLocaleString('en-IN')+'+ users';
+    document.getElementById('ivSub').textContent='Custom';
+    cr.style.display='none';
+    document.getElementById('ivGst').textContent='—';
+    document.getElementById('ivTotLbl').textContent='Custom quotation';
+    document.getElementById('ivTot').textContent='Personalised';
+    document.getElementById('ivEff').textContent='Beyond '+cloudTop.toLocaleString('en-IN')+' users we tailor the per-user rate — fill your details, submit, and our team emails your formal quotation with a pay link.';
+    btn.disabled=false;btn.textContent='Request a custom quotation →';
+    return;
+  }
+
   setCustomMode(false);
   btn.disabled=false;btn.textContent='Pay securely & activate →';
   const qRate=Math.round(aRate/Math.max(0.1,1-ANN_DISC)*100)/100; // quarterly base (undiscounted)
@@ -296,7 +320,8 @@ async function doBuy(e){
       const body={company_name:data.company_name,contact_name:data.contact_name,
         billing_contact:data.billing_contact||null,email:data.email,phone:data.phone||null,
         state_code:data.state_code,gstin:(data.gstin||'').toUpperCase()||null,
-        kind:'perpetual',users:Math.max(1,parseInt(document.getElementById('devCount').value||'1',10)),
+        kind:KIND==='perpetual'?'perpetual':'cloud',
+        users:Math.max(1,parseInt(document.getElementById('devCount').value||'1',10)),
         notes:data.notes||null,currency:CUR,website_hp:data.website_hp||''};
       const out=await post('/buy/custom-quote',body);
       show('ok','✓ '+out.message);
