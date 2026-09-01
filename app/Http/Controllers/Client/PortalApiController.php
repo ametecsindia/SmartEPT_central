@@ -590,7 +590,15 @@ class PortalApiController extends Controller
 
     public function tickets()
     {
+        // 31-Aug-2026: the client used to get only `admin_reply` — the DENORMALISED
+        // LATEST staff reply — so they saw one message and never the conversation.
+        // The real thread has lived in support_ticket_messages since 23-Jul; hand
+        // the client the same timeline the admin desk reads (internal notes excluded).
+        $tz = Setting::get('display_timezone', 'Asia/Kolkata') ?: 'Asia/Kolkata';
+        $local = fn ($dt) => $dt ? \Illuminate\Support\Carbon::parse($dt)->timezone($tz)->format('d M Y, h:i A') : null;
+
         $rows = \App\Models\SupportTicket::where('tenant_id', $this->tenant()->id)
+            ->with(['messages' => fn ($q) => $q->whereIn('event', ['message', 'reply', 'status_change'])->orderBy('id')])
             ->latest('id')->limit(100)->get()
             ->map(fn ($t) => [
                 'id'          => $t->id,
@@ -600,10 +608,21 @@ class PortalApiController extends Controller
                 'status'      => $t->status,
                 'admin_reply' => $t->admin_reply,
                 'created_at'  => optional($t->created_at)->toDateTimeString(),
+                'created_at_h' => $local($t->created_at),
                 'replied_at'  => optional($t->replied_at)->toDateTimeString(),
+                'timeline'    => $t->messages->map(fn ($m) => [
+                    'author_type' => $m->author_type,
+                    // Staff are shown as "Ametecs" to the client, never by name.
+                    'author_name' => $m->author_type === 'client' ? ($m->author_name ?: 'You') : 'Ametecs',
+                    'event'       => $m->event,
+                    'body'        => $m->body,
+                    'old_status'  => $m->old_status,
+                    'new_status'  => $m->new_status,
+                    'at_h'        => $local($m->created_at),
+                ])->values(),
             ]);
 
-        return response()->json(['data' => $rows]);
+        return response()->json(['data' => $rows, 'tz' => $tz]);
     }
 
     public function createTicket(Request $request)
@@ -625,6 +644,20 @@ class PortalApiController extends Controller
             'status'          => 'open',
             'raised_by_name'  => $user->name,
             'raised_by_email' => $user->email,
+        ]);
+
+        // The opening message IS the first row of the thread (31-Aug-2026).
+        // The 23-Jul thread migration backfilled every ticket that existed then,
+        // but this create path was never wired to it — so every ticket raised
+        // since opened with an empty timeline: the admin desk showed "No messages
+        // yet" and the client's description appeared nowhere on the ticket.
+        \App\Models\SupportTicketMessage::create([
+            'ticket_id'   => $ticket->id,
+            'author_type' => 'client',
+            'author_id'   => $user->id,
+            'author_name' => $user->name,
+            'event'       => 'message',
+            'body'        => $data['message'],
         ]);
 
         // Notify the Ametecs support inbox (fail-soft — never block the client).

@@ -269,11 +269,23 @@ async function pgSupport() {
   try { d = await api('tickets'); } catch (e) {}
   const cats = ['general', 'billing', 'technical'].map(c => `<option value="${c}">${c}</option>`).join('');
   const SP = { open:'p-warn', in_progress:'p-info', resolved:'p-ok', closed:'p-mut' };
+  // 31-Aug-2026: show the whole conversation, not just the latest staff reply.
+  const tkThread = t => (t.timeline || []).map(m => {
+    if (m.event === 'status_change')
+      return `<div class="mini" style="text-align:center;margin:8px 0">— status ${esc(String(m.old_status || '').replace('_', ' '))} → <b>${esc(String(m.new_status || '').replace('_', ' '))}</b> · ${esc(m.at_h || '')} —</div>`;
+    const mine = m.author_type === 'client';
+    return `<div style="margin:8px 0;padding:10px 12px;border-radius:8px;font-size:12.5px;${mine ? 'background:#F4F5F7' : 'background:#E3F4F7;color:#0B4A56'}">
+      <div class="mini" style="font-weight:700;margin-bottom:3px">${esc(m.author_name || '')} · ${esc(m.at_h || '')}</div>
+      <div style="white-space:pre-wrap">${esc(m.body || '')}</div></div>`;
+  }).join('');
   const rows = (d.data || []).map(t => `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center"><b>${esc(t.subject)}</b><span class="pill ${SP[t.status] || 'p-mut'}">${esc(String(t.status).replace('_', ' '))}</span></div>
-    <div class="mini" style="white-space:pre-wrap;margin-top:6px">${esc(t.message)}</div>
-    ${t.admin_reply ? `<div style="margin-top:10px;padding:10px 12px;background:#E3F4F7;border-radius:8px;font-size:12.5px;color:#0B4A56"><b>Ametecs replied:</b><br>${esc(t.admin_reply)}</div>` : '<div class="mini" style="margin-top:8px">Awaiting a reply from Ametecs.</div>'}
-    <div class="mini" style="margin-top:6px">Raised ${esc(t.created_at || '')}${t.category ? ' · ' + esc(t.category) : ''}</div></div>`).join('');
+    ${(t.timeline && t.timeline.length)
+      ? tkThread(t)
+      : `<div class="mini" style="white-space:pre-wrap;margin-top:6px">${esc(t.message)}</div>
+         ${t.admin_reply ? `<div style="margin-top:10px;padding:10px 12px;background:#E3F4F7;border-radius:8px;font-size:12.5px;color:#0B4A56"><b>Ametecs replied:</b><br>${esc(t.admin_reply)}</div>` : ''}`}
+    ${t.status === 'open' && !(t.timeline || []).some(m => m.author_type === 'admin') ? '<div class="mini" style="margin-top:8px">Awaiting a reply from Ametecs.</div>' : ''}
+    <div class="mini" style="margin-top:6px">Raised ${esc(t.created_at_h || t.created_at || '')}${t.category ? ' · ' + esc(t.category) : ''}</div></div>`).join('');
   el.innerHTML = `<div class="card"><h3>Raise a support ticket</h3>
     <label>Subject</label><input id="tk-subj" placeholder="Short summary of the issue">
     <label>Category</label><select id="tk-cat">${cats}</select>
