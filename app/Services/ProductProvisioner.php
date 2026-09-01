@@ -78,6 +78,10 @@ class ProductProvisioner
                 return;
             }
 
+            // Was this tenant already live on the product BEFORE this call? Decides
+            // whether the "your console is ready" mail below is owed (see 1-Sep note).
+            $hadConsole = (bool) $tenant->console_url;
+
             $consoleUrl = $resp->json('console_url');
             if ($consoleUrl) {
                 $tenant->forceFill(['console_url' => $consoleUrl])->save();
@@ -92,21 +96,36 @@ class ProductProvisioner
             // it via Central's working SMTP; the console forces a password change
             // on first sign-in (must_change_password), so the temp is single-use.
             // temp_password is null on re-provision — this mails exactly once.
+            // 1-Sep-2026: this mail used to be gated on temp_password ALONE. The
+            // product returns that only on the FIRST provision, so a tenant whose
+            // first attempt failed after the console was already created (and every
+            // re-provision) got a working console and was never told it existed —
+            // no URL, no sign-in instructions, nothing. Now the client is told
+            // whenever their console comes into existence; the password block is
+            // included only when the product actually handed one over, and the
+            // passwordless portal route covers the rest.
             $temp = (string) $resp->json('temp_password', '');
-            if ($temp !== '') {
+            if ($tenant->email && ($temp !== '' || (! $hadConsole && $consoleUrl))) {
+                $signIn = $temp !== ''
+                    ? "Sign-in email: {$tenant->email}\n"
+                        . "Temporary password: {$temp}\n\n"
+                        . "You will be asked to set your own password on first sign-in.\n"
+                        . "Tip: you can also open the console without any password from your client portal (single sign-on).\n"
+                    : "To sign in, open your client portal and click \"Open my SmartEPT Console\" — it signs you in\n"
+                        . "with one click, no password needed. If you would rather use a password, choose\n"
+                        . "\"Forgot password\" on the console and we will email you a reset link.\n";
+
                 app(MailService::class)->send(
                     $tenant->email,
-                    'Your SmartEPT console sign-in — ' . $tenant->company_name,
+                    'Your SmartEPT console is ready — ' . $tenant->company_name,
                     "Hello {$tenant->contact_name},\n\n"
                     . "Your company's SmartEPT console is ready.\n\n"
                     . 'Console: ' . ($consoleUrl ?: $this->productBase()) . "\n"
-                    . "Sign-in email: {$tenant->email}\n"
-                    . "Temporary password: {$temp}\n\n"
-                    . "You will be asked to set your own password on first sign-in.\n"
-                    . "Tip: you can also open the console without any password from your client portal (single sign-on).\n\n"
-                    . '— SmartEPT' . MailService::signature()
+                    . $signIn
+                    . "\n— SmartEPT" . MailService::signature()
                 );
-                Log::info('Console credentials emailed to tenant owner', ['tenant' => $tenant->id]);
+                Log::info('Console details emailed to tenant owner',
+                    ['tenant' => $tenant->id, 'with_password' => $temp !== '']);
             }
         } catch (\Throwable $e) {
             // Never let a provisioning hiccup roll back a real payment.
