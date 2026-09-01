@@ -156,6 +156,7 @@ tr:hover td{background:var(--card2)}
     <div class="nav-item" data-page="users" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="9" cy="8.2" r="3.4"/><path d="M2.8 20.2a6.2 6.2 0 0 1 12.4 0"/><circle cx="17.2" cy="9.4" r="2.6"/><path d="M16 15.6a5 5 0 0 1 5.2 4.6"/></svg></span> Users &amp; Roles</div>
     <div class="nav-item" data-page="audit"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></span> Audit Log</div>
     <div class="nav-item" data-page="help" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.6-2.8 2.6"/><path d="M12 17h.01"/></svg></span> Help &amp; Troubleshooting</div>
+    <div class="nav-item" data-page="updates" data-super="1"><span class="nav-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex:none"><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 20h16"/></svg></span> Upload Update</div>
   </nav>
   <div class="me">
     <div class="me-row">
@@ -246,7 +247,7 @@ let PAGE = 'dashboard';
 const TITLES = {dashboard:'Dashboard',tenants:'Clients / Tenants',trials:'Trials',leads:'Leads',licences:'Licences',
 plans:'Plans & Pricing',orders:'Orders & Payments',credit:'Credit Clients — Balance Outstanding',invoices:'Invoices',
 storage:'Cloud Storage',coupons:'Coupons',cms:'Landing CMS',watemplates:'WhatsApp Templates',settings:'Settings',audit:'Audit Log',
-help:'Help & Troubleshooting',downloads:'Downloads',reports:'Accountant Reports',support:'Support',users:'Users & Roles'};
+help:'Help & Troubleshooting',downloads:'Downloads',updates:'Upload Update',reports:'Accountant Reports',support:'Support',users:'Users & Roles'};
 const LEAD_STATUSES = ['NEW','CONTACTED','DEMO_SCHEDULED','QUOTED','WON','LOST'];
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -840,7 +841,159 @@ async function rmSave() {
   catch (e) { toast('Error: ' + e); }
 }
 
+
+// ---------- Upload Update (on-prem self-update packages, Ejaz 1-Sep-2026) ----------
+let UP_ROWS = {}, UP_FILES = [], UP_LIMITS = {};
+
+function upForm(u) {
+  u = u || {};
+  const fileOpts = ['<option value="">— none —</option>'].concat(
+    UP_FILES.map(f => '<option value="' + esc(f.name) + '">' + esc(f.name) + ' (' + esc(f.size_human) + ')</option>')).join('');
+  return '<h3>' + (u.id ? 'Edit update ' + esc(u.version) : 'Upload a new update') + '</h3>'
+    + '<div class="row">'
+    + '<div><label>Version <span class="mini">what the client compares against</span></label>'
+    + '<input id="up_version" value="' + esc(u.version || '') + '" placeholder="1.6.0"></div>'
+    + '<div><label>Minimum version <span class="mini">optional — do not offer below this</span></label>'
+    + '<input id="up_min" value="' + esc(u.min_version || '') + '" placeholder="1.4.0"></div>'
+    + '</div>'
+    + '<div class="row"><div><label>Channel <span class="mini">beta = test servers only, no client sees it</span></label><select id="up_channel">'
+    + '<option value="stable"' + (u.channel === 'beta' ? '' : ' selected') + '>stable</option>'
+    + '<option value="beta"' + (u.channel === 'beta' ? ' selected' : '') + '>beta</option></select></div>'
+    + '<div><label>Title <span class="mini">optional</span></label><input id="up_title" value="' + esc(u.title || '') + '" placeholder="SmartEPT 1.6.0"></div></div>'
+    + '<label style="margin-top:10px">Release notes <span class="mini">shown to the client before they install</span></label>'
+    + '<textarea id="up_notes" rows="4" placeholder="What changed in this build">' + esc(u.notes || '') + '</textarea>'
+    + '<label style="margin-top:10px">Package (.zip built by RELEASE.bat)</label><input id="up_file" type="file" accept=".zip">'
+    + '<label style="margin-top:10px">…or use a file already on the server <span class="mini">(from storage/app/updates)</span></label>'
+    + '<select id="up_existing">' + fileOpts + '</select>'
+    + '<div class="mini" style="margin-top:5px">Currently attached: <b>' + (u.filename ? esc(u.filename) : 'none') + '</b>'
+    + (u.sha256 ? '<br>SHA-256: <code>' + esc(u.sha256) + '</code>' : '')
+    + '<br>Max upload on this server: <b>' + esc(UP_LIMITS.upload_max || '?') + '</b>. An update ZIP is usually far bigger than that — '
+    + 'copy it into <code>storage/app/updates</code> on the server and pick it above.</div>'
+    + '<div class="row" style="margin-top:14px"><button class="btn btn-p" onclick="upSave(' + (u.id || 0) + ')">Save</button>'
+    + '<button class="btn" onclick="closeModal()">Cancel</button></div>'
+    + '<div id="up_msg" class="mini" style="margin-top:8px"></div>';
+}
+function upAdd()  { openModal(upForm(null)); }
+function upEdit(id) { openModal(upForm(UP_ROWS[id])); }
+
+async function upPost(id, fd) {
+  const res = await fetch('/admin/api/product-updates' + (id ? ('/' + id) : ''), {
+    method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }, body: fd });
+  // Same nginx trap the Downloads screen hit on 1-Sep: an oversized body is
+  // refused with a 413 HTML page before PHP runs, so name the real cause.
+  if (res.status === 413) throw 'The web server refused this upload as too large — it never reached SmartEPT Central. '
+    + 'Raise client_max_body_size in the nginx site config and reload nginx, or copy the ZIP into '
+    + 'storage/app/updates on the server and choose "use a file already on the server".';
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw (data.message || data.error || 'Save failed');
+  return data;
+}
+async function upSave(id) {
+  const v = document.getElementById('up_version').value.trim();
+  if (!v) { document.getElementById('up_msg').textContent = 'A version number is required.'; return; }
+  const fd = new FormData();
+  fd.append('product', 'smartept');
+  fd.append('version', v);
+  fd.append('min_version', document.getElementById('up_min').value.trim());
+  fd.append('channel', document.getElementById('up_channel').value);
+  fd.append('title', document.getElementById('up_title').value.trim());
+  fd.append('notes', document.getElementById('up_notes').value);
+  const f = document.getElementById('up_file').files[0];
+  if (f) fd.append('file', f);
+  const ex = document.getElementById('up_existing').value;
+  if (!f && ex) fd.append('existing_file', ex);
+  document.getElementById('up_msg').textContent = f ? 'Uploading… this can take a while for a large package.' : 'Saving…';
+  try { await upPost(id || 0, fd); closeModal(); toast('Update saved'); go('updates'); }
+  catch (e) { document.getElementById('up_msg').textContent = String(e); }
+}
+async function upPublish(id, pub) {
+  try { await api('product-updates/' + id + '/publish', { method: 'POST', body: { published: !!pub } });
+    toast(pub ? 'Published — on-prem servers will now be offered this build' : 'Unpublished'); go('updates'); }
+  catch (e) { toast('Error: ' + e); }
+}
+async function upDelete(id, version) {
+  if (!confirm('Remove version ' + version + ' from the update catalogue? (The ZIP stays on the server.)')) return;
+  try { await api('product-updates/' + id, { method: 'DELETE' }); toast('Removed'); go('updates'); }
+  catch (e) { toast('Error: ' + e); }
+}
+
+
+// ============ UPLOAD UPDATE ============
+async function _updatesPage() {
+  ACTIONS.innerHTML = '<button class="btn btn-p" onclick="upAdd()">+ Upload update</button>';
+  P.innerHTML = '<div class="mini">Loading…</div>';
+  const d = await api('product-updates');
+  UP_ROWS = {}; UP_FILES = d.available_files || []; UP_LIMITS = d.limits || {};
+  (d.data || []).forEach(u => { UP_ROWS[u.id] = u; });
+
+  const rows = (d.data || []).map(u => {
+    const file = u.file_present
+      ? '<span class="mini">' + esc(u.filename || '') + (u.size_human ? ' · ' + esc(u.size_human) : '') + '</span>'
+      : '<span class="mini" style="color:var(--warn)">no package on the server</span>';
+    const status = u.is_published ? '<span class="pill p-ok">Live</span>' : '<span class="pill p-mut">Draft</span>';
+    return '<tr><td><b>v' + esc(u.version) + '</b><div class="mini">' + esc(u.product) + ' · ' + esc(u.channel)
+      + (u.min_version ? ' · needs ≥ v' + esc(u.min_version) : '') + '</div></td>'
+      + '<td>' + file + '</td><td>' + status + '</td>'
+      + '<td class="mini">' + (u.released_at ? esc(u.released_at) : '—')
+      + (u.uploaded_by ? '<br>' + esc(u.uploaded_by) : '') + '</td>'
+      + '<td style="white-space:nowrap">'
+      + '<button class="link" onclick="upEdit(' + u.id + ')">Edit</button> '
+      + '<button class="link" onclick="upPublish(' + u.id + ',' + (u.is_published ? 0 : 1) + ')">'
+      + (u.is_published ? 'Unpublish' : 'Publish') + '</button> '
+      + '<button class="link" style="color:var(--danger)" onclick="upDelete(' + u.id + ',\'' + esc(u.version) + '\')">Delete</button>'
+      + '</td></tr>';
+  }).join('');
+
+  // Compare version NUMBERS, not strings — "1.10" sorts below "1.9" as text.
+  const vcmp = (a, b) => {
+    const A = String(a).split('.').map(Number), B = String(b).split('.').map(Number);
+    for (let i = 0; i < Math.max(A.length, B.length); i++) {
+      const d = (A[i] || 0) - (B[i] || 0);
+      if (d) return d;
+    }
+    return 0;
+  };
+  const newest = (ch) => (d.data || [])
+    .filter(u => u.is_published && u.file_present && (u.channel || 'stable') === ch)
+    .sort((a, b) => vcmp(a.version, b.version)).pop();
+  const live = newest('stable'), beta = newest('beta');
+
+  P.innerHTML = '<div class="card"><h3>On-premises update packages '
+    + '<span class="mini">what a client sees when they press “Check for Update” on their Licence screen</span></h3>'
+    + '<table><tr><th>Version</th><th>Package</th><th>Status</th><th>Released</th><th></th></tr>'
+    + (rows || '<tr><td colspan="5" class="mini">Nothing published yet — click “+ Upload update”.</td></tr>')
+    + '</table>'
+    + '<div class="mini" style="margin-top:10px">Offered to <b>stable</b> servers (that is every client): <b>'
+    + (live ? 'v' + esc(live.version) : 'nothing — no published package on the stable channel') + '</b>. '
+    + 'A server is only offered a build newer than its own, and never one whose minimum version it has not reached.'
+    + (beta ? '<br>Offered to <b>beta</b> servers: <b>v' + esc(beta.version) + '</b> — clients never receive this. '
+        + 'A server joins beta by setting <code>"channel": "beta"</code> in its <code>version.json</code>.'
+        + (live && vcmp(beta.version, live.version) > 0
+            ? ' <b style="color:var(--warn)">v' + esc(beta.version) + ' is your newest build and no client can get it — '
+              + 'edit it to the stable channel when it is ready.</b>' : '')
+      : '') + '</div></div>'
+
+    + '<div class="card"><h3>How this reaches the client</h3>'
+    + '<div class="mini" style="line-height:1.7">'
+    + '1. The client opens <b>Licence</b> in their SmartEPT console and presses <b>Check for Update</b>.<br>'
+    + '2. Their server calls <code>POST /api/v1/updates/check</code> here with its licence key, fingerprint and current version. '
+    + 'Licence metadata only — no monitoring data ever reaches Central.<br>'
+    + '3. If a newer published build exists, Central answers with the version, release notes, the SHA-256 hash and a '
+    + 'one-time download link valid for 60 minutes.<br>'
+    + '4. Their updater downloads the ZIP, re-checks the hash, backs the app up, installs, runs migrations and rolls back if the app does not come up healthy.<br><br>'
+    + 'A licence that is expired, suspended, or out of AMC is refused an update — the client is told to renew, not left guessing.'
+    + '</div></div>'
+
+    + '<div class="card"><h3>Uploading a large package</h3>'
+    + '<div class="mini" style="line-height:1.7">This server accepts uploads up to <b>' + esc(UP_LIMITS.upload_max || '?')
+    + '</b> (POST limit ' + esc(UP_LIMITS.post_max || '?') + '), and the web server in front of it may allow less. '
+    + 'For anything larger, copy the ZIP into <code>' + esc(d.dir || 'storage/app/updates') + '</code> on this server, then click '
+    + '“+ Upload update” and pick it under “use a file already on the server”. The hash is computed here either way.</div></div>';
+}
+
 const RENDER = {
+
+updates: _updatesPage,
 
 // ============ DOWNLOADS ============
 async downloads() {

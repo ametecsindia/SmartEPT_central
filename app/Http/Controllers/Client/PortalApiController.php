@@ -181,11 +181,17 @@ class PortalApiController extends Controller
     {
         $tenant = $this->tenant()->load('activeLicence');
 
-        // Metadata (version / notes) from the managed catalogue, keyed by slug.
-        $meta = [];
+        // Metadata (version / notes) per SLOT, resolved by category+platform via
+        // DownloadArtifact::forSlot() — not by slug. A slug is fixed at creation and
+        // does not follow later edits, so rows added with "+ Add download" were
+        // invisible here and an edited row could report under the wrong slot.
+        $meta = collect();
         try {
-            $meta = DownloadArtifact::whereIn('slug', ['agent-windows', 'agent-mac', 'agent-linux', 'server-windows'])
-                ->get()->keyBy('slug');
+            foreach (array_keys(DownloadArtifact::SLOTS) as $slot) {
+                if ($row = DownloadArtifact::forSlot($slot)) {
+                    $meta[$slot] = $row;
+                }
+            }
         } catch (\Throwable $e) {
             $meta = collect();
         }

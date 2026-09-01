@@ -18,6 +18,45 @@ class DownloadArtifact extends Model
         'sort'         => 'integer',
     ];
 
+    /**
+     * The four slots a client's Install & Downloads page can show, and the
+     * category+platform that fills each one.
+     */
+    public const SLOTS = [
+        'agent-windows'  => ['agent', 'windows'],
+        'agent-mac'      => ['agent', 'mac'],
+        'agent-linux'    => ['agent', 'linux'],
+        'server-windows' => ['server', 'windows'],
+    ];
+
+    /**
+     * The live artifact for a slot — resolved by WHAT THE ROW IS, not by its slug.
+     *
+     * 1-Sep-2026: the portal looked each slot up by a hard-coded slug, but a slug
+     * is assigned once at creation (uniqueSlug) and never realigned when the row
+     * is edited. So "+ Add download" produced `server-windows-2` / `-3`, which no
+     * client could ever see, and a row created as a macOS agent and later switched
+     * to the Admin Server kept the slug `agent-mac` — offering the server zip in
+     * the macOS agent slot. Category + platform are what the row actually IS, and
+     * they follow the operator's edits.
+     *
+     * Newest published row carrying a file wins, so duplicates are harmless.
+     */
+    public static function forSlot(string $slug): ?self
+    {
+        [$category, $platform] = self::SLOTS[$slug] ?? [null, null];
+        if (! $category) {
+            return null;
+        }
+
+        return static::where('category', $category)
+            ->where('platform', $platform)
+            ->where('is_published', true)
+            ->whereNotNull('filename')
+            ->orderByDesc('updated_at')->orderByDesc('id')
+            ->first();
+    }
+
     /** Absolute path to the attached file, or null if none / missing on disk. */
     public function filePath(): ?string
     {

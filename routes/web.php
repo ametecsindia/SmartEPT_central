@@ -164,6 +164,14 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
 
         // Super only
         Route::middleware('admin.role:super')->group(function () {
+            // ----- Upload Update: on-prem self-update packages (Ejaz, 1-Sep-2026) -----
+            // Kept out of the Downloads catalogue on purpose — those are client
+            // installers resolved by slot; these are versioned server builds.
+            Route::get('product-updates', [Admin\ProductUpdateApiController::class, 'index']);
+            Route::post('product-updates', [Admin\ProductUpdateApiController::class, 'save']);
+            Route::post('product-updates/{update}', [Admin\ProductUpdateApiController::class, 'save']);
+            Route::post('product-updates/{update}/publish', [Admin\ProductUpdateApiController::class, 'publish']);
+            Route::delete('product-updates/{update}', [Admin\ProductUpdateApiController::class, 'destroy']);
             Route::put('plans/{plan}', [Admin\ConfigApiController::class, 'updatePlan']);
             Route::put('plans/{plan}/volume-tiers', [Admin\ConfigApiController::class, 'saveVolumeTiers']);
             Route::put('plans/{plan}/perpetual-bands', [Admin\ConfigApiController::class, 'savePerpetualBands']);

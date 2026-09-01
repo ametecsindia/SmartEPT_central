@@ -83,9 +83,20 @@ class PortalController extends Controller
         $slug = self::LEGACY_ALIAS[$slug] ?? $slug;
 
         try {
-            $row = DownloadArtifact::where('slug', $slug)->first();
-            if ($row && $row->filename) {
-                return $row->is_published ? $row->filePath() : null;
+            [$category, $platform] = DownloadArtifact::SLOTS[$slug] ?? [null, null];
+            if ($category) {
+                // Resolve by category+platform, not by slug — see DownloadArtifact::forSlot().
+                // A row added with "+ Add download" gets a slug like server-windows-2 and
+                // was invisible here; an edited row could keep the slug of another slot.
+                if ($row = DownloadArtifact::forSlot($slug)) {
+                    return $row->filePath();
+                }
+                // A managed file exists for this slot but is not published — honour that
+                // rather than serving a stray build from the drop folder.
+                if (DownloadArtifact::where('category', $category)->where('platform', $platform)
+                        ->whereNotNull('filename')->exists()) {
+                    return null;
+                }
             }
         } catch (\Throwable $e) {
             // download_artifacts table not migrated yet — fall through to legacy glob.

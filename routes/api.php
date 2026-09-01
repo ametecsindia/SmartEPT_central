@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\PublicController;
+use App\Http\Controllers\Api\UpdateController;
 use Illuminate\Support\Facades\Route;
 
 // Public pricing feed for the landing page (no auth, cached, rate-limited).
@@ -23,4 +24,15 @@ Route::prefix('v1/license')->middleware('throttle:60,1')->group(function () {
     Route::post('validate', [LicenseController::class, 'validateKey']);
     Route::post('device/activate', [LicenseController::class, 'activateDevice']);
     Route::post('device/deactivate', [LicenseController::class, 'deactivateDevice']);
+});
+
+/**
+ * Self-update feed for on-prem SmartEPT servers (Ejaz, 1-Sep-2026).
+ * "Check for Update" on a client's Licence screen lands here. Licence-gated,
+ * metadata only; the package is fetched with a short-lived one-time token so
+ * the licence key never appears in a URL or an access log.
+ */
+Route::prefix('v1/updates')->middleware('throttle:60,1')->group(function () {
+    Route::post('check', [UpdateController::class, 'check']);
+    Route::get('download/{token}', [UpdateController::class, 'download'])->middleware('throttle:20,1');
 });
