@@ -661,6 +661,13 @@ function dlFd(fromForm, row) {
 async function dlPost(id, fd) {
   const res = await fetch('/admin/api/download-artifacts' + (id ? ('/' + id) : ''), {
     method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }, body: fd });
+  // 1-Sep-2026: nginx rejects an oversized body with a 413 HTML page BEFORE PHP
+  // sees it, so our own "file too large" message never runs and the reply is not
+  // JSON — the admin just saw a bare "Save failed". Name the real cause instead.
+  if (res.status === 413) throw 'The web server refused this upload as too large — it never reached SmartEPT. '
+    + 'Raise client_max_body_size in the nginx site config and reload nginx (PHP here already allows '
+    + ((typeof DL_LIMITS !== 'undefined' && DL_LIMITS.upload_max) || 'more') + '). '
+    + 'Or drop the file into storage/app/downloads and choose “Use a file already on the server”.';
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw (data.message || data.error || 'Save failed');
   return data;
