@@ -130,6 +130,15 @@ class ProductUpdateApiController extends Controller
         }
         if ($fileTouched) {
             $path = storage_path(ProductUpdate::DIR . '/' . $filename);
+
+            // Refuse the INSTALLER zip here, where it is still free (1-Sep-2026).
+            // Its files live inside a SmartEPT-Admin-Server/ folder, so an on-prem
+            // updater copies that folder INTO the app root, replaces nothing, and
+            // still reports success. That cost three attempts at a client site.
+            if (is_file($path) && ($why = $this->notAnUpdatePackage($path)) !== null) {
+                return response()->json(['message' => $why], 422);
+            }
+
             $update->size_bytes = is_file($path) ? filesize($path) : null;
             $update->sha256     = is_file($path) ? hash_file('sha256', $path) : null;
         }
@@ -199,6 +208,48 @@ class ProductUpdateApiController extends Controller
             'released_at'  => $u->released_at?->format('d-M-Y H:i'),
             'updated_at'   => $u->updated_at?->format('d-M-Y H:i'),
         ];
+    }
+
+    /**
+     * Null if this archive is a usable update package; otherwise the reason.
+     *
+     * The test is the same one every on-prem updater applies: the application
+     * must be at the ROOT of the archive. `SmartEPT-Update-<ver>.zip` (built flat
+     * by rebuild-server-zip.bat) passes; `SmartEPT-Admin-Server-Setup-<ver>.zip`
+     * — the installer a human unzips by hand — does not.
+     */
+    private function notAnUpdatePackage(string $path): ?string
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            return null;                      // cannot check here; the updater still verifies
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            return 'That file could not be opened as a ZIP.';
+        }
+
+        $missing = [];
+        foreach (['artisan', 'config/app.php', 'app/Providers/AppServiceProvider.php'] as $must) {
+            if ($zip->locateName($must) === false) {
+                $missing[] = $must;
+            }
+        }
+        $first = $zip->numFiles > 0 ? (string) $zip->getNameIndex(0) : '';
+        $zip->close();
+
+        if (! $missing) {
+            return null;
+        }
+
+        $wrapper = strpos($first, '/') !== false ? substr($first, 0, strpos($first, '/')) : null;
+
+        return 'This is not an update package — the application is not at the root of the ZIP'
+            . ($wrapper ? ' (everything sits inside "' . $wrapper . '/")' : '')
+            . '. An updater would copy that folder into the client\'s app folder and change nothing, '
+            . 'while still reporting success. Publish SmartEPT-Update-<version>.zip from '
+            . 'storage/app/updates instead — BUILD-CLIENT-PACKAGE.bat writes it there. '
+            . 'The Setup ZIP is only for fresh installs.';
     }
 
     /** ZIPs sitting in storage/app/updates that were put there outside the browser. */

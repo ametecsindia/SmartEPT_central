@@ -522,6 +522,87 @@ class BillingApiController extends Controller
     }
 
     /**
+     * Edit a NUMBERED order/quote's details — description, requested-by, PO
+     * number — and apply (or clear) a manual discount that lands on the
+     * subtotal BEFORE GST, same maths as the coupon-discount line in quote()
+     * / createOrder(). The 11-Aug rule ("numbered quotations are never
+     * edited: delete + re-create") still holds once money or a licence has
+     * touched the order — so this is scoped exactly like deleteOrder():
+     * nothing on the payments ledger and no licence yet. That guard is what
+     * makes editing safe here — no figure ever moves under money or a GST
+     * invoice that has already gone out (Ejaz, 12-Sep-2026).
+     */
+    public function updateOrder(Request $request, Order $order)
+    {
+        $received = $order->received();
+        if ($received > 0) {
+            return response()->json(['error' => 'This order has ' . number_format($received, 2)
+                . ' recorded on the payments ledger — money-bearing orders can no longer be edited. Use refund / credit note instead.'], 422);
+        }
+        if ($order->licence_id) {
+            return response()->json(['error' => 'This order is linked to licence '
+                . ($order->licence?->key ?? '#' . $order->licence_id) . ' — editing is blocked.'], 422);
+        }
+
+        $data = $request->validate([
+            'description' => ['required', 'string', 'max:255'],
+            'requested_by' => ['nullable', 'string', 'max:190'],
+            'po_number' => ['nullable', 'string', 'max:60'],
+            'discount_type' => ['required', 'in:none,flat,percent'],
+            'discount_value' => ['required_unless:discount_type,none', 'nullable', 'numeric', 'min:0'],
+        ]);
+
+        // Strip any earlier manual discount line to recover the base subtotal,
+        // so re-editing the discount never compounds against an
+        // already-discounted figure (coupon/setup/AMC lines are untouched).
+        $lines = collect($order->line_items)->reject(fn ($l) => ($l['type'] ?? '') === 'manual_discount')->values();
+        $baseSubtotal = round((float) $lines->sum('amount'), 2);
+
+        $discount = 0.0;
+        if ($data['discount_type'] === 'flat') {
+            $discount = round(min((float) $data['discount_value'], $baseSubtotal), 2);
+        } elseif ($data['discount_type'] === 'percent') {
+            $discount = round($baseSubtotal * min((float) $data['discount_value'], 100) / 100, 2);
+        }
+
+        if ($discount > 0) {
+            $lines->push([
+                'type' => 'manual_discount',
+                'description' => 'Discount (manual)' . ($data['discount_type'] === 'percent'
+                    ? ' — ' . rtrim(rtrim(number_format((float) $data['discount_value'], 2), '0'), '.') . '%'
+                    : ''),
+                'qty' => 1,
+                'unit' => -$discount,
+                'amount' => -$discount,
+            ]);
+        }
+
+        $subtotal = round($baseSubtotal - $discount, 2);
+        $gstRate = $order->currency === 'INR' ? (float) \App\Models\Setting::get('gst_rate', 18) : 0.0;
+        $tax = round($subtotal * $gstRate / 100, 2);
+
+        $order->update([
+            'description' => $data['description'],
+            'requested_by' => $data['requested_by'] ?? null,
+            'po_number' => $data['po_number'] ?? null,
+            'line_items' => $lines->values()->all(),
+            'subtotal' => $subtotal,
+            'tax_amount' => $tax,
+            'total' => round($subtotal + $tax, 2),
+            'meta' => array_merge($order->meta ?? [], [
+                'manual_discount_type' => $data['discount_type'],
+                'manual_discount_value' => $data['discount_type'] === 'none' ? 0 : (float) $data['discount_value'],
+            ]),
+        ]);
+
+        AuditLog::write('order.edited', $order, [
+            'discount_type' => $data['discount_type'], 'discount' => $discount, 'total' => $order->total,
+        ]);
+
+        return response()->json($order->fresh()->load(['tenant:id,company_name', 'invoice:id,order_id,number', 'licence:id,key,status,kind']));
+    }
+
+    /**
      * Management approval: quotation → payable order (quote number kept).
      */
     public function approveQuote(Order $order)

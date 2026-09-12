@@ -1897,10 +1897,12 @@ async function loadOrders() {
   <td>${o.status==='request' ? `${CAN_WRITE ? `<button class="link" onclick="openRequest(${o.id})"><b>Open · price · convert</b></button>` : ''}` :
   o.status==='quote' && CAN_WRITE ? `<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Print Quote</a>
   <button class="link" onclick="approveQuote(${o.id})">Approve</button>
+  ${!(o.received>0) && !o.licence ? `<button class="link" onclick="editOrder(${o.id})">Edit</button>` : ''}
   <button class="link" onclick="markPaid(${o.id},'${esc(o.quote_number||o.number)}',${o.balance ?? o.total})">Record Payment</button>` :
   o.status==='created' && CAN_WRITE ? `${o.provisioned_at && o.balance>0
     ? `<button class="link" onclick="recordBalance(${o.id}, ${o.balance}, '${esc(o.tenant?.company_name)}')">Record balance</button>`
-    : `<button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
+    : `${!(o.received>0) && !o.licence ? `<button class="link" onclick="editOrder(${o.id})">Edit</button>` : ''}
+  <button class="link" onclick="markPaid(${o.id},'${esc(o.number)}',${o.balance ?? o.total})">Record Payment</button>`}
   <button class="link" onclick="copyPayLink('${esc(o.number)}')">Pay Link</button>${o.quote_number?`<a class="link" href="/admin/orders/${o.id}/quote-print" target="_blank">Quote</a>`:`<a class="link" href="/admin/orders/${o.id}/proforma" target="_blank">Proforma</a>`}` :
   (o.invoice?`<a class="link" href="/admin/invoices/${o.invoice.id}/print" target="_blank">Invoice</a>`:'')}
   ${ROLE==='super' && !(o.received>0) && !o.licence ? ` <button class="link" style="color:var(--danger)" onclick="delOrder(${o.id},'${esc(o.quote_number||o.number)}')">Delete</button>`:''}</td></tr>`).join('') || '<tr><td colspan="8" class="mini">No orders</td></tr>'}</table></div>`;
@@ -2032,6 +2034,54 @@ async function doPurgeLogs(confirmed) {
 async function approveQuote(id) {
   try { await api(`orders/${id}/approve-quote`, {method:'POST'}); toast('Quotation approved — now payable'); loadOrders(); }
   catch (e) { toast('Error: ' + e); }
+}
+// 12-Sep: edit a numbered order/quote — description/requested-by/PO, and a
+// manual discount taken off the subtotal BEFORE GST (same maths as a coupon).
+// Only offered while unpaid and unlicensed — same rule as Delete.
+async function editOrder(id) {
+  try {
+    const o = await api('orders/' + id);
+    const m = o.meta || {};
+    const discType = m.manual_discount_type || 'none';
+    const discVal = m.manual_discount_value || '';
+    const sym = o.currency === 'INR' ? '₹' : '$';
+    openModal(`<h2>Edit ${o.quote_number ? 'Quotation' : 'Order'} — ${esc(o.quote_number || o.number)}</h2>
+    <div class="sub">Only while nothing has been received and no licence is attached (same rule as Delete) — once money or a licence is on the order, use Refund / credit note instead. A discount here comes off the subtotal <b>before</b> GST, same as a coupon. Current total: <b>${fmtMoney(o.total, o.currency)}</b>.</div>
+    <label>Description</label><input id="eo_desc" value="${esc(o.description)}">
+    <div class="row">
+    <div><label>Requested by</label><input id="eo_reqby" value="${esc(o.requested_by||'')}"></div>
+    <div><label>Client PO number</label><input id="eo_po" value="${esc(o.po_number||'')}"></div></div>
+    <div class="row">
+    <div><label>Discount</label><select id="eo_disc_type" onchange="eoDiscUi()">
+      <option value="none" ${discType==='none'?'selected':''}>No discount</option>
+      <option value="flat" ${discType==='flat'?'selected':''}>Flat amount (${sym})</option>
+      <option value="percent" ${discType==='percent'?'selected':''}>Percentage (%)</option>
+    </select></div>
+    <div id="eo_disc_val_row"><label>Value</label><input id="eo_disc_val" type="number" min="0" step="0.01" value="${discVal}"></div></div>
+    <div class="mini" style="margin-top:4px">Saving recalculates the subtotal, GST and total.</div>
+    <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-p" onclick="doEditOrder(${o.id})">Save</button></div>`);
+    eoDiscUi();
+  } catch (e) { toast('Error: ' + e); }
+}
+function eoDiscUi() {
+  const sel = document.getElementById('eo_disc_type'); if (!sel) return;
+  const row = document.getElementById('eo_disc_val_row'); if (row) row.style.display = sel.value === 'none' ? 'none' : '';
+}
+async function doEditOrder(id) {
+  try {
+    const discType = document.getElementById('eo_disc_type').value;
+    const discVal = discType === 'none' ? null : +document.getElementById('eo_disc_val').value;
+    if (discType !== 'none' && !(discVal > 0)) throw 'Enter a discount value greater than 0.';
+    const o = await api('orders/' + id, {method:'PUT', body:{
+      description: document.getElementById('eo_desc').value.trim(),
+      requested_by: document.getElementById('eo_reqby').value.trim() || null,
+      po_number: document.getElementById('eo_po').value.trim() || null,
+      discount_type: discType,
+      discount_value: discVal,
+    }});
+    closeModal(); toast('Order updated — new total ' + fmtMoney(o.total, o.currency)); loadOrders();
+  } catch (e) { toast('Error: ' + e); }
 }
 async function copyPayLink(number) {
   toast('Payment link: ' + location.origin + '/pay/' + number + '/<token> — token shown in order meta (or share from the client record)');

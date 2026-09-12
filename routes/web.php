@@ -147,6 +147,9 @@ Route::middleware('admin.auth')->prefix('admin')->group(function () {
             Route::post('orders', [Admin\BillingApiController::class, 'createOrder']);
             Route::post('prospect-quote', [Admin\BillingApiController::class, 'prospectQuote']); // Phase 3: one-screen quote for a NEW prospect
             Route::post('setup-invoice', [Admin\BillingApiController::class, 'raiseSetupInvoice']);
+            // 12-Sep: edit a numbered order/quote — description/PO + a manual discount
+            // before GST — allowed only while unpaid and unlicensed (same guard as delete).
+            Route::put('orders/{order}', [Admin\BillingApiController::class, 'updateOrder']);
             // 13-Aug: custom-quotation request queue — edit details, then price + convert
             Route::put('orders/{order}/request', [Admin\BillingApiController::class, 'updateRequest']);
             Route::post('orders/{order}/convert-request', [Admin\BillingApiController::class, 'convertRequest']);
