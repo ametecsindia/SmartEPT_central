@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Plan extends Model
 {
-    protected $fillable = ['code','name','inr_annual','inr_monthly','usd_annual','usd_monthly',
+    // 18-Sep-2026: 'tier' added (Standard/Enforcer/Commander plans) — a plain
+    // nullable string alongside the existing 'code', not a replacement for it.
+    protected $fillable = ['code','tier','name','inr_annual','inr_monthly','usd_annual','usd_monthly',
         'perpetual_device_inr','perpetual_server_inr','min_devices','storage_gb','features','sort','active'];
     protected $casts = ['features'=>'array','active'=>'boolean','storage_gb'=>'integer'];
 

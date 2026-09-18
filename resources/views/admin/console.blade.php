@@ -1222,20 +1222,37 @@ async licences() {
 },
 
 // ============ PLANS ============
-async plans() {
+// 18-Sep-2026 (Standard/Enforcer/Commander plans): a plan WITH a `tier` is one
+// of the three sold tiers, each priced independently (On-Premises + Cloud);
+// a plan withOUT one is a pre-tier legacy row (e.g. the retired 'professional'
+// fallback) kept only so its existing licences keep resolving. Previously this
+// screen picked exactly one plan (code==='smartept') and listed every OTHER
+// plan as "legacy … not sold" — which would have wrongly buried Enforcer and
+// Commander the moment they existed as Plan rows. Now every tiered plan gets
+// its own tab, defaulting to Standard.
+async plans(selectId) {
   const [resp, s] = await Promise.all([api('plans'), api('settings').catch(()=>({}))]);
   const plans = Array.isArray(resp) ? resp : (resp.data || []);
-  const p = plans.find(x=>x.code==='smartept') || plans.find(x=>x.active) || plans[0];
+  window.__ALL_PLANS = plans;
+  const tiered = plans.filter(x=>x.tier).sort((a,b)=>(a.sort||0)-(b.sort||0));
+  const legacy = plans.filter(x=>!x.tier);
+  const p = (selectId && plans.find(x=>String(x.id)===String(selectId)))
+    || tiered.find(x=>x.tier==='standard') || tiered[0] || plans.find(x=>x.active) || plans[0];
   if (!p) { P.innerHTML = '<div class="mini">No pricing plan found — run the pricing seeder.</div>'; return; }
-  const legacy = plans.filter(x=>x!==p);
   window.__PLAN = p;
   const canW = ROLE==='super';
   const ro = canW ? '' : 'readonly';
   const aD = (+s.pricing_annual_discount_pct||25), hD = (+s.pricing_half_yearly_discount_pct||10);
   const cloudRows = ((p.volume_tiers||[]).length ? p.volume_tiers : [{min_devices:'',max_devices:'',rate_inr_annual:''}]).map(t=>pcCloudRow(t.min_devices,t.max_devices,t.rate_inr_annual,canW)).join('');
   const perpRows = ((p.perpetual_bands||[]).length ? p.perpetual_bands : [{min_users:'',max_users:'',price_inr:''}]).map(b=>pcPerpRow(b.min_users,b.max_users,b.price_inr,canW)).join('');
+  // 18-Sep-2026: RENDER.plans is a method on the RENDER object, not a global —
+  // onclick="plans(id)" called a nonexistent global fn and silently no-op'd
+  // (ReferenceError swallowed by the inline handler), so Enforcer/Commander
+  // tabs never responded to a click.
+  const tabs = tiered.length > 1 ? `<div class="row" style="margin-bottom:10px">${tiered.map(t=>`<button class="btn ${t.id===p.id?'btn-p':'btn-l'}" onclick="RENDER.plans(${t.id})">${esc(t.name)}${t.active?'':' (inactive)'}</button>`).join(' ')}</div>` : '';
   P.innerHTML = `
-  <div class="mini" style="margin-bottom:12px">Full pricing control for <b>${esc(p.name)}</b> — the single SmartEPT product. Edit the <b>Cloud rental</b> and <b>On-Premise Lifetime</b> bands below and Save; the public landing &amp; calculator follow within ~5 minutes.${canW?'':' <b>(read-only — super admin can edit)</b>'}</div>
+  ${tabs}
+  <div class="mini" style="margin-bottom:12px">Full pricing control for <b>${esc(p.name)}</b> — priced independently, On-Premises and Cloud. Edit the <b>Cloud rental</b> and <b>On-Premise Lifetime</b> bands below and Save; the public landing &amp; calculator follow within ~5 minutes.${canW?'':' <b>(read-only — super admin can edit)</b>'} ${!p.active?'<b style="color:var(--warn)">This plan is INACTIVE — not sold or quotable until priced and activated.</b>':''}</div>
 
   <div class="card"><h3>SmartEPT Cloud — monthly rental (by users)</h3>
     <div class="sub">Price is <b>₹ per user / month</b> at the Annual rate for each user band. Quarterly = base, Half-Yearly = &minus;${hD}%, Annual = published (&minus;${aD}% off base). Leave <b>Max users</b> blank for the open-ended top band.</div>
@@ -1789,11 +1806,19 @@ async function doUpgLic(id){
     loadLicences();
   }catch(e){ msg.textContent = '✗ ' + (e.message || e); }
 }
-function editLic(id){
+async function editLic(id){
   const l=_licById(id);
   const sel=(name,val,opts)=>`<select id="${name}">`+opts.map(o=>`<option value="${o[0]}"${o[0]===val?' selected':''}>${o[1]}</option>`).join('')+`</select>`;
+  // 18-Sep-2026 (Standard/Enforcer/Commander): manual plan re-assignment for an
+  // existing licence — same update() endpoint the purchase flow's issue()
+  // ultimately shares, with a before/after audit trail (LicenceApiController::
+  // update() now logs previous_plan_code/tier + new_plan_code/tier).
+  const plansResp = await api('plans');
+  const plans = Array.isArray(plansResp) ? plansResp : (plansResp.data || []);
   openModal(`<h2>Edit licence</h2>
     <div class="sub">Correct any detail for <b>${esc(l.key||'')}</b> — e.g. a wrong expiry date. Leave the date blank for a perpetual (never-expiring) licence.</div>
+    <label>Plan</label>
+    <select id="ed_plan">${planOptionsHtml(plans, l.plan ? l.plan.code : 'smartept')}</select>
     <label>Expiry date</label>
     <input id="ed_exp" type="date" value="${l.expires_at? l.expires_at.slice(0,10):''}">
     <label>Device limit</label>
@@ -1806,11 +1831,24 @@ function editLic(id){
     ${sel('ed_bill', l.billing, [['monthly','Monthly'],['quarterly','Quarterly'],['half_yearly','Half-yearly'],['annual','Annual']])}
     <label>Deployment</label>
     ${sel('ed_dep', l.deployment, [['client_hosted','On-premises (client hosted)'],['cloud','Cloud (Ametecs hosted)']])}
+    <label>LiveView — concurrent sessions <span class="mini">(Commander plans only)</span></label>
+    <input id="ed_lvmc" type="number" min="1" value="${(l.features&&l.features.liveview_max_concurrent)||''}" placeholder="1">
+    <label>Reason for this change <span class="mini">(optional — recorded in the licence History)</span></label>
+    <input id="ed_note" placeholder="e.g. upgraded to Enforcer per client's 18-Sep call">
     <div class="mini" id="ed_msg" style="margin-top:6px"></div>
     <div class="foot"><button class="btn btn-l" onclick="closeModal()">Cancel</button>
     <button class="btn btn-p" onclick="saveLic(${id})">Save changes</button></div>`);
   const edk = document.getElementById('ed_kind');
   if (edk) { edk.onchange = () => edKindUi(l.billing); edKindUi(l.billing); }
+  // 18-Sep-2026: LiveView concurrency only means anything on Commander — grey
+  // it out (and clear it) for any other plan, same live-toggle pattern as edKindUi.
+  const edp = document.getElementById('ed_plan'), lvmc = document.getElementById('ed_lvmc');
+  const edPlanUi = () => {
+    const tier = (plans.find(p => p.code === edp.value) || {}).tier;
+    lvmc.disabled = tier !== 'commander';
+    if (lvmc.disabled) lvmc.value = '';
+  };
+  if (edp) { edp.onchange = edPlanUi; edPlanUi(); }
 }
 // Perpetual/trial = no billing period — Edit-licence modal (Ejaz, 6-Aug).
 const ED_BILL_OPTS = [['monthly','Monthly'],['quarterly','Quarterly'],['half_yearly','Half-yearly'],['annual','Annual']];
@@ -1823,12 +1861,15 @@ function edKindUi(cur){
 }
 async function saveLic(id){
   const body={
+    plan_code:(document.getElementById('ed_plan')||{}).value||null,
     expires_at:(document.getElementById('ed_exp').value||''),
     device_limit:parseInt(document.getElementById('ed_dev').value,10)||null,
     renewal_device_limit:parseInt(document.getElementById('ed_rdl').value,10)||null,
     kind:document.getElementById('ed_kind').value,
     billing:document.getElementById('ed_bill').value,
     deployment:document.getElementById('ed_dep').value,
+    liveview_max_concurrent:parseInt(document.getElementById('ed_lvmc').value,10)||null,
+    note:(document.getElementById('ed_note')||{}).value||null,
   };
   try{ await api(`licences/${id}`,{method:'PUT',body}); toast('Licence updated'); closeModal(); loadLicences(); }
   catch(e){ document.getElementById('ed_msg').textContent='Error: '+e; }
@@ -1858,10 +1899,11 @@ async function doLicFile(id) {
   } catch (e) { msg.textContent = '✗ ' + (e.message || e); }
 }
 async function issueLicence() {
-  const tenants = await api('tenants?status=');
+  const [tenants, plansResp] = await Promise.all([api('tenants?status='), api('plans')]);
+  const plans = Array.isArray(plansResp) ? plansResp : (plansResp.data || []);
   openModal(`<h2>Issue Licence</h2><div class="sub">Direct issue without an order — use Orders for the full payment flow.</div>
   <label>Client</label><select id="il_tenant">${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
-  <div class="row"><div><label>Plan</label><select id="il_plan"><option value="smartept" selected>SmartEPT (all features)</option></select></div>
+  <div class="row"><div><label>Plan</label><select id="il_plan">${planOptionsHtml(plans, 'smartept')}</select></div>
   <div><label>Kind</label><select id="il_kind" onchange="kindBillingUi('il_kind','il_billing')"><option>subscription</option><option>perpetual</option><option>trial</option></select></div>
   <div><label>Billing period</label><select id="il_billing"><option value="annual">Annual — 12 months (best price, 25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="il_deploy"><option value="client_hosted">Client-Hosted</option><option value="cloud">Cloud</option></select></div>
@@ -2087,8 +2129,9 @@ async function copyPayLink(number) {
   toast('Payment link: ' + location.origin + '/pay/' + number + '/<token> — token shown in order meta (or share from the client record)');
 }
 async function newOrder() {
-  const tenants = await api('tenants?status=');
+  const [tenants, plansResp] = await Promise.all([api('tenants?status='), api('plans')]);
   window.NO_TENANTS = tenants.data || [];
+  const plans = Array.isArray(plansResp) ? plansResp : (plansResp.data || []);
   openModal(`<h2>New Order / Quote</h2><div class="sub">Live quote updates as you type — includes the one-time Setup &amp; Onboarding fee automatically on a client's first paid order. Pick a client — their details load below for checking/correcting — or choose <b>➕ NEW client</b> and enter the details right here (13-Aug).</div>
   <label>Client</label><select id="no_tenant" onchange="noClientUi();refreshQuote()"><option value="new">➕ NEW client — enter details below</option>${tenants.data.map(t=>`<option value="${t.id}">${esc(t.company_name)}</option>`).join('')}</select>
   <div class="row" style="margin-top:6px">
@@ -2101,7 +2144,7 @@ async function newOrder() {
   <div><label>Currency</label><select id="no_c_currency"><option value="INR">₹ INR (GST invoice)</option><option value="USD">$ USD (export invoice)</option></select></div></div>
   <div class="mini" id="no_c_note" style="margin-bottom:4px"></div>
   <div class="row">
-  <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()"><option value="smartept" selected>SmartEPT — all features</option></select></div>
+  <div><label>Plan</label><select id="no_plan" onchange="refreshQuote()">${planOptionsHtml(plans, 'smartept')}</select></div>
   <div><label>Kind</label><select id="no_kind" onchange="kindBillingUi('no_kind','no_billing');refreshQuote()"><option value="subscription">Subscription</option><option value="perpetual">Perpetual (one-time)</option></select></div>
   <div><label>Billing period</label><select id="no_billing" onchange="refreshQuote()"><option value="annual">Annual — 12 months (25% off base)</option><option value="half_yearly">Half-yearly — 6 months (10% off base)</option><option value="quarterly">Quarterly — 3 months (base rate)</option></select></div>
   <div><label>Deployment</label><select id="no_deploy" onchange="refreshQuote()"><option value="client_hosted">Client-Hosted</option><option value="cloud">SmartEPT Cloud</option></select></div>
@@ -2475,6 +2518,15 @@ async function sendTestEmail() {
     const r = await api('config/test-email', {method:'POST', body:{to}});
     msg.textContent = r.message; msg.style.color = r.ok ? '#16A34A' : '#DC2626';
   } catch (e) { msg.textContent = 'Error: ' + e; msg.style.color = '#DC2626'; }
+}
+// 18-Sep-2026 (Standard/Enforcer/Commander plans): shared option-list builder
+// for every Plan dropdown (Issue Licence, New Order/Quote) — active tiered
+// plans only, so an unpriced/inactive tier never appears as choosable.
+function planOptionsHtml(plans, selectedCode) {
+  const active = (plans || []).filter(x => x.active);
+  const list = active.filter(x => x.tier).sort((a, b) => (a.sort || 0) - (b.sort || 0));
+  const opts = list.length ? list : active; // legacy install with no tiered plan yet
+  return opts.map(p => `<option value="${esc(p.code)}" ${p.code === selectedCode ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
 }
 function editPlan(p) {
   const pr = window.__PRICING || {aD:0.25,hD:0.10,cx:1.5};

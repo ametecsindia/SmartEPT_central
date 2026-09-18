@@ -228,8 +228,11 @@ class PricingService
 
         $lines = [[
             'type' => 'licence',
-            'description' => sprintf('SmartEPT Cloud — %d users × ₹%s/user/month × %d months (%s)',
-                $devices, number_format($rate, $rate == (int) $rate ? 0 : 2),
+            // 18-Sep-2026: Standard/Enforcer/Commander — name the actual plan
+            // sold, not a generic "SmartEPT Cloud" (every invoice line used to
+            // say the same thing regardless of tier).
+            'description' => sprintf('%s Cloud — %d users × ₹%s/user/month × %d months (%s)',
+                $plan->name, $devices, number_format($rate, $rate == (int) $rate ? 0 : 2),
                 $months, str_replace('_', '-', $billing)),
             'qty' => $devices,
             'unit' => $rate * $months,
@@ -266,12 +269,18 @@ class PricingService
         return $priced->isEmpty() ? null : (int) $priced->last()->max_devices;
     }
 
-    /** True when a Cloud user count is above the last priced tier → custom quotation, never ₹0. */
+    /**
+     * True when a Cloud user count needs a custom quotation, never ₹0.
+     * True both above the last priced tier AND when the plan has no priced
+     * tiers at all (Enforcer/Commander before Ejaz configures their volume
+     * tiers, 18-Sep-2026) — the same "no automatic price" convention the
+     * On-Premise side already uses for a plan with zero perpetual bands.
+     */
     public function cloudIsCustom(Plan $plan, int $devices): bool
     {
         $top = $this->maxPricedDevices($plan);
 
-        return $top !== null && $devices > $top;
+        return $top === null || $devices > $top;
     }
 
     /** The perpetual band a given user count falls into, or null when above the top band (custom quote). */
@@ -419,7 +428,9 @@ class PricingService
 
         $lines = [[
             'type' => 'perpetual_licence',
-            'description' => sprintf('SmartEPT Perpetual — lifetime licence (%d users, all features)', $users),
+            // 18-Sep-2026: name the actual plan tier — "all features" dropped,
+            // no longer true for Standard/Enforcer.
+            'description' => sprintf('%s Perpetual — lifetime licence (%d users)', $plan->name, $users),
             'qty' => 1,
             'unit' => (float) $calc['price'],
             'amount' => (float) $calc['price'],
@@ -458,8 +469,8 @@ class PricingService
         $lines = [[
             'type' => $kind === 'perpetual' ? 'perpetual_licence' : 'licence',
             'description' => $kind === 'perpetual'
-                ? sprintf('SmartEPT Perpetual — lifetime licence (%d users, all features) · special price', $users)
-                : sprintf('SmartEPT Cloud — %d users (%s) · special price', $users, str_replace('_', '-', $billing)),
+                ? sprintf('%s Perpetual — lifetime licence (%d users) · special price', $plan->name, $users)
+                : sprintf('%s Cloud — %d users (%s) · special price', $plan->name, $users, str_replace('_', '-', $billing)),
             'qty' => 1,
             'unit' => (float) $price,
             'amount' => (float) $price,

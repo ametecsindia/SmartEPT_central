@@ -33,6 +33,19 @@ class BuyController extends Controller
         return view('buy', ['couponsLive' => \App\Models\Coupon::anyLive()]);
     }
 
+    /**
+     * Standard / Enforcer / Commander plans (18-Sep-2026): resolve the buyer's
+     * chosen plan tier to its Plan row. 'standard' additionally falls back to
+     * the historical code=smartept lookup so this stays additive — a plan row
+     * that predates the `tier` column (or a request that omits `tier` entirely,
+     * same as before this change) still resolves exactly as it did before.
+     */
+    private function resolvePlan(string $tier): ?Plan
+    {
+        return Plan::where('tier', $tier)->where('active', true)->first()
+            ?? ($tier === 'standard' ? Plan::where('code', 'smartept')->where('active', true)->first() : null);
+    }
+
     public function order(Request $request, BillingService $billing, PricingService $pricing)
     {
         // Honeypot (Ejaz, 7-Aug): bots fill the invisible field — feed them a
@@ -58,6 +71,10 @@ class BuyController extends Controller
             // Phase 4: international buyers pay in USD via Stripe (zero-GST export invoice).
             'currency' => ['nullable', 'in:INR,USD'],
             'terms_accepted' => ['accepted'],
+            // 18-Sep-2026: Standard/Enforcer/Commander. Defaults to 'standard' —
+            // the homepage default — so an old client that never sends this
+            // field behaves exactly as before.
+            'tier' => ['nullable', 'in:standard,enforcer,commander'],
         ], [
             'state_code.required' => 'Please pick your state — it decides how GST appears on your invoice (CGST+SGST for Telangana, IGST for other states).',
             'state_code.in' => 'Please pick your state from the list — it decides how GST appears on your invoice.',
@@ -78,7 +95,8 @@ class BuyController extends Controller
             return response()->json(['error' => 'This email already has a SmartEPT account. Please sign in to your client portal — you can buy, upgrade or renew right from there.'], 422);
         }
 
-        $plan = Plan::where('code', 'smartept')->where('active', true)->first();
+        $tier = $data['tier'] ?? 'standard';
+        $plan = $this->resolvePlan($tier);
         if (! $plan) {
             return response()->json(['error' => 'Pricing is being updated right now — please try again in a few minutes, or WhatsApp us on 90000 98877.'], 422);
         }
@@ -191,6 +209,8 @@ class BuyController extends Controller
             'include_setup' => ['nullable', 'boolean'],
             'coupon_code' => ['nullable', 'string', 'max:40'],
             'currency' => ['nullable', 'in:INR,USD'],
+            // 18-Sep-2026: Standard/Enforcer/Commander — see resolvePlan().
+            'tier' => ['nullable', 'in:standard,enforcer,commander'],
         ], [
             'state_code.required' => 'Please pick your state — the quotation shows GST exactly as your invoice will.',
         ]);
@@ -204,7 +224,8 @@ class BuyController extends Controller
             return response()->json(['error' => 'This email already has a SmartEPT account. Please sign in to your client portal — you can raise a quotation right from there.'], 422);
         }
 
-        $plan = Plan::where('code', 'smartept')->where('active', true)->first();
+        $tier = $data['tier'] ?? 'standard';
+        $plan = $this->resolvePlan($tier);
         if (! $plan) {
             return response()->json(['error' => 'Pricing is being updated right now — please try again in a few minutes, or WhatsApp us on 90000 98877.'], 422);
         }

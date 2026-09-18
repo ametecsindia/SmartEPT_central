@@ -29,6 +29,11 @@ class PublicController extends Controller
                     ->map(fn ($p) => [
                         'code' => $p->code,
                         'name' => $p->name,
+                        // Phase 4 (18-Sep-2026): tier/features let the /buy page group
+                        // and describe Standard/Enforcer/Commander. NULL tier = a
+                        // pre-tier legacy plan the buy page should not offer.
+                        'tier' => $p->tier,
+                        'features' => $p->features ?? [],
                         'inr_annual' => (float) $p->inr_annual,
                         'inr_monthly' => (float) $p->inr_monthly,
                         'usd_annual' => (float) $p->usd_annual,

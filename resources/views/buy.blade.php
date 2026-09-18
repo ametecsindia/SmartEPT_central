@@ -64,6 +64,12 @@ a.quote{display:block;text-align:center;margin-top:9px;padding:11px;border:1.5px
     <div class="plan-name" id="sumPlan">SmartEPT Managed Cloud</div>
     <div class="plan-tag" id="sumTag">Every standard feature included. Managed hosting + 500&nbsp;MB pooled storage per user; additional storage ₹3/GB/month.</div>
 
+    {{-- 18-Sep-2026: Standard/Enforcer/Commander. Hidden by JS until at least
+         two priced tiers exist, so a fresh install (no tier column seeded yet)
+         looks exactly as it did before this feature. --}}
+    <div class="ctrl" id="tierCtrl"><label>Plan</label>
+      <div class="seg" id="segTier"></div>
+    </div>
     <div class="ctrl"><label>How you buy</label>
       <div class="seg" id="segKind">
         <button type="button" data-kind="subscription" class="on" id="kCloud">Rent · Cloud</button>
@@ -160,6 +166,49 @@ let PLANS=[], GST=18, SETUP={base:5000,included:30,per:100}, ANN_DISC=0.25, HALF
 // Per-user/month cloud rate — mirrors backend PricingService::deviceRate exactly (config-driven, rounded).
 function cloudRate(annual,cyc){ const base=annual/Math.max(0.1,1-ANN_DISC); if(cyc==='y') return annual; if(cyc==='h') return Math.round(base*(1-HALF_DISC)*100)/100; return Math.round(base*100)/100; }
 let KIND='subscription', CYC='y', COUPON=null;
+// 18-Sep-2026: Standard/Enforcer/Commander — which Plan row prices this order.
+let TIER='standard';
+function currentPlan(){return PLANS.find(p=>p.tier===TIER) || PLANS.find(p=>p.tier==='standard') || PLANS[0] || null;}
+function tierBlurb(p){
+  if(!p||!p.features)return '';
+  if(p.features.live_view)return ' Includes Enforcement + Live View.';
+  if(p.features.enforcement)return ' Includes Enforcement.';
+  return '';
+}
+function updateSummary(){
+  const p=currentPlan();
+  const base=(KIND==='perpetual')
+    ? 'One-time, client-hosted licence — never expires. First 12 months of updates & support included; optional AMC from Year 2.'
+    : 'Every standard feature included. Managed hosting + 500 MB pooled storage per user; additional storage ₹3/GB/month.';
+  document.getElementById('sumPlan').textContent = p ? p.name : (KIND==='perpetual'?'SmartEPT Perpetual':'SmartEPT Managed Cloud');
+  document.getElementById('sumTag').textContent = base+tierBlurb(p);
+}
+// Fresh install (tier column not seeded yet) → 0 or 1 tiered plan → hide the
+// selector entirely rather than show a useless single-button segment.
+// Label by TIER, never by stripping "SmartEPT" off p.name — the legacy
+// Standard row's name IS just "SmartEPT", so stripping the prefix left an
+// empty button label (18-Sep-2026 bug). Falls back to the plan's own name
+// only if a future tier isn't in this map yet.
+const TIER_LABELS={standard:'Standard',enforcer:'Enforcer',commander:'Commander'};
+function buildTierSeg(){
+  const order=['standard','enforcer','commander'];
+  const tiered=PLANS.filter(p=>p.tier).sort((a,b)=>order.indexOf(a.tier)-order.indexOf(b.tier));
+  const ctrl=document.getElementById('tierCtrl'), seg=document.getElementById('segTier');
+  if(!ctrl||!seg)return;
+  if(tiered.length<2){ctrl.style.display='none';return;}
+  if(!tiered.some(p=>p.tier===TIER))TIER='standard';
+  ctrl.style.display='';
+  seg.innerHTML=tiered.map(p=>'<button type="button" data-tier="'+p.tier+'" class="'+(p.tier===TIER?'on':'')+'">'+(TIER_LABELS[p.tier]||p.name)+'</button>').join('');
+  seg.querySelectorAll('button').forEach(b=>{b.onclick=()=>segTierFn(b.dataset.tier);});
+}
+function segTierFn(v){
+  TIER=v;
+  document.querySelectorAll('#segTier button').forEach(b=>b.classList.toggle('on',b.dataset.tier===v));
+  seedPerpCfg(currentPlan());
+  updateSummary();
+  try{const u=new URL(location.href);u.searchParams.set('tier',v);history.replaceState({},'',u);}catch(e){}
+  render();upd();
+}
 // 13-Aug: beyond the last priced milestone the page flips into REQUEST mode —
 // same form, no payment: details (incl. billing contact + notes) go to the
 // admin request queue, and the team emails the personalised quotation.
@@ -181,6 +230,17 @@ function setCustomMode(on){
 // in between = straight-line interpolation; first band = flat minimum package.
 // Fallback values only — overwritten by the live admin-saved bands from /api/plans.
 const PERP_CFG={min:1,miles:[{u:30,p:25000},{u:100,p:50000},{u:250,p:85000},{u:500,p:125000},{u:1000,p:200000},{u:2000,p:325000},{u:5000,p:500000}]};
+// Re-seeds PERP_CFG from the SELECTED plan's own bands whenever the tier
+// changes — a plan with zero bands (Enforcer/Commander before Ejaz prices
+// them) correctly falls back to "always custom quote" (empty miles), never
+// the previous tier's numbers.
+function seedPerpCfg(p){
+  const pb=(p&&Array.isArray(p.perpetual_bands))
+    ? p.perpetual_bands.filter(b=>b.max!=null&&b.price!=null&&b.price>0).map(b=>({u:b.max,p:b.price,min:b.min})).sort((a,b)=>a.u-b.u)
+    : [];
+  if(pb.length){PERP_CFG.min=Math.min(...pb.map(b=>b.min));PERP_CFG.miles=pb.map(b=>({u:b.u,p:b.p}));}
+  else{PERP_CFG.min=1;PERP_CFG.miles=[];}
+}
 function perpPriceFor(u){
   const m=PERP_CFG.miles; if(!m.length) return {custom:true,top:0};
   if(u<PERP_CFG.min) return {belowMin:true,min:PERP_CFG.min};
@@ -204,13 +264,15 @@ async function post(url,data){const res=await fetch(url,{method:'POST',headers:{
 const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
 // Mirrors PricingService::deviceRate() + cloudIsCustom(): an open-ended (max null)
 // or zero-rate tier is the CUSTOM QUOTE band, not a ₹0 price. 31-Aug-2026.
-function annualRate(dev){const p=PLANS[0]||null;if(!p)return{r:0,p:null};
+function annualRate(dev){const p=currentPlan();if(!p)return{r:0,p:null};
   let r=p.inr_annual, top=null;
   (p.volume_tiers||[]).forEach(t=>{
     if(t.max===null||!(Number(t.rate)>0))return;               // custom-quote band — never a price
     if(top===null||t.max>top)top=t.max;
     if(dev>=t.min&&dev<=t.max)r=t.rate;});
-  return {r,p,custom:top!==null&&dev>top,top};}
+  // top===null (no priced tier at all — e.g. Enforcer/Commander before Ejaz
+  // configures them) is custom too, mirroring PricingService::cloudIsCustom().
+  return {r,p,custom:(top===null)||(dev>top),top};}
 
 function render(){
   const dev=Math.max(1,parseInt(document.getElementById('devCount').value||'1',10));
@@ -273,13 +335,13 @@ function render(){
   if(cloudCustom){
     setCustomMode(true);
     dr.style.display='none';
-    document.getElementById('ivSubLbl').textContent='Cloud · '+cloudTop.toLocaleString('en-IN')+'+ users';
+    document.getElementById('ivSubLbl').textContent='Cloud · '+(cloudTop?cloudTop.toLocaleString('en-IN')+'+ users':'custom pricing');
     document.getElementById('ivSub').textContent='Custom';
     cr.style.display='none';
     document.getElementById('ivGst').textContent='—';
     document.getElementById('ivTotLbl').textContent='Custom quotation';
     document.getElementById('ivTot').textContent='Personalised';
-    document.getElementById('ivEff').textContent='Beyond '+cloudTop.toLocaleString('en-IN')+' users we tailor the per-user rate — fill your details, submit, and our team emails your formal quotation with a pay link.';
+    document.getElementById('ivEff').textContent=(cloudTop?('Beyond '+cloudTop.toLocaleString('en-IN')+' users we tailor the per-user rate'):'Pricing for this plan is personalised')+' — fill your details, submit, and our team emails your formal quotation with a pay link.';
     btn.disabled=false;btn.textContent='Request a custom quotation →';
     return;
   }
@@ -337,6 +399,7 @@ async function doBuy(e){
     data.include_setup = document.getElementById('setupChk').checked ? 1 : 0;
     data.coupon_code = COUPON ? COUPON.code : null;
     data.currency = CUR;
+    data.tier = TIER;
     const out=await post('/buy/order',data);
     show('ok','Order '+out.number+' created — opening the secure payment page…');
     location.href=out.pay_url;
@@ -357,7 +420,7 @@ async function doQuote(){
       users:Math.max(1,parseInt(document.getElementById('devCount').value||'1',10)),
       billing:CYC==='y'?'annual':(CYC==='h'?'half_yearly':'quarterly'),
       include_setup:document.getElementById('setupChk').checked?1:0,
-      coupon_code:COUPON?COUPON.code:null, currency:CUR};
+      coupon_code:COUPON?COUPON.code:null, currency:CUR, tier:TIER};
     const out=await post('/buy/quote',body);
     show('ok','✓ '+out.message+'<br><b>Quotation '+out.quote_number+'</b> — <a href="'+out.print_url+'" target="_blank" style="color:#0B6373;font-weight:700">view / print it</a> · <a href="'+out.pay_url+'" style="color:#0B6373;font-weight:700">open the pay link</a>. It is also in your inbox.');
   }catch(err){show('err',err.message);}
@@ -370,6 +433,7 @@ async function doQuote(){
   STATES.slice().sort((a,b)=>a[1].localeCompare(b[1])).forEach(([c,n])=>{const o=document.createElement('option');o.value=c;o.textContent=n+' ('+c+')';sel.appendChild(o);});
   const params=new URLSearchParams(location.search);
   KIND=(params.get('kind')||'').toLowerCase()==='perpetual'?'perpetual':'subscription';
+  {const t=(params.get('tier')||'').toLowerCase();if(['standard','enforcer','commander'].includes(t))TIER=t;}
   const dc=document.getElementById('devCount');
   const u0=parseInt(params.get('users')||'0',10); if(u0>0)dc.value=u0;
   document.getElementById('devMinus').onclick=()=>{dc.value=Math.max(1,(parseInt(dc.value||'1',10)-5));render();upd();};
@@ -379,7 +443,7 @@ async function doQuote(){
   document.getElementById('cQ').onclick=()=>segCyc('q');
   document.getElementById('cH').onclick=()=>segCyc('h');
   document.getElementById('cY').onclick=()=>segCyc('y');
-  function segKind(v){KIND=v;document.getElementById('kCloud').classList.toggle('on',v==='subscription');document.getElementById('kPerp').classList.toggle('on',v==='perpetual');const ap=document.getElementById('advPayCtrl');if(ap)ap.style.display=(v==='perpetual'?'none':'');document.getElementById('sumPlan').textContent=(v==='perpetual'?'SmartEPT Perpetual':'SmartEPT Managed Cloud');document.getElementById('sumTag').textContent=(v==='perpetual'?'One-time, client-hosted licence — never expires. First 12 months of updates & support included; optional AMC from Year 2.':'Every standard feature included. Managed hosting + 500 MB pooled storage per user; additional storage ₹3/GB/month.');try{const u=new URL(location.href);u.searchParams.set('kind',v==='perpetual'?'perpetual':'cloud');history.replaceState({},'',u);}catch(e){}render();upd();}
+  function segKind(v){KIND=v;document.getElementById('kCloud').classList.toggle('on',v==='subscription');document.getElementById('kPerp').classList.toggle('on',v==='perpetual');const ap=document.getElementById('advPayCtrl');if(ap)ap.style.display=(v==='perpetual'?'none':'');updateSummary();try{const u=new URL(location.href);u.searchParams.set('kind',v==='perpetual'?'perpetual':'cloud');history.replaceState({},'',u);}catch(e){}render();upd();}
   document.getElementById('kCloud').onclick=()=>segKind('subscription');
   document.getElementById('kPerp').onclick=()=>segKind('perpetual');
   function segCur(v){CUR=v;document.getElementById('curINR').classList.toggle('on',v==='INR');document.getElementById('curUSD').classList.toggle('on',v==='USD');render();}
@@ -427,7 +491,8 @@ async function doQuote(){
     if(j.setup)SETUP={base:j.setup.base,included:j.setup.included,per:j.setup.per_extra};
     if(j.cycles){if(j.cycles.annual_discount!=null)ANN_DISC=+j.cycles.annual_discount;if(j.cycles.half_yearly_discount!=null)HALF_DISC=+j.cycles.half_yearly_discount;}
     {const oh=document.querySelector('#cH .off');if(oh)oh.textContent=Math.round(HALF_DISC*100)+'% off';const oy=document.querySelector('#cY .off');if(oy)oy.textContent=Math.round(ANN_DISC*100)+'% off';}
-    if(PLANS[0]&&Array.isArray(PLANS[0].perpetual_bands)){const pb=PLANS[0].perpetual_bands.filter(b=>b.max!=null&&b.price!=null&&b.price>0).map(b=>({u:b.max,p:b.price,min:b.min})).sort((a,b)=>a.u-b.u);if(pb.length){PERP_CFG.min=Math.min(...pb.map(b=>b.min));PERP_CFG.miles=pb.map(b=>({u:b.u,p:b.p}));}}
+    buildTierSeg();
+    seedPerpCfg(currentPlan());
     render();
   }catch(e){document.getElementById('inv').style.opacity=.5;}
   function upd(){const dev=document.getElementById('devCount').value;const t=KIND==='perpetual'?('Hi Ametecs, I would like a quotation for SmartEPT Perpetual — '+dev+' users (one-time licence).'):('Hi Ametecs, I would like a quotation for SmartEPT Cloud — '+dev+' users, '+PERIOD[CYC].label+'.');const wa=document.getElementById('quoteWa');if(wa)wa.href='https://wa.me/919000098877?text='+encodeURIComponent(t);}

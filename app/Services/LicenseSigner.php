@@ -38,6 +38,8 @@ class LicenseSigner
             'key'          => $licence->key,
             'company'      => optional($licence->tenant)->company_name,
             'plan'         => optional($licence->plan)->code ?? optional($licence->plan)->name,
+            // 18-Sep-2026: Standard/Enforcer/Commander — additive, alongside 'plan'.
+            'tier'         => optional($licence->plan)->tier,
             'device_limit' => $licence->device_limit,
             'kind'         => $licence->kind,
             'deployment'   => $licence->deployment,

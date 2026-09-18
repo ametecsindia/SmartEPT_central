@@ -158,6 +158,8 @@ class LicenceService
             'key' => $licence->key,
             'company' => $licence->tenant->company_name,
             'plan' => $licence->plan->code,
+            // 18-Sep-2026: Standard/Enforcer/Commander — additive, alongside 'plan'.
+            'tier' => $licence->plan->tier,
             'kind' => $licence->kind,
             'deployment' => $licence->deployment,
             'device_limit' => $licence->device_limit,

@@ -46,13 +46,21 @@ class LicenceApiController extends Controller
             'device_limit' => ['required', 'integer', 'min:1', 'max:100000'],
         ]);
 
+        $plan = Plan::where('code', $data['plan_code'])->firstOrFail();
         $licence = $this->licences->issue(
             Tenant::findOrFail($data['tenant_id']),
-            Plan::where('code', $data['plan_code'])->firstOrFail(),
+            $plan,
             $data
         );
 
-        AuditLog::write('licence.issued', $licence, ['key' => $licence->key]);
+        // 18-Sep-2026: Standard/Enforcer/Commander — record which plan/tier a
+        // manually-issued licence started on, for the same audit trail a
+        // purchase gets automatically via BuyController -> createOrder().
+        AuditLog::write('licence.issued', $licence, [
+            'key' => $licence->key,
+            'plan_code' => $plan->code,
+            'plan_tier' => $plan->tier,
+        ]);
 
         return response()->json($licence->load('plan:id,code,name'), 201);
     }
@@ -297,6 +305,16 @@ class LicenceApiController extends Controller
             'billing'      => ['nullable', 'in:annual,half_yearly,quarterly,monthly'],
             'deployment'   => ['nullable', 'in:client_hosted,cloud'],
             'plan_code'    => ['nullable', 'exists:plans,code'],
+            // LiveView Phase 4 (14-Sep-2026): per-licence override of the client app's
+            // concurrent-session limit (bundle['features']['liveview_max_concurrent'],
+            // read by SmartEPT's LiveViewController::start() — defaults to 1 when unset).
+            // ponytail: one field on the existing features JSON column, not a generic
+            // features editor — add one when a second feature actually needs this.
+            'liveview_max_concurrent' => ['nullable', 'integer', 'min:1', 'max:20'],
+            // 18-Sep-2026: optional free-text reason, recorded in the licence
+            // History alongside the before/after plan values below — never
+            // required, since most edits (a wrong expiry date, say) need none.
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         if (array_key_exists('device_limit', $data) && $data['device_limit'] !== null) {
@@ -329,8 +347,38 @@ class LicenceApiController extends Controller
             }
             $update['renewal_device_limit'] = $sched;
         }
+        // 18-Sep-2026: Standard/Enforcer/Commander manual plan change — same
+        // assignment path (Licence::update()) the purchase flow uses, with a
+        // before/after audit trail (previous plan, new plan, admin, timestamp
+        // via AuditLog::write() below, reason via the existing update() note
+        // field if the caller sends one).
+        $previousPlan = $licence->plan;
+        $newPlan = null;
         if (! empty($data['plan_code'])) {
-            $update['plan_id'] = Plan::where('code', $data['plan_code'])->value('id');
+            $newPlan = Plan::where('code', $data['plan_code'])->first();
+            $update['plan_id'] = $newPlan?->id;
+            // 18-Sep-2026: a plan/tier change must resync the licence's OWN
+            // 'features' column — entitlementBundle() and LicenseSigner::sign()
+            // read $licence->features, never $licence->plan->features, so
+            // without this an upgraded/downgraded licence kept whatever
+            // enforcement/live_view flags it had at original issue forever
+            // (root cause of "Commander shows no LiveView after upgrade").
+            // Merge first (keeps unrelated legacy per-licence keys), then force
+            // the two known gate keys to match the NEW plan exactly, OFF included.
+            $planFeatures = $newPlan->features ?? [];
+            $update['features'] = array_merge($licence->features ?? [], $planFeatures);
+            foreach (['enforcement', 'live_view'] as $gateKey) {
+                $update['features'][$gateKey] = (bool) ($planFeatures[$gateKey] ?? false);
+            }
+        }
+        if ($request->has('liveview_max_concurrent')) {
+            $features = $update['features'] ?? ($licence->features ?? []);
+            if ($data['liveview_max_concurrent'] === null) {
+                unset($features['liveview_max_concurrent']);
+            } else {
+                $features['liveview_max_concurrent'] = $data['liveview_max_concurrent'];
+            }
+            $update['features'] = $features;
         }
 
         // A future expiry re-activates an expired/lapsed licence.
@@ -341,7 +389,18 @@ class LicenceApiController extends Controller
         }
 
         $licence->update($update);
-        AuditLog::write('licence.edited', $licence, $update);
+
+        $auditMeta = $update;
+        if (array_key_exists('plan_id', $update)) {
+            $auditMeta['previous_plan_code'] = $previousPlan?->code;
+            $auditMeta['previous_plan_tier'] = $previousPlan?->tier;
+            $auditMeta['new_plan_code'] = $newPlan?->code;
+            $auditMeta['new_plan_tier'] = $newPlan?->tier;
+        }
+        if (! empty($data['note'])) {
+            $auditMeta['note'] = $data['note'];
+        }
+        AuditLog::write('licence.edited', $licence, $auditMeta);
 
         return response()->json($licence->fresh()->load('plan:id,code,name'));
     }
